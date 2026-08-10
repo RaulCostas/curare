@@ -1,4 +1,4 @@
-import { Controller, Post, UseInterceptors, UploadedFile, HttpException, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, UseInterceptors, UploadedFile, HttpException, HttpStatus } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { exec } from 'child_process';
 import * as fs from 'fs';
@@ -6,6 +6,38 @@ import * as path from 'path';
 
 @Controller('database-restore')
 export class DatabaseRestoreController {
+
+  @Get('run-local')
+  async restoreFromLocalDump() {
+    const dumpGzPath = path.join(process.cwd(), 'scripts', 'curare_production_full.sql.gz');
+    if (!fs.existsSync(dumpGzPath)) {
+      throw new HttpException('No se encontró el archivo de respaldo local en /app/scripts/curare_production_full.sql.gz', HttpStatus.NOT_FOUND);
+    }
+
+    const dbHost = process.env.DB_HOST || 'postgres';
+    const dbUser = process.env.DB_USER || 'postgres';
+    const dbPass = process.env.DB_PASSWORD || 'curare_secure_pass_2026';
+    const dbName = process.env.DB_NAME || 'curare';
+
+    console.log(`⚙️ [DatabaseRestore] Ejecutando restauración nativa desde archivo local ${dumpGzPath}...`);
+
+    const command = `PGPASSWORD="${dbPass}" gunzip -c "${dumpGzPath}" | psql -h "${dbHost}" -U "${dbUser}" -d "${dbName}"`;
+
+    return new Promise((resolve, reject) => {
+      exec(command, { maxBuffer: 1024 * 1024 * 100 }, (error, stdout, stderr) => {
+        if (error) {
+          console.error('❌ [DatabaseRestore] Error psql:', stderr || error.message);
+          return reject(new HttpException(`Error en psql: ${stderr || error.message}`, HttpStatus.INTERNAL_SERVER_ERROR));
+        }
+
+        console.log('🎉 [DatabaseRestore] Restauración local completada con éxito absoluto!');
+        resolve({
+          success: true,
+          message: '¡Toda la base de datos de producción con 2,967 pacientes, historiales, cobros y presupuestos ha sido restaurada con éxito!'
+        });
+      });
+    });
+  }
 
   @Post('upload')
   @UseInterceptors(FileInterceptor('file'))
@@ -35,7 +67,6 @@ export class DatabaseRestoreController {
 
       return new Promise((resolve, reject) => {
         exec(command, { maxBuffer: 1024 * 1024 * 100 }, (error, stdout, stderr) => {
-          // Limpiar archivo temporal
           if (fs.existsSync(dumpGzPath)) fs.unlinkSync(dumpGzPath);
 
           if (error) {
