@@ -8,7 +8,7 @@ node_modules/
 
 # Production
 /build
-/dist
+# /dist (comentado para pre-compilación)
 
 # Environment variables
 .env
