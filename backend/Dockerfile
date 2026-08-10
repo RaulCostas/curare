@@ -1,10 +1,7 @@
 # Dockerfile para Backend NestJS
-FROM node:18-alpine AS builder
+FROM node:18-slim AS builder
 
 WORKDIR /app
-
-# Instalar herramientas de compilación para módulos nativos (bcrypt, etc.)
-RUN apk add --no-cache python3 make g++
 
 # Copiar package files
 COPY package*.json ./
@@ -19,7 +16,7 @@ COPY . .
 RUN npm run build
 
 # Etapa de producción
-FROM node:18-alpine
+FROM node:18-slim
 
 WORKDIR /app
 
