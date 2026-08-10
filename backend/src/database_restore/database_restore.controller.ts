@@ -27,9 +27,12 @@ export class DatabaseRestoreController {
         const dbPass = process.env.DB_PASSWORD || 'curare_secure_pass_2026';
         const dbName = process.env.DB_NAME || 'curare';
 
-        const command = `PGPASSWORD="${dbPass}" gunzip -c "${dumpGzPath}" | psql -h "${dbHost}" -U "${dbUser}" -d "${dbName}"`;
+        const command = `gunzip -c "${dumpGzPath}" | psql -h "${dbHost}" -U "${dbUser}" -d "${dbName}"`;
 
-        exec(command, { maxBuffer: 1024 * 1024 * 100 }, (error, stdout, stderr) => {
+        exec(command, { 
+          maxBuffer: 1024 * 1024 * 100,
+          env: { ...process.env, PGPASSWORD: dbPass }
+        }, (error, stdout, stderr) => {
           if (error) {
             console.error('❌ [DatabaseRestore] Error psql:', stderr || error.message);
             return reject(new HttpException(`Error en psql: ${stderr || error.message}`, HttpStatus.INTERNAL_SERVER_ERROR));
@@ -69,10 +72,13 @@ export class DatabaseRestoreController {
 
       console.log(`⚙️ [DatabaseRestore] Ejecutando restauración nativa con psql...`);
 
-      const command = `PGPASSWORD="${dbPass}" gunzip -c "${dumpGzPath}" | psql -h "${dbHost}" -U "${dbUser}" -d "${dbName}"`;
+      const command = `gunzip -c "${dumpGzPath}" | psql -h "${dbHost}" -U "${dbUser}" -d "${dbName}"`;
 
       return new Promise((resolve, reject) => {
-        exec(command, { maxBuffer: 1024 * 1024 * 100 }, (error, stdout, stderr) => {
+        exec(command, { 
+          maxBuffer: 1024 * 1024 * 100,
+          env: { ...process.env, PGPASSWORD: dbPass }
+        }, (error, stdout, stderr) => {
           if (fs.existsSync(dumpGzPath)) fs.unlinkSync(dumpGzPath);
 
           if (error) {
