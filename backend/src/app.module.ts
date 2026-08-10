@@ -141,11 +141,11 @@ import { ConsentimientoPaciente } from './consentimientos-pacientes/entities/con
   imports: [
     TypeOrmModule.forRoot({
       type: 'postgres',
-      host: 'localhost',
-      port: 5433,
-      username: 'postgres',
-      password: 'postgrespg',
-      database: 'curare',
+      host: process.env.DB_HOST || 'localhost',
+      port: parseInt(process.env.DB_PORT || '5432', 10),
+      username: process.env.DB_USER || process.env.DB_USERNAME || 'postgres',
+      password: process.env.DB_PASSWORD || 'postgrespg',
+      database: process.env.DB_NAME || 'curare',
       entities: [
         User,
         Doctor,
