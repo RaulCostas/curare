@@ -11,7 +11,11 @@ export class ChatbotIntentosService implements OnModuleInit {
     ) { }
 
     async onModuleInit() {
-        await this.seedDefaults();
+        try {
+            await this.seedDefaults();
+        } catch (e) {
+            console.log('Skipping seedDefaults, table might not exist yet');
+        }
     }
 
     async seedDefaults() {

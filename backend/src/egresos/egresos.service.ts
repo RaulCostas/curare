@@ -14,7 +14,11 @@ export class EgresosService {
 
     async onModuleInit() {
         // Fix for existing records with null forma_pago_id
-        await this.egresosRepository.query(`UPDATE egresos SET forma_pago_id = 1 WHERE forma_pago_id IS NULL`);
+        try {
+            await this.egresosRepository.query(`UPDATE egresos SET forma_pago_id = 1 WHERE forma_pago_id IS NULL`);
+        } catch (e) {
+            console.log('Skipping egresos update, table might not exist yet');
+        }
     }
 
     create(createEgresoDto: CreateEgresoDto) {
