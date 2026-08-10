@@ -58,11 +58,6 @@ services:
     restart: unless-stopped
     expose:
       - "80"
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.curare-frontend.rule=PathPrefix(`/`)"
-      - "traefik.http.routers.curare-frontend.entrypoints=http"
-      - "traefik.http.services.curare-frontend.loadbalancer.server.port=80"
     depends_on:
       - backend
     networks:
