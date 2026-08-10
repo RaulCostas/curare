@@ -1,7 +1,7 @@
 import { getAppDataSource, getMdbReader } from '../config';
 import { cleanString, cleanDate } from '../utils/formatters';
 import { User } from '../../../src/users/entities/user.entity';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 
 function parseAccessUserDate(val: any): string | null {
   if (!val) return null;

@@ -1,7 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
-import sharp = require('sharp');
+let sharp: any;
+try {
+  sharp = require('sharp');
+} catch {
+  sharp = null;
+}
 
 @Injectable()
 export class LocalStorageService {

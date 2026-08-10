@@ -1,6 +1,6 @@
 import { getAppDataSource } from './migration/config';
 import { User } from '../src/users/entities/user.entity';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 
 async function createUser() {
   console.log('Conectando a la base de datos PostgreSQL...');
