@@ -1,0 +1,53 @@
+import { IsNotEmpty, IsNumber, IsString, IsDateString, IsOptional, Min, Max } from 'class-validator';
+
+export class CreateAgendaDto {
+    @IsNotEmpty()
+    @IsDateString()
+    fecha: string;
+
+    @IsNotEmpty()
+    @IsString()
+    hora: string;
+
+    @IsNotEmpty()
+    @IsNumber()
+    duracion: number;
+
+    @IsNotEmpty()
+    @IsNumber()
+    @Min(1)
+    @Max(5)
+    consultorio: number;
+
+    @IsOptional()
+    @IsNumber()
+    pacienteId?: number;
+
+    @IsNotEmpty()
+    @IsNumber()
+    doctorId: number;
+
+    @IsOptional()
+    @IsNumber()
+    proformaId?: number;
+
+    @IsNotEmpty()
+    @IsNumber()
+    usuarioId: number;
+
+    @IsOptional()
+    @IsString()
+    estado?: string;
+
+    @IsOptional()
+    @IsString()
+    tratamiento?: string;
+
+    @IsOptional()
+    @IsNumber()
+    asistenteId?: number;
+
+    @IsOptional()
+    @IsString()
+    motivoCancelacion?: string;
+}

@@ -1,0 +1,38 @@
+# Archivos a NO subir a Git
+
+# Variables de entorno
+.env
+.env.local
+.env.production
+.env.*.local
+
+# Dependencias
+node_modules/
+dist/
+build/
+
+# Logs
+*.log
+npm-debug.log*
+logs/
+
+# Backups
+backups/
+*.sql
+*.sql.gz
+
+# Uploads
+uploads/
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Docker
+docker-compose.override.yml

@@ -1,0 +1,220 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* =========================================================
+   Z-INDEX MODAL HIERARCHY
+   Sidebar: 100  (Layout.css)
+   Modal overlays (z-50 Tailwind): 200   — via override below
+   Sub-modals (z-[60] Tailwind): 300     — via override below
+   ManualModal / ImagenesModal: 9999+    — inline, fine
+   ========================================================= */
+.z-50 {
+  z-index: 200 !important;
+}
+.z-\[60\] {
+  z-index: 300 !important;
+}
+
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+  zoom: 1;
+  -webkit-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
+}
+
+:root {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: light dark;
+  color: #1f2937;
+  background-color: #f9fafb;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.dark:root {
+  background-color: #111827;
+}
+
+a {
+  font-weight: 500;
+  color: #646cff;
+  text-decoration: inherit;
+}
+
+a:hover {
+  text-decoration: none;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  font-size: 16px;
+}
+
+h1 {
+  font-size: 3.2em;
+  line-height: 1.1;
+}
+
+button {
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 0.6em 1.2em;
+  font-size: 1em;
+  font-weight: 500;
+  font-family: inherit;
+  background-color: #1a1a1a;
+  cursor: pointer;
+  transition: border-color 0.25s;
+}
+
+button:hover {
+  border-color: #646cff;
+}
+
+button:focus,
+button:focus-visible {
+  outline: none;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    color: #213547;
+    background-color: #ffffff;
+  }
+
+  a:hover {
+    text-decoration: none;
+  }
+
+  button {
+    background-color: #f9f9f9;
+  }
+}
+
+@media print {
+
+  .sidebar,
+  .top-header,
+  .no-print {
+    display: none !important;
+  }
+
+  .dashboard-container {
+    display: block;
+  }
+
+  .main-content {
+    margin-left: 0;
+    width: 100%;
+    padding: 0;
+  }
+
+  .content-area {
+    padding: 0;
+  }
+
+  .content-card {
+    box-shadow: none;
+    padding: 0;
+    border: none;
+  }
+
+  /* Ensure table fits */
+  .table-responsive {
+    overflow: visible;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  th,
+  td {
+    border: 1px solid #000 !important;
+    color: #000 !important;
+    padding: 8px !important;
+  }
+
+  h2 {
+    text-align: center;
+    margin-bottom: 20px;
+  }
+
+  /* Reset background colors for printing */
+  body {
+    background-color: white;
+    color: black;
+  }
+}
+
+/* Global Responsive Utilities */
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 768px) {
+
+  /* Stack flex containers that are rows by default on desktop */
+  .flex-responsively {
+    flex-direction: column !important;
+  }
+
+  /* Make inputs taller for touch */
+  input,
+  select,
+  button {
+    min-height: 44px;
+  }
+
+  /* Adjust headings */
+  h1 {
+    font-size: 2em;
+  }
+
+  h2 {
+    font-size: 1.5em;
+  }
+
+  h3 {
+    font-size: 1.25em;
+  }
+}
+
+/* WebKit Date & Month Picker Indicator Contrast Fix for Light & Dark Mode */
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="month"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 2px;
+  filter: opacity(0.7);
+  transition: all 0.2s ease;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator:hover,
+input[type="month"]::-webkit-calendar-picker-indicator:hover {
+  filter: opacity(1);
+}
+
+.dark input[type="date"]::-webkit-calendar-picker-indicator,
+.dark input[type="month"]::-webkit-calendar-picker-indicator,
+html.dark input[type="date"]::-webkit-calendar-picker-indicator,
+html.dark input[type="month"]::-webkit-calendar-picker-indicator {
+  filter: invert(1) brightness(1.2) opacity(0.9) !important;
+}
