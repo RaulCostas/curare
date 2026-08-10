@@ -4,36 +4,42 @@ import { exec } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 
-@Controller('database-restore')
+@Controller(['database-restore', 'api/database-restore'])
 export class DatabaseRestoreController {
 
-  @Get('run-local')
-  async restoreFromLocalDump() {
-    const dumpGzPath = path.join(process.cwd(), 'scripts', 'curare_production_full.sql.gz');
-    if (!fs.existsSync(dumpGzPath)) {
-      throw new HttpException('No se encontró el archivo de respaldo local en /app/scripts/curare_production_full.sql.gz', HttpStatus.NOT_FOUND);
-    }
+  @Get('pull-from-github')
+  async pullFromGithub() {
+    const dumpGzPath = path.join(process.cwd(), 'scripts', 'temp_github_dump.sql.gz');
+    
+    console.log(`⚙️ [DatabaseRestore] Descargando dump desde GitHub (Plan B)...`);
+    
+    // URL cruda de GitHub en la rama migration-data
+    const githubUrl = 'https://raw.githubusercontent.com/RaulCostas/curare/migration-data/backend/scripts/curare_production_full.sql.gz';
 
-    const dbHost = process.env.DB_HOST || 'postgres';
-    const dbUser = process.env.DB_USER || 'postgres';
-    const dbPass = process.env.DB_PASSWORD || 'curare_secure_pass_2026';
-    const dbName = process.env.DB_NAME || 'curare';
-
-    console.log(`⚙️ [DatabaseRestore] Ejecutando restauración nativa desde archivo local ${dumpGzPath}...`);
-
-    const command = `PGPASSWORD="${dbPass}" gunzip -c "${dumpGzPath}" | psql -h "${dbHost}" -U "${dbUser}" -d "${dbName}"`;
-
+    // Usar curl para descargar el archivo directamente dentro del contenedor
     return new Promise((resolve, reject) => {
-      exec(command, { maxBuffer: 1024 * 1024 * 100 }, (error, stdout, stderr) => {
-        if (error) {
-          console.error('❌ [DatabaseRestore] Error psql:', stderr || error.message);
-          return reject(new HttpException(`Error en psql: ${stderr || error.message}`, HttpStatus.INTERNAL_SERVER_ERROR));
-        }
+      exec(`curl -sL "${githubUrl}" -o "${dumpGzPath}"`, (error) => {
+        if (error) return reject(new HttpException('Error descargando desde GitHub', HttpStatus.INTERNAL_SERVER_ERROR));
+        
+        console.log(`✅ [DatabaseRestore] Descarga exitosa. Ejecutando restauración nativa...`);
+        const dbHost = process.env.DB_HOST || 'postgres';
+        const dbUser = process.env.DB_USER || 'postgres';
+        const dbPass = process.env.DB_PASSWORD || 'curare_secure_pass_2026';
+        const dbName = process.env.DB_NAME || 'curare';
 
-        console.log('🎉 [DatabaseRestore] Restauración local completada con éxito absoluto!');
-        resolve({
-          success: true,
-          message: '¡Toda la base de datos de producción con 2,967 pacientes, historiales, cobros y presupuestos ha sido restaurada con éxito!'
+        const command = `PGPASSWORD="${dbPass}" gunzip -c "${dumpGzPath}" | psql -h "${dbHost}" -U "${dbUser}" -d "${dbName}"`;
+
+        exec(command, { maxBuffer: 1024 * 1024 * 100 }, (error, stdout, stderr) => {
+          if (error) {
+            console.error('❌ [DatabaseRestore] Error psql:', stderr || error.message);
+            return reject(new HttpException(`Error en psql: ${stderr || error.message}`, HttpStatus.INTERNAL_SERVER_ERROR));
+          }
+
+          console.log('🎉 [DatabaseRestore] Restauración remota (Pull) completada con éxito absoluto!');
+          resolve({
+            success: true,
+            message: '¡Toda la base de datos de producción con 2,967 pacientes ha sido restaurada con éxito mediante Pull!'
+          });
         });
       });
     });
