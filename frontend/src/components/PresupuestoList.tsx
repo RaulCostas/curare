@@ -884,7 +884,7 @@ const PresupuestoList: React.FC = () => {
             <PlanTratamientoModal
                 isOpen={!!viewProforma}
                 onClose={() => setViewProforma(null)}
-                proforma={viewProforma}
+                proforma={viewProforma as any}
                 historia={historiaList}
             />
         </div>

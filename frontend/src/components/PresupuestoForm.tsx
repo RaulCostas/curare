@@ -46,7 +46,7 @@ const PresupuestoForm: React.FC = () => {
     // Form state for new item
     const [selectedArancelId, setSelectedArancelId] = useState<number>(0);
     const [precioType, setPrecioType] = useState<'precio1' | 'precio2'>('precio1');
-    const [customPrecioUnitario, setCustomPrecioUnitario] = useState<number | ''>('');
+    const [customPrecioUnitario, setCustomPrecioUnitario] = useState<number | string>('');
     const [piezas, setPiezas] = useState('');
     const [cantidad, setCantidad] = useState(1);
     const [descuento, setDescuento] = useState(0);

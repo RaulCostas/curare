@@ -681,9 +681,9 @@ const PacientePagosTab: React.FC<PacientePagosTabProps> = ({ pacienteId }) => {
                         const totalEjecutado = filteredHistoria.reduce((acc, curr) => {
                             if (selectedProforma && selectedProforma.detalles && selectedProforma.detalles.length > 0) {
                                 const pdMatch = selectedProforma.detalles.find((d: any) => {
-                                    if (curr.piezas && d.piezas) {
+                                    if (curr.pieza && d.piezas) {
                                         const normPz = (str: string) => str.replace(/[^0-9]/g, ' ').trim().split(/\s+/).sort().join('-');
-                                        if (normPz(curr.piezas) === normPz(d.piezas)) return true;
+                                        if (normPz(curr.pieza) === normPz(d.piezas)) return true;
                                     }
                                     const currTratNorm = (curr.tratamiento || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, ' ').trim();
                                     const dTratNorm = (d.arancel?.detalle || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, ' ').trim();
