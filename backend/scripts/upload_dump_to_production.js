@@ -19,7 +19,7 @@ async function uploadDump() {
     contentType: 'application/gzip'
   });
 
-  const url = 'http://72.61.76.125:3001/api/database-restore/upload';
+  const url = 'http://d2xyd5vctz4vcl04nkexp6j.72.61.76.125.sslip.io/database-restore/upload';
 
   try {
     console.log(`📡 Enviando a: ${url}...`);
