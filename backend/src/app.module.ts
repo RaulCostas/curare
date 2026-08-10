@@ -215,7 +215,7 @@ import { ConsentimientoPaciente } from './consentimientos-pacientes/entities/con
         ConsentimientoPlantilla,
         ConsentimientoPaciente,
       ],
-      synchronize: false,
+      synchronize: true,
     }),
     UsersModule,
     AuthModule,
