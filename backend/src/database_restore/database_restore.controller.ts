@@ -3,7 +3,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { DataSource } from 'typeorm';
 import * as zlib from 'zlib';
 
-@Controller(['database-restore', 'api/database-restore'])
+@Controller('database-restore')
 export class DatabaseRestoreController {
   constructor(private dataSource: DataSource) {}
 
