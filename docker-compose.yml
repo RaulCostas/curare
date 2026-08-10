@@ -39,8 +39,8 @@ services:
       DB_PASSWORD: ${DB_PASSWORD}
       JWT_SECRET: ${JWT_SECRET}
       PORT: 3000
-    ports:
-      - "3001:3000"
+    expose:
+      - "3000"
     depends_on:
       postgres:
         condition: service_healthy
@@ -56,8 +56,8 @@ services:
       dockerfile: Dockerfile
     container_name: curare-frontend
     restart: unless-stopped
-    ports:
-      - "3080:80"
+    expose:
+      - "80"
     depends_on:
       - backend
     networks:
