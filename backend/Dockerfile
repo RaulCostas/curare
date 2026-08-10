@@ -20,6 +20,9 @@ FROM node:20-alpine
 
 WORKDIR /app
 
+# Instalar cliente psql nativo para restauraciones rápidas
+RUN apk add --no-cache postgresql-client
+
 # Copiar package files, node_modules y dist compilados desde builder
 COPY package*.json ./
 COPY --from=builder /app/node_modules ./node_modules

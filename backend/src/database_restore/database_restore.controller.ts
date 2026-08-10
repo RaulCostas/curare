@@ -1,11 +1,11 @@
 import { Controller, Post, UseInterceptors, UploadedFile, HttpException, HttpStatus } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { DataSource } from 'typeorm';
-import * as zlib from 'zlib';
+import { exec } from 'child_process';
+import * as fs from 'fs';
+import * as path from 'path';
 
 @Controller('database-restore')
 export class DatabaseRestoreController {
-  constructor(private dataSource: DataSource) {}
 
   @Post('upload')
   @UseInterceptors(FileInterceptor('file'))
@@ -15,32 +15,44 @@ export class DatabaseRestoreController {
     }
 
     try {
-      console.log(`📥 [DatabaseRestore] Recibido archivo dump de ${(file.size / 1024 / 1024).toFixed(2)} MB...`);
-      let sqlContent = file.buffer.toString('utf8');
-
-      // Si el archivo está comprimido en gzip (.gz)
-      if (file.originalname.endsWith('.gz') || file.mimetype.includes('gzip') || file.buffer[0] === 0x1f && file.buffer[1] === 0x8b) {
-        console.log('🗜️ [DatabaseRestore] Descomprimiendo archivo .gz...');
-        sqlContent = zlib.gunzipSync(file.buffer).toString('utf8');
+      const uploadDir = path.join(process.cwd(), 'uploads');
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
       }
 
-      console.log(`⚙️ [DatabaseRestore] Restaurando esquema y registros (${(sqlContent.length / 1024 / 1024).toFixed(2)} MB de SQL)...`);
-      
-      const queryRunner = this.dataSource.createQueryRunner();
-      await queryRunner.connect();
+      const dumpGzPath = path.join(uploadDir, 'temp_restore.sql.gz');
+      fs.writeFileSync(dumpGzPath, file.buffer);
+      console.log(`📥 [DatabaseRestore] Archivo guardado temporalmente en ${dumpGzPath} (${(file.size / 1024 / 1024).toFixed(2)} MB)...`);
 
-      // Ejecutar la restauración de datos
-      await queryRunner.query(sqlContent);
-      await queryRunner.release();
+      const dbHost = process.env.DB_HOST || 'postgres';
+      const dbUser = process.env.DB_USER || 'postgres';
+      const dbPass = process.env.DB_PASSWORD || 'curare_secure_pass_2026';
+      const dbName = process.env.DB_NAME || 'curare';
 
-      console.log('✅ [DatabaseRestore] Restauración completada con éxito!');
-      return { 
-        success: true, 
-        message: 'Base de datos de producción restaurada con éxito con todos los pacientes, historias clínicas y pagos!' 
-      };
+      console.log(`⚙️ [DatabaseRestore] Ejecutando restauración nativa con psql...`);
+
+      const command = `PGPASSWORD="${dbPass}" gunzip -c "${dumpGzPath}" | psql -h "${dbHost}" -U "${dbUser}" -d "${dbName}"`;
+
+      return new Promise((resolve, reject) => {
+        exec(command, { maxBuffer: 1024 * 1024 * 100 }, (error, stdout, stderr) => {
+          // Limpiar archivo temporal
+          if (fs.existsSync(dumpGzPath)) fs.unlinkSync(dumpGzPath);
+
+          if (error) {
+            console.error('❌ [DatabaseRestore] Error psql:', stderr || error.message);
+            return reject(new HttpException(`Error en restauración psql: ${stderr || error.message}`, HttpStatus.INTERNAL_SERVER_ERROR));
+          }
+
+          console.log('✅ [DatabaseRestore] Restauración completada con éxito vía psql nativo!');
+          resolve({
+            success: true,
+            message: '¡Base de datos de producción restaurada con éxito con todos los pacientes e historias clínicas!'
+          });
+        });
+      });
     } catch (err: any) {
-      console.error('❌ [DatabaseRestore] Error al restaurar:', err);
-      throw new HttpException(`Error en restauración: ${err.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
+      console.error('❌ Error:', err.message);
+      throw new HttpException(`Error: ${err.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 }
