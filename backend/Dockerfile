@@ -3,6 +3,9 @@ FROM node:18-alpine AS builder
 
 WORKDIR /app
 
+# Instalar herramientas de compilación para módulos nativos (bcrypt, etc.)
+RUN apk add --no-cache python3 make g++
+
 # Copiar package files
 COPY package*.json ./
 
