@@ -23,13 +23,9 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-# Copiar package files
+# Copiar package files, node_modules y dist compilados desde builder
 COPY package*.json ./
-
-# Instalar solo dependencias de producción
-RUN npm install --omit=dev --legacy-peer-deps
-
-# Copiar build desde etapa anterior
+COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 
 # Exponer puerto
