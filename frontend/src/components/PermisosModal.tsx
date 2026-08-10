@@ -59,10 +59,8 @@ const PermisosModal: React.FC<PermisosModalProps> = ({ user, isOpen, onClose, on
                 { id: 'agenda', label: 'Agenda' },
                 { id: 'pacientes', label: 'Pacientes (Módulo)' },
                 { id: 'pacientes-registro', label: ' - Registro de Pacientes' },
-                { id: 'pagos', label: ' - Pagos' },
                 { id: 'pacientes-deudores', label: ' - Pacientes Deudores' },
                 { id: 'pacientes-pendientes', label: ' - Pacientes Pendientes' },
-                { id: 'recetario', label: ' - Recetario' },
 
                 { id: 'doctores', label: 'Doctores (Módulo)' },
                 { id: 'doctores-registro', label: ' - Registro de Doctores' },
@@ -80,8 +78,6 @@ const PermisosModal: React.FC<PermisosModalProps> = ({ user, isOpen, onClose, on
                 { id: 'pedidos', label: ' - Pedidos' },
                 { id: 'pagos-pedidos', label: ' - Pagar Pedidos' },
 
-
-
                 { id: 'personal', label: 'Personal (Módulo)' },
                 { id: 'personal-registro', label: ' - Registro de Personal' },
                 { id: 'vacaciones', label: ' - Vacaciones' },
@@ -89,6 +85,12 @@ const PermisosModal: React.FC<PermisosModalProps> = ({ user, isOpen, onClose, on
 
                 { id: 'inventario', label: 'Inventario' },
                 { id: 'gastos', label: 'Gastos Fijos' },
+                { id: 'hoja-diaria', label: 'Hoja Diaria' },
+                { id: 'utilidades', label: 'Utilidades' },
+
+                { id: 'otros', label: 'Otros (Módulo)' },
+                { id: 'otros-recibos', label: ' - Recibos' },
+                { id: 'otros-mantenimiento', label: ' - Mantenimiento Consultorios' },
 
                 { id: 'estadisticas', label: 'Estadísticas (Módulo)' },
                 { id: 'estadisticas-pacientes', label: ' - Estadísticas Pacientes' },
@@ -96,22 +98,33 @@ const PermisosModal: React.FC<PermisosModalProps> = ({ user, isOpen, onClose, on
                 { id: 'estadisticas-especialidades', label: ' - Estadísticas Especialidades' },
                 { id: 'estadisticas-utilidades', label: ' - Estadísticas Utilidades' },
                 { id: 'estadisticas-productos', label: ' - Estadísticas Productos' },
-
-                { id: 'usuarios', label: 'Usuarios (Módulo)' },
-
+            ]
+        },
+        {
+            title: 'Configuración y Catálogos',
+            items: [
                 { id: 'configuracion', label: 'Configuración (Módulo)' },
+                { id: 'personal_tipo', label: ' - Área del Personal' },
+                { id: 'backup', label: ' - Backup de BD' },
+                { id: 'cambiar-password', label: ' - Cambiar Contraseña' },
+                { id: 'casos-clinicos', label: ' - Casos Clínicos' },
                 { id: 'config-categorias', label: ' - Categorías Paciente' },
                 { id: 'config-chatbot', label: ' - Chatbot (WhatsApp)' },
                 { id: 'config-comision', label: ' - Comisión Tarjeta' },
+                { id: 'consentimientos-plantillas', label: ' - Plantillas Consentimientos' },
+                { id: 'datos-centro', label: ' - Datos Centro Dental' },
                 { id: 'config-especialidad', label: ' - Especialidades' },
                 { id: 'config-forma-pago', label: ' - Formas de Pago' },
                 { id: 'config-grupos', label: ' - Grupos Inventario' },
-                { id: 'config-area-personal', label: ' - Área del Personal' },
+                { id: 'config-musica-television', label: ' - Música / Televisión' },
+                { id: 'recetas-predisenadas', label: ' - Recetas Prediseñadas' },
+                { id: 'usuarios', label: ' - Usuarios (Módulo)' },
             ]
         },
         {
             title: 'Mensajes de Inicio (Dashboard)',
             items: [
+                { id: 'dashboard_citas_hoy', label: 'Citas Hoy' },
                 { id: 'dashboard_cumpleanos', label: 'Cumpleaños (Pacientes y Personal)' },
                 { id: 'dashboard_pacientes_no_registrados', label: 'Pacientes No Registrados (Historia Clínica)' },
                 { id: 'dashboard_trabajos_pendientes', label: 'Trabajos Terminados (Laboratorios)' },

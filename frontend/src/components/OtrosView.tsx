@@ -18,9 +18,21 @@ const OtrosView: React.FC = () => {
         }
     ];
 
+    const hasAccess = (moduleId: string) => {
+        const userStr = localStorage.getItem('user');
+        if (!userStr) return true;
+        try {
+            const user = JSON.parse(userStr);
+            const permisos = user.permisos || [];
+            return !permisos.includes(moduleId);
+        } catch {
+            return true;
+        }
+    };
+
     const otrosItems = [
         {
-            id: 'recibos',
+            id: 'otros-recibos',
             title: 'Recibos',
             desc: 'Emisión, registro y consulta de recibos de ingresos y pagos de la clínica',
             path: '/otros/recibos',
@@ -28,8 +40,8 @@ const OtrosView: React.FC = () => {
             icon: <FileText className="h-8 w-8 text-blue-600 dark:text-blue-300" />
         },
         {
+            id: 'otros-mantenimiento',
             title: 'Mantenimiento de Consultorios',
-            id: 'mantenimiento-consultorios',
             desc: 'Registro de repuestos, piezas de mano y mantenimientos preventivos y correctivos por consultorio',
             path: '/otros/mantenimiento',
             color: 'green',
@@ -73,25 +85,28 @@ const OtrosView: React.FC = () => {
 
             {/* Grid of Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6 max-w-4xl">
-                {otrosItems.map(item => (
-                    <div
-                        key={item.id}
-                        onClick={() => navigate(item.path)}
-                        className={`bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-md hover:shadow-xl transition-all duration-200 cursor-pointer border-2 border-transparent ${getBgColorClass(item.color)} transform hover:-translate-y-1`}
-                    >
-                        <div className="flex items-center gap-4 mb-3">
-                            <div className={`p-3 rounded-xl ${getBgColorClass(item.color).split(' ')[0]}`}>
-                                {item.icon}
+                {otrosItems.map(item => {
+                    if (!hasAccess(item.id)) return null;
+                    return (
+                        <div
+                            key={item.id}
+                            onClick={() => navigate(item.path)}
+                            className={`bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-md hover:shadow-xl transition-all duration-200 cursor-pointer border-2 border-transparent ${getBgColorClass(item.color)} transform hover:-translate-y-1`}
+                        >
+                            <div className="flex items-center gap-4 mb-3">
+                                <div className={`p-3 rounded-xl ${getBgColorClass(item.color).split(' ')[0]}`}>
+                                    {item.icon}
+                                </div>
+                                <h3 className="text-xl font-bold text-gray-800 dark:text-white">
+                                    {item.title}
+                                </h3>
                             </div>
-                            <h3 className="text-xl font-bold text-gray-800 dark:text-white">
-                                {item.title}
-                            </h3>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">
+                                {item.desc}
+                            </p>
                         </div>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                            {item.desc}
-                        </p>
-                    </div>
-                ))}
+                    );
+                })}
             </div>
 
             {/* Manual Modal */}

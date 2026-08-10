@@ -664,50 +664,56 @@ const Layout: React.FC = () => {
                                 </Link>
                             </li>
                         )}
-                        <li className="nav-item">
-                            <Link
-                                to="/hoja-diaria"
-                                className={`nav-link ${isActive('/hoja-diaria')}`}
-                                onClick={closeSidebar}
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '10px' }}>
-                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                                    <line x1="16" y1="2" x2="16" y2="6"></line>
-                                    <line x1="8" y1="2" x2="8" y2="6"></line>
-                                    <line x1="3" y1="10" x2="21" y2="10"></line>
-                                </svg>
-                                Hoja Diaria
-                            </Link>
-                        </li>
+                        {hasAccess('hoja-diaria') && (
+                            <li className="nav-item">
+                                <Link
+                                    to="/hoja-diaria"
+                                    className={`nav-link ${isActive('/hoja-diaria')}`}
+                                    onClick={closeSidebar}
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '10px' }}>
+                                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                        <line x1="16" y1="2" x2="16" y2="6"></line>
+                                        <line x1="8" y1="2" x2="8" y2="6"></line>
+                                        <line x1="3" y1="10" x2="21" y2="10"></line>
+                                    </svg>
+                                    Hoja Diaria
+                                </Link>
+                            </li>
+                        )}
 
-                        <li className="nav-item">
-                            <Link
-                                to="/utilidades"
-                                className={`nav-link ${isActive('/utilidades')}`}
-                                onClick={closeSidebar}
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '10px' }}>
-                                    <line x1="12" y1="1" x2="12" y2="23"></line>
-                                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
-                                </svg>
-                                Utilidades
-                            </Link>
-                        </li>
+                        {hasAccess('utilidades') && (
+                            <li className="nav-item">
+                                <Link
+                                    to="/utilidades"
+                                    className={`nav-link ${isActive('/utilidades')}`}
+                                    onClick={closeSidebar}
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '10px' }}>
+                                        <line x1="12" y1="1" x2="12" y2="23"></line>
+                                        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                                    </svg>
+                                    Utilidades
+                                </Link>
+                            </li>
+                        )}
 
-                        <li className="nav-item">
-                            <Link
-                                to="/otros"
-                                className={`nav-link ${isActive('/otros') || location.pathname.startsWith('/otros') ? 'active' : ''}`}
-                                onClick={closeSidebar}
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '10px' }}>
-                                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
-                                    <line x1="12" y1="11" x2="12" y2="17"></line>
-                                    <line x1="9" y1="14" x2="15" y2="14"></line>
-                                </svg>
-                                Otros
-                            </Link>
-                        </li>
+                        {hasAccess('otros') && (
+                            <li className="nav-item">
+                                <Link
+                                    to="/otros"
+                                    className={`nav-link ${isActive('/otros') || location.pathname.startsWith('/otros') ? 'active' : ''}`}
+                                    onClick={closeSidebar}
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '10px' }}>
+                                        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                                        <line x1="12" y1="11" x2="12" y2="17"></line>
+                                        <line x1="9" y1="14" x2="15" y2="14"></line>
+                                    </svg>
+                                    Otros
+                                </Link>
+                            </li>
+                        )}
 
                         {/* ESTADÍSTICAS MENU */}
                         {hasAccess('estadisticas') && (

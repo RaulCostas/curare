@@ -114,7 +114,7 @@ const AgendaView: React.FC<AgendaViewProps> = ({ defaultPacienteId, isEmbedded =
 
     const timeSlots: string[] = [];
     let startHour = 8;
-    let startMinute = 30;
+    let startMinute = 0;
     while (startHour < 20 || (startHour === 20 && startMinute <= 30)) {
         const hourStr = startHour.toString().padStart(2, '0');
         const minStr = startMinute.toString().padStart(2, '0');

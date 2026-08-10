@@ -35,7 +35,7 @@ const AgendaForm: React.FC<AgendaFormProps> = ({
 
     const [formData, setFormData] = useState({
         fecha: defaultDate,
-        hora: defaultTime || '08:30',
+        hora: defaultTime || '08:00',
         duracion: 30,
         consultorio: defaultConsultorio || 1,
         pacienteId: defaultPacienteId || 0,
@@ -120,7 +120,7 @@ const AgendaForm: React.FC<AgendaFormProps> = ({
             setFormData(prev => ({
                 ...prev,
                 fecha: defaultDate,
-                hora: defaultTime || '08:30',
+                hora: defaultTime || '08:00',
                 consultorio: defaultConsultorio || 1,
                 pacienteId: pId,
                 doctorId: 0,

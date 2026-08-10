@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import Swal from 'sweetalert2';
 import type { Personal, GastoFijo, Inventario, Recordatorio, RecordatorioTratamiento, RecordatorioPlan } from '../types';
 
 import { getLocalDateString, formatDate } from '../utils/dateUtils';
@@ -18,6 +19,8 @@ const Home: React.FC = () => {
     const [recordatorios, setRecordatorios] = useState<Recordatorio[]>([]);
     const [tratamientosPendientes, setTratamientosPendientes] = useState<RecordatorioTratamiento[]>([]);
     const [planesPendientes, setPlanesPendientes] = useState<RecordatorioPlan[]>([]);
+    const [birthdaySentIds, setBirthdaySentIds] = useState<Set<number>>(new Set());
+    const [birthdayLoadingIds, setBirthdayLoadingIds] = useState<Set<number>>(new Set());
 
     // Permission Logic
     const userString = localStorage.getItem('user');
@@ -516,24 +519,72 @@ const Home: React.FC = () => {
                         <span>🎉</span> Cumpleaños de Pacientes Hoy
                     </h2>
                     <div className="space-y-3">
-                        {stats.birthdayPacientes.map((paciente: any) => (
-                            <div
-                                key={paciente.id}
-                                className="flex justify-between items-center bg-white dark:bg-gray-700 p-4 rounded-lg shadow-sm border border-gray-100 dark:border-gray-600"
-                            >
-                                <div>
-                                    <h3 className="font-semibold text-gray-800 dark:text-white mb-1">
-                                        {formatPaternoMaternoNombre(paciente)}
-                                    </h3>
-                                    <p className="text-sm text-gray-500 dark:text-gray-300">
-                                        Cumple {calculateAge(paciente.fecha_nacimiento)} años hoy
-                                    </p>
+                        {stats.birthdayPacientes.map((paciente: any) => {
+                            const isSent = birthdaySentIds.has(paciente.id);
+                            const isLoading = birthdayLoadingIds.has(paciente.id);
+                            return (
+                                <div
+                                    key={paciente.id}
+                                    className="flex justify-between items-center bg-white dark:bg-gray-700 p-4 rounded-lg shadow-sm border border-gray-100 dark:border-gray-600"
+                                >
+                                    <div>
+                                        <h3 className="font-semibold text-gray-800 dark:text-white mb-1">
+                                            {formatPaternoMaternoNombre(paciente)}
+                                        </h3>
+                                        <p className="text-sm text-gray-500 dark:text-gray-300">
+                                            Cumple {calculateAge(paciente.fecha_nacimiento)} años hoy
+                                        </p>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <button
+                                            onClick={async () => {
+                                                if (isSent || isLoading) return;
+                                                setBirthdayLoadingIds(prev => new Set(prev).add(paciente.id));
+                                                try {
+                                                    await api.post(`/chatbot/send-birthday/${paciente.id}`);
+                                                    setBirthdaySentIds(prev => new Set(prev).add(paciente.id));
+                                                } catch {
+                                                    Swal.fire({
+                                                        icon: 'error',
+                                                        title: 'Error al enviar mensaje',
+                                                        text: 'Verifica que el chatbot esté conectado.',
+                                                        confirmButtonText: 'OK',
+                                                    });
+                                                } finally {
+                                                    setBirthdayLoadingIds(prev => { const s = new Set(prev); s.delete(paciente.id); return s; });
+                                                }
+                                            }}
+                                            disabled={isSent || isLoading}
+                                            title={isSent ? 'Felicitación enviada' : 'Enviar felicitación por WhatsApp'}
+                                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold shadow transition-all transform hover:-translate-y-0.5 ${
+                                                isSent
+                                                    ? 'bg-gray-200 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed'
+                                                    : 'bg-[#25D366] hover:bg-[#1ebe57] active:scale-95 text-white cursor-pointer'
+                                            }`}
+                                        >
+                                            {isLoading ? (
+                                                <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                                                </svg>
+                                            ) : isSent ? (
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                                </svg>
+                                            ) : (
+                                                /* WhatsApp official icon */
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 32 32" fill="currentColor">
+                                                    <path d="M16 0C7.163 0 0 7.163 0 16c0 2.833.738 5.494 2.027 7.8L0 32l8.434-2.01A15.937 15.937 0 0016 32c8.837 0 16-7.163 16-16S24.837 0 16 0zm0 29.333a13.27 13.27 0 01-6.77-1.851l-.485-.287-5.009 1.194 1.266-4.874-.317-.504A13.27 13.27 0 012.667 16C2.667 8.636 8.636 2.667 16 2.667S29.333 8.636 29.333 16 23.364 29.333 16 29.333z"/>
+                                                    <path d="M23.2 19.467c-.373-.187-2.208-1.088-2.55-1.213-.341-.124-.589-.187-.838.187-.248.373-.963 1.213-1.18 1.461-.217.249-.435.28-.808.093-.373-.187-1.574-.58-2.997-1.85-1.108-.988-1.856-2.208-2.073-2.581-.217-.373-.023-.574.163-.76.167-.167.373-.435.56-.652.187-.217.249-.373.373-.621.124-.249.062-.466-.031-.652-.093-.187-.838-2.022-1.148-2.77-.302-.727-.608-.627-.838-.639l-.714-.012c-.249 0-.652.093-.993.466-.342.373-1.304 1.274-1.304 3.106s1.336 3.606 1.522 3.855c.187.248 2.63 4.016 6.374 5.633.891.385 1.586.614 2.128.786.894.284 1.708.244 2.352.148.717-.107 2.208-.902 2.52-1.774.311-.871.311-1.617.218-1.774-.093-.156-.341-.249-.714-.436z"/>
+                                                </svg>
+                                            )}
+                                            {isSent ? 'Enviado' : isLoading ? 'Enviando...' : 'Enviar Felicitaciones'}
+                                        </button>
+                                        <div className="text-3xl animate-bounce">🎈</div>
+                                    </div>
                                 </div>
-                                <div className="text-3xl animate-bounce">
-                                    🎈
-                                </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 </div>
             )}
