@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common'; // Force Rebuild
 import { FirmasModule } from './firmas/firmas.module';
 import { StorageModule } from './common/storage/storage.module';
+import { DatabaseRestoreModule } from './database_restore/database_restore.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -277,6 +278,7 @@ import { ConsentimientoPaciente } from './consentimientos-pacientes/entities/con
     ConsentimientosPacientesModule,
     FirmasModule,
     StorageModule,
+    DatabaseRestoreModule,
   ],
   controllers: [AppController],
   providers: [AppService],
