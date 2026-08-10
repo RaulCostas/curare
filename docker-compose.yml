@@ -47,10 +47,7 @@ services:
       postgres:
         condition: service_healthy
     networks:
-      curare-network:
-        aliases:
-          - backend
-          - curare-backend
+      - curare-network
     volumes:
       - ./backend/uploads:/app/uploads
 
@@ -69,10 +66,7 @@ services:
     depends_on:
       - backend
     networks:
-      curare-network:
-        aliases:
-          - frontend
-          - curare-frontend
+      - curare-network
 
 volumes:
   postgres_data:
