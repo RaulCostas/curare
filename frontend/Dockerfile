@@ -1,8 +1,9 @@
 # Dockerfile para Frontend React (Pre-built)
 FROM nginx:alpine
 
-# Copiar build precompilado al directorio de Nginx
-COPY dist /usr/share/nginx/html
+# Limpiar directorio por defecto y copiar build
+RUN rm -rf /usr/share/nginx/html/*
+COPY dist/ /usr/share/nginx/html/
 
 # Copiar configuración personalizada de Nginx
 COPY nginx.conf /etc/nginx/conf.d/default.conf
