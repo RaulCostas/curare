@@ -773,6 +773,7 @@ const PacientePagosTab: React.FC<PacientePagosTabProps> = ({ pacienteId }) => {
                 isOpen={isFormOpen}
                 onClose={() => setIsFormOpen(false)}
                 id={selectedPagoId}
+                defaultPacienteId={pacienteId}
                 defaultProformaId={selectedProformaId}
                 hidePacienteProforma={true}
                 onSaveSuccess={() => {

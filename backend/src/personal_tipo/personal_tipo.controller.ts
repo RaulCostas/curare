@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query } from '@nestjs/common';
 import { PersonalTipoService } from './personal_tipo.service';
 import { CreatePersonalTipoDto } from './dto/create-personal-tipo.dto';
 import { UpdatePersonalTipoDto } from './dto/update-personal-tipo.dto';
@@ -13,8 +13,16 @@ export class PersonalTipoController {
     }
 
     @Get()
-    findAll() {
-        return this.personalTipoService.findAll();
+    findAll(
+        @Query('search') search?: string,
+        @Query('page') page?: string,
+        @Query('limit') limit?: string,
+    ) {
+        return this.personalTipoService.findAll(
+            search,
+            page ? +page : 1,
+            limit ? +limit : 10,
+        );
     }
 
     @Get(':id')

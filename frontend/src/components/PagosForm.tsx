@@ -11,12 +11,13 @@ interface PagosFormProps {
     isOpen: boolean;
     onClose: () => void;
     id?: number | null;
+    defaultPacienteId?: number;
     defaultProformaId?: number;
     hidePacienteProforma?: boolean;
     onSaveSuccess: () => void;
 }
 
-const PagosForm: React.FC<PagosFormProps> = ({ isOpen, onClose, id, defaultProformaId, hidePacienteProforma, onSaveSuccess }) => {
+const PagosForm: React.FC<PagosFormProps> = ({ isOpen, onClose, id, defaultPacienteId, defaultProformaId, hidePacienteProforma, onSaveSuccess }) => {
     const [pacientes, setPacientes] = useState<Paciente[]>([]);
     const [proformas, setProformas] = useState<Proforma[]>([]);
     const [filteredProformas, setFilteredProformas] = useState<Proforma[]>([]);
@@ -68,11 +69,12 @@ const PagosForm: React.FC<PagosFormProps> = ({ isOpen, onClose, id, defaultProfo
                 setFormData({
                     ...initialFormData,
                     fecha: getLocalDateString(),
+                    pacienteId: defaultPacienteId || 0,
                     proformaId: defaultProformaId || 0
                 });
             }
         }
-    }, [isOpen, id, defaultProformaId]);
+    }, [isOpen, id, defaultPacienteId, defaultProformaId]);
 
     useEffect(() => {
         if (formData.pacienteId) {
@@ -165,7 +167,9 @@ const PagosForm: React.FC<PagosFormProps> = ({ isOpen, onClose, id, defaultProfo
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (!hidePacienteProforma && (!formData.pacienteId || formData.pacienteId === 0)) {
+        const pacienteIdToUse = formData.pacienteId || defaultPacienteId || 0;
+
+        if (!pacienteIdToUse || pacienteIdToUse === 0) {
             Swal.fire('Atención', 'Debe seleccionar un paciente', 'warning');
             return;
         }
@@ -189,24 +193,19 @@ const PagosForm: React.FC<PagosFormProps> = ({ isOpen, onClose, id, defaultProfo
         }
 
         const payload: any = {
+            pacienteId: pacienteIdToUse,
             fecha: formData.fecha,
             monto: parseFloat(formData.monto.replace(',', '.')),
             moneda: formData.moneda,
+            tc: parseFloat(formData.tc.replace(',', '.')) || 6.96,
             recibo: formData.recibo,
             factura: formData.factura,
             formaPagoId: formData.formaPagoId,
             observaciones: formData.observaciones
         };
 
-        if (!hidePacienteProforma) {
-            payload.pacienteId = formData.pacienteId;
-            if (formData.proformaId && formData.proformaId !== 0) {
-                payload.proformaId = formData.proformaId;
-            }
-        }
-
-        if (formData.moneda === 'Dólares') {
-            payload.tc = parseFloat(formData.tc.replace(',', '.'));
+        if (formData.proformaId && formData.proformaId !== 0) {
+            payload.proformaId = formData.proformaId;
         }
 
         if (isTarjeta && formData.comisionTarjetaId) {

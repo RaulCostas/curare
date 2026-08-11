@@ -1,6 +1,6 @@
 import { Injectable, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, ILike } from 'typeorm';
 import { PersonalTipo } from './entities/personal_tipo.entity';
 import { CreatePersonalTipoDto } from './dto/create-personal-tipo.dto';
 import { UpdatePersonalTipoDto } from './dto/update-personal-tipo.dto';
@@ -26,10 +26,26 @@ export class PersonalTipoService {
         return await this.personalTipoRepository.save(personalTipo);
     }
 
-    async findAll(): Promise<PersonalTipo[]> {
-        return await this.personalTipoRepository.find({
+    async findAll(search?: string, page: number = 1, limit: number = 10) {
+        const skip = (page - 1) * limit;
+        const where = search
+            ? { area: ILike(`%${search}%`) }
+            : {};
+
+        const [data, total] = await this.personalTipoRepository.findAndCount({
+            where,
+            skip,
+            take: limit,
             order: { id: 'DESC' },
         });
+
+        return {
+            data,
+            total,
+            page,
+            limit,
+            totalPages: Math.ceil(total / limit) || 1,
+        };
     }
 
     async findOne(id: number): Promise<PersonalTipo | null> {

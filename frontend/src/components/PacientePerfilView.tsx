@@ -280,7 +280,28 @@ const PacientePerfilView: React.FC = () => {
             </div>
 
             {/* ── Tab Bar ─────────────────────────────────────────────────────── */}
-            <div className="flex gap-1 p-1 bg-gray-100 dark:bg-gray-700 rounded-2xl border border-gray-200 dark:border-gray-600 mb-4 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+            <div
+                className="flex gap-1 p-1.5 bg-gray-100 dark:bg-gray-700 rounded-2xl border border-gray-200 dark:border-gray-600 mb-4 overflow-x-auto custom-tab-scrollbar pb-2"
+                style={{
+                    scrollbarWidth: 'thin',
+                    scrollbarColor: 'rgba(156, 163, 175, 0.6) transparent'
+                }}
+            >
+                <style>{`
+                    .custom-tab-scrollbar::-webkit-scrollbar {
+                        height: 6px;
+                    }
+                    .custom-tab-scrollbar::-webkit-scrollbar-track {
+                        background: transparent;
+                    }
+                    .custom-tab-scrollbar::-webkit-scrollbar-thumb {
+                        background: rgba(156, 163, 175, 0.5);
+                        border-radius: 9999px;
+                    }
+                    .custom-tab-scrollbar::-webkit-scrollbar-thumb:hover {
+                        background: rgba(107, 114, 128, 0.8);
+                    }
+                `}</style>
                 {tabs.map(tab => {
                     const isActive = activeTab === tab.id;
                     return (

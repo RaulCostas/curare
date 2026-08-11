@@ -7,7 +7,7 @@ interface PersonalTipoFormProps {
     isOpen: boolean;
     onClose: () => void;
     id?: number | null;
-    onSaveSuccess: () => void;
+    onSaveSuccess: (savedArea?: any) => void;
 }
 
 const PersonalTipoForm: React.FC<PersonalTipoFormProps> = ({ isOpen, onClose, id, onSaveSuccess }) => {
@@ -57,8 +57,9 @@ const PersonalTipoForm: React.FC<PersonalTipoFormProps> = ({ isOpen, onClose, id
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
+            let savedRes;
             if (isEditing) {
-                await api.patch(`/personal-tipo/${id}`, formData);
+                savedRes = await api.patch(`/personal-tipo/${id}`, formData);
                 await Swal.fire({
                     icon: 'success',
                     title: 'Área Actualizada',
@@ -67,7 +68,7 @@ const PersonalTipoForm: React.FC<PersonalTipoFormProps> = ({ isOpen, onClose, id
                     showConfirmButton: false
                 });
             } else {
-                await api.post('/personal-tipo', formData);
+                savedRes = await api.post('/personal-tipo', formData);
                 await Swal.fire({
                     icon: 'success',
                     title: 'Área Creada',
@@ -76,7 +77,7 @@ const PersonalTipoForm: React.FC<PersonalTipoFormProps> = ({ isOpen, onClose, id
                     showConfirmButton: false
                 });
             }
-            onSaveSuccess();
+            onSaveSuccess(savedRes?.data);
             onClose();
         } catch (error: any) {
             console.error('Error saving area:', error);

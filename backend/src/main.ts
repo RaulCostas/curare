@@ -1,10 +1,14 @@
+import * as dotenv from 'dotenv';
+import { join } from 'path';
+dotenv.config({ path: join(process.cwd(), '../.env') });
+dotenv.config({ path: join(process.cwd(), '.env') });
+
 process.env.TZ = 'America/La_Paz';
 
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { json, urlencoded } from 'express';
 import { NestExpressApplication } from '@nestjs/platform-express';
-import { join } from 'path';
 import * as fs from 'fs';
 
 async function bootstrap() {

@@ -3,6 +3,7 @@ import api from '../services/api';
 import Swal from 'sweetalert2';
 import type { Personal, PersonalTipo } from '../types';
 import ManualModal, { type ManualSection } from './ManualModal';
+import PersonalTipoForm from './PersonalTipoForm';
 
 interface PersonalFormProps {
     isOpen: boolean;
@@ -28,6 +29,7 @@ const PersonalForm: React.FC<PersonalFormProps> = ({ isOpen, onClose, id, onSave
     });
     const [showManual, setShowManual] = useState(false);
     const [personalTipos, setPersonalTipos] = useState<PersonalTipo[]>([]);
+    const [isPersonalTipoModalOpen, setIsPersonalTipoModalOpen] = useState(false);
 
     const manualSections: ManualSection[] = [
         {
@@ -79,10 +81,15 @@ const PersonalForm: React.FC<PersonalFormProps> = ({ isOpen, onClose, id, onSave
         }
     }, [isOpen, id]);
 
-    const fetchPersonalTipos = async () => {
+    const fetchPersonalTipos = async (selectId?: number) => {
         try {
-            const response = await api.get<{ data: PersonalTipo[] }>('/personal-tipo?limit=100');
-            setPersonalTipos(response.data.data || []);
+            const response = await api.get('/personal-tipo?limit=100');
+            const data = response.data;
+            const items = Array.isArray(data) ? data : (data?.data || []);
+            setPersonalTipos(items);
+            if (selectId) {
+                setFormData(prev => ({ ...prev, personal_tipo_id: selectId }));
+            }
         } catch (error) {
             console.error('Error fetching personal tipos:', error);
         }
@@ -271,24 +278,36 @@ const PersonalForm: React.FC<PersonalFormProps> = ({ isOpen, onClose, id, onSave
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label className="block mb-1 font-bold text-sm text-gray-700 dark:text-gray-300">Cargo / Tipo de Personal:</label>
-                            <div className="relative">
-                                <select
-                                    name="personal_tipo_id"
-                                    value={formData.personal_tipo_id}
-                                    onChange={handleChange}
-                                    required
-                                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium cursor-pointer"
+                            <div className="flex gap-2">
+                                <div className="relative flex-grow">
+                                    <select
+                                        name="personal_tipo_id"
+                                        value={formData.personal_tipo_id}
+                                        onChange={handleChange}
+                                        required
+                                        className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium cursor-pointer"
+                                    >
+                                        <option value="">-- Seleccione Tipo --</option>
+                                        {personalTipos.map((pt) => (
+                                            <option key={pt.id} value={pt.id}>
+                                                {pt.area}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-gray-400 absolute left-3 top-3 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                    </svg>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsPersonalTipoModalOpen(true)}
+                                    className="px-3 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl shadow-md transition-all transform hover:-translate-y-0.5 active:scale-95 flex items-center justify-center cursor-pointer shrink-0"
+                                    title="Nuevo Tipo de Personal"
                                 >
-                                    <option value="">-- Seleccione Tipo --</option>
-                                    {personalTipos.map((pt) => (
-                                        <option key={pt.id} value={pt.id}>
-                                            {pt.area}
-                                        </option>
-                                    ))}
-                                </select>
-                                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-gray-400 absolute left-3 top-3 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                                </svg>
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
+                                    </svg>
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -376,6 +395,14 @@ const PersonalForm: React.FC<PersonalFormProps> = ({ isOpen, onClose, id, onSave
                 onClose={() => setShowManual(false)}
                 title="Manual - Personal"
                 sections={manualSections}
+            />
+            <PersonalTipoForm
+                isOpen={isPersonalTipoModalOpen}
+                onClose={() => setIsPersonalTipoModalOpen(false)}
+                onSaveSuccess={(newArea) => {
+                    fetchPersonalTipos(newArea?.id);
+                    setIsPersonalTipoModalOpen(false);
+                }}
             />
         </div>
     );

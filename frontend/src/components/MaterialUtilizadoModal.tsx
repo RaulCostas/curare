@@ -48,7 +48,9 @@ const MaterialUtilizadoModal: React.FC<MaterialUtilizadoModalProps> = ({
     const fetchInventarios = async () => {
         try {
             const response = await api.get('/inventario?limit=1000');
-            setInventarios(response.data.data || []);
+            const data = response.data;
+            const items = Array.isArray(data) ? data : (data?.data || []);
+            setInventarios(items);
         } catch (error) {
             console.error('Error fetching inventarios:', error);
         }
@@ -244,13 +246,10 @@ const MaterialUtilizadoModal: React.FC<MaterialUtilizadoModalProps> = ({
                                 >
                                     <option value={0}>-- Seleccione Material --</option>
                                     {inventarios
-                                        .filter(inv =>
-                                            inv.estado === 'Activo' &&
-                                            inv.grupoInventario?.grupo?.toUpperCase() === 'MATERIAL'
-                                        )
+                                        .filter(inv => !inv.estado || inv.estado.toLowerCase() === 'activo')
                                         .map(inv => (
                                             <option key={inv.id} value={inv.id}>
-                                                {inv.descripcion}
+                                                {inv.descripcion} {inv.grupoInventario?.grupo ? `(${inv.grupoInventario.grupo})` : ''}
                                             </option>
                                         ))}
                                 </select>

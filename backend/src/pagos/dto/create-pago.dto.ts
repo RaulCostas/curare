@@ -17,9 +17,9 @@ export class CreatePagoDto {
     @IsNumber()
     monto: number;
 
-    @IsNotEmpty()
+    @IsOptional()
     @IsNumber()
-    tc: number;
+    tc?: number;
 
     @IsOptional()
     @IsNumber()

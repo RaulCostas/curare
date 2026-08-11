@@ -46,21 +46,16 @@ export class PersonalService {
 
     async getBirthdays() {
         const today = new Date();
-        const currentMonth = today.getMonth() + 1; // 1-12
-        const currentDay = today.getDate(); // 1-31
+        const month = today.getMonth() + 1;
+        const day = today.getDate();
 
-        const allPersonal = await this.personalRepository.find({
-            where: { estado: 'activo' }
-        });
-
-        const birthdays = allPersonal.filter(person => {
-            // Parse the date string directly to avoid timezone issues
-            const dateStr = person.fecha_nacimiento.toString();
-            const [year, month, day] = dateStr.split('T')[0].split('-').map(Number);
-
-            // Compare month and day
-            return month === currentMonth && day === currentDay;
-        });
+        const birthdays = await this.personalRepository
+            .createQueryBuilder('personal')
+            .where('personal.estado = :estado', { estado: 'activo' })
+            .andWhere('personal.fecha_nacimiento IS NOT NULL')
+            .andWhere('EXTRACT(MONTH FROM personal.fecha_nacimiento) = :month', { month })
+            .andWhere('EXTRACT(DAY FROM personal.fecha_nacimiento) = :day', { day })
+            .getMany();
 
         return birthdays;
     }

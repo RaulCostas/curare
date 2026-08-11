@@ -52,9 +52,14 @@ const PersonalTipoList: React.FC = () => {
             }
 
             const response = await api.get(`/personal-tipo?${params}`);
-            setAreas(response.data.data || []);
-            setTotalPages(response.data.totalPages || 1);
-            setTotalRecords(response.data.total || 0);
+            const data = response.data;
+            const items = Array.isArray(data) ? data : (data?.data || []);
+            const total = Array.isArray(data) ? data.length : (data?.total ?? items.length);
+            const pages = Array.isArray(data) ? 1 : (data?.totalPages ?? 1);
+
+            setAreas(items);
+            setTotalPages(pages);
+            setTotalRecords(total);
         } catch (error) {
             console.error('Error fetching personal tipos:', error);
         }

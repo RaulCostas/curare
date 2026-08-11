@@ -152,11 +152,13 @@ const HistoriaClinica: React.FC = () => {
             try {
                 await api.delete(`/historia-clinica/${historiaId}`);
                 fetchHistoria();
-                Swal.fire(
-                    '¡Eliminado!',
-                    'El registro ha sido eliminado.',
-                    'success'
-                );
+                Swal.fire({
+                    icon: 'success',
+                    title: '¡Eliminado!',
+                    text: 'El registro ha sido eliminado.',
+                    showConfirmButton: false,
+                    timer: 1500
+                });
             } catch (error) {
                 console.error('Error deleting historia:', error);
                 Swal.fire(
