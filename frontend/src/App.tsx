@@ -78,7 +78,7 @@ function App() {
                         <Routes>
                             <Route path="/login" element={<Login />} />
                             <Route path="/" element={<Layout />}>
-                                <Route index element={<Navigate to="/login" replace />} />
+                                <Route index element={<Navigate to="/home" replace />} />
                                 <Route path="/home" element={<Home />} />
 
                                 {/* Agenda */}

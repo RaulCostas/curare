@@ -142,7 +142,7 @@ const PacientePagosTab: React.FC<PacientePagosTabProps> = ({ pacienteId }) => {
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(16);
             doc.setTextColor(44, 62, 80); // #2c3e50
-            doc.text('HISTORIAL DE PAGOS Y FACTURACIÓN', 105, 23, { align: 'center' });
+            doc.text('ESTADO DE CUENTAS', 105, 23, { align: 'center' });
 
             // Patient & Plan Info Box
             const boxY = 37;
@@ -173,14 +173,88 @@ const PacientePagosTab: React.FC<PacientePagosTabProps> = ({ pacienteId }) => {
                 : 'Todos los planes';
             doc.text(planText, 65, boxY + 13);
 
-            // Filter payments for selected plan if selectedProformaId > 0
+            // Filter historia clinica & payments for selected plan if selectedProformaId > 0
+            const filteredHistoria = selectedProformaId > 0
+                ? historia.filter(h => h.proformaId === selectedProformaId && h.estadoTratamiento === 'terminado')
+                : historia.filter(h => h.estadoTratamiento === 'terminado');
+
             const filteredPagos = selectedProformaId > 0
                 ? pagos.filter(p => p.proformaId === selectedProformaId)
                 : pagos;
 
-            // Table
-            const tableColumn = ["Fecha", "Recibo / Factura", "Monto", "Moneda", "Forma de Pago", "Observaciones"];
-            const tableRows = filteredPagos.map(pago => {
+            // SECTION 1: TRATAMIENTOS EJECUTADOS (HISTORIA CLINICA - TERMINADOS)
+            let currentY = boxY + boxHeight + 8;
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(44, 62, 80);
+            doc.text('TRATAMIENTOS EJECUTADOS (HISTORIA CLÍNICA)', 15, currentY);
+
+            const hcTableColumn = ["Fecha", "Pieza", "Tratamiento / Procedimiento", "Monto (Bs.)"];
+            const hcTableRows = filteredHistoria.length > 0 ? filteredHistoria.map(curr => {
+                let itemPrice = Number(curr.precio || 0);
+                if (selectedProforma && selectedProforma.detalles) {
+                    const matchDetalle = selectedProforma.detalles.find(d =>
+                        (curr.proformaDetalleId && d.id === curr.proformaDetalleId) ||
+                        (d.arancel && d.arancel.detalle === curr.tratamiento)
+                    );
+                    if (matchDetalle && Number(matchDetalle.total || 0) > 0 && Number(matchDetalle.cantidad || 1) > 0) {
+                        const unitNetPrice = Number(matchDetalle.total) / Number(matchDetalle.cantidad || 1);
+                        itemPrice = unitNetPrice * Number(curr.cantidad || 1);
+                    }
+                }
+                return [
+                    formatDate(curr.fecha),
+                    curr.pieza || '-',
+                    curr.tratamiento || '-',
+                    `Bs. ${formatCurrency(itemPrice)}`
+                ];
+            }) : [["-", "-", "No hay tratamientos ejecutados registrados", "Bs. 0,00"]];
+
+            autoTable(doc, {
+                head: [hcTableColumn],
+                body: hcTableRows,
+                startY: currentY + 3,
+                theme: 'plain',
+                margin: { left: 15, right: 15 },
+                styles: {
+                    fontSize: 8,
+                    cellPadding: 2.5,
+                },
+                headStyles: {
+                    fillColor: [235, 245, 255],
+                    textColor: [30, 41, 59],
+                    fontStyle: 'bold',
+                    lineWidth: 0.1,
+                    lineColor: [203, 213, 225]
+                },
+                columnStyles: {
+                    0: { cellWidth: 25 },
+                    1: { cellWidth: 25 },
+                    2: { cellWidth: 'auto' },
+                    3: { cellWidth: 35, halign: 'right' }
+                },
+                alternateRowStyles: {
+                    fillColor: [248, 249, 250]
+                }
+            });
+
+            currentY = (doc as any).lastAutoTable?.finalY || (currentY + 20);
+
+            // SECTION 2: HISTORIAL DE PAGOS REGISTRADOS
+            if (currentY + 25 > pageHeight - 35) {
+                doc.addPage();
+                currentY = 15;
+            } else {
+                currentY += 8;
+            }
+
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(44, 62, 80);
+            doc.text('HISTORIAL DE PAGOS REGISTRADOS', 15, currentY);
+
+            const pagosTableColumn = ["Fecha", "Recibo / Factura", "Monto", "Moneda", "Forma de Pago", "Observaciones"];
+            const pagosTableRows = filteredPagos.length > 0 ? filteredPagos.map(pago => {
                 const isDollar = pago.moneda === 'Dólares';
                 const reciboFactura = [
                     pago.recibo ? `R: ${pago.recibo}` : '',
@@ -198,12 +272,12 @@ const PacientePagosTab: React.FC<PacientePagosTabProps> = ({ pacienteId }) => {
                     formaPagoStr,
                     pago.observaciones || '-'
                 ];
-            });
+            }) : [["-", "-", "Bs. 0,00", "-", "-", "No hay pagos registrados"]];
 
             autoTable(doc, {
-                head: [tableColumn],
-                body: tableRows,
-                startY: boxY + boxHeight + 5,
+                head: [pagosTableColumn],
+                body: pagosTableRows,
+                startY: currentY + 3,
                 theme: 'plain',
                 margin: { left: 15, right: 15 },
                 styles: {
@@ -230,11 +304,10 @@ const PacientePagosTab: React.FC<PacientePagosTabProps> = ({ pacienteId }) => {
                 }
             });
 
-            let finalY = (doc as any).lastAutoTable?.finalY || (boxY + boxHeight + 20);
+            let finalY = (doc as any).lastAutoTable?.finalY || (currentY + 20);
 
             // Calculate Financial Summary values
             const totalPresupuesto = selectedProforma ? Number(selectedProforma.total || 0) : 0;
-            const filteredHistoria = historia.filter(h => h.proformaId === selectedProformaId && h.estadoTratamiento === 'terminado');
             const totalEjecutado = filteredHistoria.reduce((acc, curr) => {
                 let itemPrice = Number(curr.precio || 0);
                 if (selectedProforma && selectedProforma.detalles) {
@@ -261,7 +334,7 @@ const PacientePagosTab: React.FC<PacientePagosTabProps> = ({ pacienteId }) => {
             const saldoFavor = saldo > 0 ? saldo : 0;
             const saldoContra = saldo < 0 ? Math.abs(saldo) : 0;
 
-            // Draw Financial Summary Card in PDF (Light background with crisp dark text for B&W printing)
+            // Draw Financial Summary Card in PDF
             if (finalY + 30 > pageHeight - 25) {
                 doc.addPage();
                 finalY = 15;
@@ -270,52 +343,47 @@ const PacientePagosTab: React.FC<PacientePagosTabProps> = ({ pacienteId }) => {
             const summaryBoxY = finalY + 6;
             const summaryBoxHeight = 20;
 
-            // Light background box with border and left accent
-            doc.setFillColor(248, 250, 252); // #f8fafc
-            doc.setDrawColor(203, 213, 225); // #cbd5e1
+            doc.setFillColor(248, 250, 252);
+            doc.setDrawColor(203, 213, 225);
             doc.setLineWidth(0.5);
             doc.roundedRect(15, summaryBoxY, pageWidth - 30, summaryBoxHeight, 2, 2, 'FD');
 
-            doc.setFillColor(52, 152, 219); // #3498db accent
+            doc.setFillColor(52, 152, 219);
             doc.rect(15, summaryBoxY, 2, summaryBoxHeight, 'F');
 
             const colWidth = (pageWidth - 30) / 4;
 
-            // Col 1: Total Presupuesto
             doc.setFontSize(7);
             doc.setFont('helvetica', 'bold');
-            doc.setTextColor(100, 116, 139); // Slate gray label
+            doc.setTextColor(100, 116, 139);
             doc.text('TOTAL PRESUPUESTO', 15 + 5, summaryBoxY + 7);
             doc.setFontSize(9);
-            doc.setTextColor(29, 78, 216); // Dark blue value
+            doc.setTextColor(29, 78, 216);
             doc.text(`Bs. ${formatCurrency(totalPresupuesto)}`, 15 + 5, summaryBoxY + 14);
 
-            // Col 2: Total Ejecutado
             doc.setFontSize(7);
             doc.setTextColor(100, 116, 139);
             doc.text('TOTAL EJECUTADO', 15 + colWidth + 5, summaryBoxY + 7);
             doc.setFontSize(9);
-            doc.setTextColor(30, 41, 59); // Dark slate value
+            doc.setTextColor(30, 41, 59);
             doc.text(`Bs. ${formatCurrency(totalEjecutado)}`, 15 + colWidth + 5, summaryBoxY + 14);
 
-            // Col 3: Total Pagado
             doc.setFontSize(7);
             doc.setTextColor(100, 116, 139);
             doc.text('TOTAL PAGADO', 15 + colWidth * 2 + 5, summaryBoxY + 7);
             doc.setFontSize(9);
-            doc.setTextColor(30, 41, 59); // Dark slate value
+            doc.setTextColor(30, 41, 59);
             doc.text(`Bs. ${formatCurrency(totalPagado)}`, 15 + colWidth * 2 + 5, summaryBoxY + 14);
 
-            // Col 4: Saldo
             if (saldoFavor > 0) {
                 doc.setFontSize(7);
-                doc.setTextColor(21, 128, 61); // Dark green
+                doc.setTextColor(21, 128, 61);
                 doc.text('SALDO A FAVOR', 15 + colWidth * 3 + 5, summaryBoxY + 7);
                 doc.setFontSize(9);
                 doc.text(`Bs. ${formatCurrency(saldoFavor)}`, 15 + colWidth * 3 + 5, summaryBoxY + 14);
             } else if (saldoContra > 0) {
                 doc.setFontSize(7);
-                doc.setTextColor(185, 28, 28); // Dark red
+                doc.setTextColor(185, 28, 28);
                 doc.text('SALDO EN CONTRA', 15 + colWidth * 3 + 5, summaryBoxY + 7);
                 doc.setFontSize(9);
                 doc.text(`Bs. ${formatCurrency(saldoContra)}`, 15 + colWidth * 3 + 5, summaryBoxY + 14);
@@ -340,11 +408,11 @@ const PacientePagosTab: React.FC<PacientePagosTabProps> = ({ pacienteId }) => {
             const blobUrl = doc.output('bloburl');
             window.open(blobUrl, '_blank');
         } catch (error) {
-            console.error('Error al generar impresión de pagos:', error);
+            console.error('Error al generar impresión de estado de cuentas:', error);
             Swal.fire({
                 icon: 'error',
                 title: 'Error de impresión',
-                text: 'Ocurrió un error al generar la impresión del historial de pagos.'
+                text: 'Ocurrió un error al generar la impresión del estado de cuentas.'
             });
         }
     };
@@ -473,6 +541,131 @@ const PacientePagosTab: React.FC<PacientePagosTabProps> = ({ pacienteId }) => {
         window.open(blobUrl, '_blank');
     };
 
+    const handleSendWhatsApp = async (pago: Pago) => {
+        const targetPaciente = pago.paciente || paciente;
+        const pacienteName = targetPaciente
+            ? `${targetPaciente.nombre} ${targetPaciente.paterno}`
+            : 'el paciente';
+
+        const result = await Swal.fire({
+            title: '¿Enviar recibo por WhatsApp?',
+            text: `Se enviará el recibo de pago por WhatsApp a ${pacienteName}.`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#10B981',
+            cancelButtonColor: '#6B7280',
+            confirmButtonText: 'Sí, enviar por WhatsApp',
+            cancelButtonText: 'Cancelar'
+        });
+
+        if (!result.isConfirmed) return;
+
+        Swal.fire({
+            title: 'Enviando...',
+            text: 'Enviando recibo de pago por WhatsApp',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+
+        try {
+            const response = await api.post(`/pagos/${pago.id}/send-whatsapp`);
+            if (response.data.success) {
+                Swal.fire({
+                    icon: 'success',
+                    title: '¡Enviado!',
+                    text: response.data.message || 'Recibo enviado por WhatsApp exitosamente',
+                    timer: 2500,
+                    showConfirmButton: false
+                });
+            } else {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'No se pudo enviar',
+                    text: response.data.message || 'Error al enviar por WhatsApp'
+                });
+            }
+        } catch (error: any) {
+            console.error('Error sending WhatsApp recibo:', error);
+            let errorMessage = 'No se pudo enviar el recibo por WhatsApp';
+            if (error.response?.data?.message) {
+                errorMessage = error.response.data.message;
+            } else if (error.response?.status === 503) {
+                errorMessage = 'El chatbot no está conectado. Por favor, conecte el chatbot primero desde Configuración > Chatbot (WhatsApp).';
+            }
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: errorMessage
+            });
+        }
+    };
+
+    const handleSendEstadoCuentasWhatsApp = async () => {
+        const pacienteName = paciente
+            ? `${paciente.nombre} ${paciente.paterno}`
+            : 'el paciente';
+
+        const result = await Swal.fire({
+            title: '¿Enviar Estado de Cuentas por WhatsApp?',
+            text: `Se enviará el reporte de Estado de Cuentas por WhatsApp a ${pacienteName}.`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#10B981',
+            cancelButtonColor: '#6B7280',
+            confirmButtonText: 'Sí, enviar por WhatsApp',
+            cancelButtonText: 'Cancelar'
+        });
+
+        if (!result.isConfirmed) return;
+
+        Swal.fire({
+            title: 'Enviando...',
+            text: 'Enviando Estado de Cuentas por WhatsApp',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+
+        try {
+            const response = await api.post('/pagos/whatsapp', {
+                pacienteId,
+                proformaId: selectedProformaId > 0 ? selectedProformaId : undefined
+            });
+
+            if (response.data.success) {
+                Swal.fire({
+                    icon: 'success',
+                    title: '¡Enviado!',
+                    text: response.data.message || 'Estado de cuentas enviado por WhatsApp exitosamente',
+                    timer: 2500,
+                    showConfirmButton: false
+                });
+            } else {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'No se pudo enviar',
+                    text: response.data.message || 'Error al enviar por WhatsApp'
+                });
+            }
+        } catch (error: any) {
+            console.error('Error sending WhatsApp estado de cuentas:', error);
+            let errorMessage = 'No se pudo enviar el estado de cuentas por WhatsApp';
+            if (error.response?.data?.message) {
+                errorMessage = error.response.data.message;
+            } else if (error.response?.status === 503) {
+                errorMessage = 'El chatbot no está conectado. Por favor, conecte el chatbot primero desde Configuración > Chatbot (WhatsApp).';
+            }
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: errorMessage
+            });
+        }
+    };
+
     // Filter pagos for selected proforma
     const proformaPagos = selectedProformaId > 0
         ? pagos.filter(p => p.proformaId === selectedProformaId || p.proforma?.id === selectedProformaId)
@@ -535,10 +728,21 @@ const PacientePagosTab: React.FC<PacientePagosTabProps> = ({ pacienteId }) => {
                                 type="button"
                                 onClick={handlePrint}
                                 className="px-4 py-2 bg-slate-600 hover:bg-slate-700 text-white rounded-lg font-bold shadow-md transition-all transform hover:-translate-y-0.5 active:scale-95 flex items-center gap-2 text-sm cursor-pointer"
-                                title="Imprimir Historial de Pagos del Plan"
+                                title="Imprimir Estado de Cuentas del Plan"
                             >
                                 <Printer size={18} />
-                                <span>Imprimir</span>
+                                <span>Imprimir Estado de Cuentas</span>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleSendEstadoCuentasWhatsApp}
+                                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold shadow-md transition-all transform hover:-translate-y-0.5 active:scale-95 flex items-center gap-2 text-sm cursor-pointer"
+                                title="Enviar Estado de Cuentas por WhatsApp"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/>
+                                </svg>
+                                <span>Enviar Estado de Cuentas</span>
                             </button>
                             <button
                                 type="button"
@@ -632,6 +836,15 @@ const PacientePagosTab: React.FC<PacientePagosTabProps> = ({ pacienteId }) => {
                                                             <polyline points="6 9 6 2 18 2 18 9"></polyline>
                                                             <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
                                                             <rect x="6" y="14" width="12" height="8"></rect>
+                                                        </svg>
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleSendWhatsApp(pago)}
+                                                        className="p-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg shadow-md transition-all transform hover:-translate-y-0.5"
+                                                        title="Enviar Recibo por WhatsApp"
+                                                    >
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+                                                            <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/>
                                                         </svg>
                                                     </button>
                                                     <button

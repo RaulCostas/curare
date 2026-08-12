@@ -24,7 +24,8 @@ export class PagosPdfService {
         paciente: any,
         proforma: any,
         pagos: any[],
-        resumen: { totalEjecutado: number, totalPagado: number, saldoFavor: number, saldoContra: number }
+        resumen: { totalEjecutado: number, totalPagado: number, saldoFavor: number, saldoContra: number },
+        historia: any[] = []
     ): Promise<Buffer> {
         const logoBase64 = this.getLogoBase64();
 
@@ -38,7 +39,27 @@ export class PagosPdfService {
         // Format money helper
         const formatMoney = (amount: number) => `Bs. ${Number(amount).toFixed(2)}`;
 
-        // Build table rows
+        // Build historia clinica table rows
+        const filteredHistoria = (historia || []).filter((h: any) => h.estadoTratamiento === 'terminado');
+
+        const historiaTableBody = [
+            [
+                { text: 'Fecha', style: 'tableHeader' },
+                { text: 'Pieza', style: 'tableHeader' },
+                { text: 'Tratamiento / Procedimiento', style: 'tableHeader' },
+                { text: 'Monto', style: 'tableHeader' }
+            ],
+            ...(filteredHistoria.length > 0
+                ? filteredHistoria.map((h: any) => [
+                    formatDate(h.fecha),
+                    h.pieza || '-',
+                    h.tratamiento || '-',
+                    formatMoney(h.precio || 0)
+                ])
+                : [[{ text: '-' }, { text: '-' }, { text: 'No hay tratamientos ejecutados registrados' }, { text: 'Bs. 0.00' }]])
+        ];
+
+        // Build payments table rows
         const tableBody = [
             [
                 { text: 'Fecha', style: 'tableHeader' },
@@ -47,7 +68,7 @@ export class PagosPdfService {
                 { text: 'Forma Pago', style: 'tableHeader' },
                 { text: 'Recibo/Factura', style: 'tableHeader' }
             ],
-            ...pagos.map(pago => {
+            ...(pagos.length > 0 ? pagos.map(pago => {
                 const isDollar = pago.moneda === 'Dólares';
                 const displayMonto = isDollar
                     ? `${Number(pago.monto).toFixed(2)} (TC: ${Number(pago.tc).toFixed(2)})`
@@ -60,7 +81,7 @@ export class PagosPdfService {
                     pago.formaPagoRel?.forma_pago || '-',
                     pago.recibo ? `R: ${pago.recibo}` : (pago.factura ? `F: ${pago.factura}` : '-')
                 ];
-            })
+            }) : [[{ text: '-' }, { text: '-' }, { text: 'No hay pagos registrados' }, { text: '-' }, { text: '-' }]])
         ];
 
         const docDefinition = {
@@ -77,7 +98,7 @@ export class PagosPdfService {
                             height: 40
                         },
                         {
-                            text: 'HISTORIAL DE PAGOS',
+                            text: 'ESTADO DE CUENTAS',
                             style: 'header',
                             alignment: 'center',
                             margin: [0, 10, 0, 0]
@@ -120,7 +141,7 @@ export class PagosPdfService {
                         {
                             text: [
                                 { text: 'PACIENTE: ', bold: true },
-                                { text: `${paciente.paterno} ${paciente.materno} ${paciente.nombre}`.toUpperCase() }
+                                { text: `${paciente.paterno} ${paciente.materno || ''} ${paciente.nombre}`.toUpperCase() }
                             ],
                             relativePosition: { x: 10, y: -40 }
                         },
@@ -132,9 +153,37 @@ export class PagosPdfService {
                             relativePosition: { x: 10, y: -20 }
                         } : { text: '', relativePosition: { x: 0, y: 0 } }
                     ],
-                    margin: [0, 0, 0, 20]
+                    margin: [0, 0, 0, 15]
                 },
-                // Table
+                // Section 1: Tratamientos Ejecutados
+                {
+                    text: 'Tratamientos Ejecutados (Historia Clínica)',
+                    style: 'subheader',
+                    margin: [0, 5, 0, 8]
+                },
+                {
+                    table: {
+                        headerRows: 1,
+                        widths: [70, 60, '*', 90],
+                        body: historiaTableBody
+                    },
+                    layout: {
+                        fillColor: function (rowIndex: number) {
+                            return (rowIndex % 2 === 0) ? '#f8f9fa' : null;
+                        },
+                        hLineWidth: function () { return 1; },
+                        vLineWidth: function () { return 1; },
+                        hLineColor: function () { return '#ddd'; },
+                        vLineColor: function () { return '#ddd'; }
+                    },
+                    margin: [0, 0, 0, 15]
+                },
+                // Section 2: Historial de Pagos
+                {
+                    text: 'Historial de Pagos Registrados',
+                    style: 'subheader',
+                    margin: [0, 5, 0, 8]
+                },
                 {
                     table: {
                         headerRows: 1,
@@ -142,21 +191,13 @@ export class PagosPdfService {
                         body: tableBody
                     },
                     layout: {
-                        fillColor: function (rowIndex) {
+                        fillColor: function (rowIndex: number) {
                             return (rowIndex % 2 === 0) ? '#f8f9fa' : null;
                         },
-                        hLineWidth: function (i, node) {
-                            return 1;
-                        },
-                        vLineWidth: function (i, node) {
-                            return 1;
-                        },
-                        hLineColor: function (i, node) {
-                            return '#ddd';
-                        },
-                        vLineColor: function (i, node) {
-                            return '#ddd';
-                        }
+                        hLineWidth: function () { return 1; },
+                        vLineWidth: function () { return 1; },
+                        hLineColor: function () { return '#ddd'; },
+                        vLineColor: function () { return '#ddd'; }
                     }
                 },
                 // Financial Summary
@@ -289,6 +330,115 @@ export class PagosPdfService {
             pdfDoc.on('end', () => resolve(Buffer.concat(chunks)));
             pdfDoc.on('error', reject);
 
+            pdfDoc.end();
+        });
+    }
+
+    async generateReciboSinglePdf(pago: any): Promise<Buffer> {
+        const logoBase64 = this.getLogoBase64();
+
+        const formatDate = (dateString: string) => {
+            if (!dateString) return '-';
+            const date = new Date(dateString);
+            return date.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        };
+
+        const pacienteNombre = pago.paciente
+            ? `${pago.paciente.paterno || ''} ${pago.paciente.materno || ''} ${pago.paciente.nombre || ''}`.trim().toUpperCase()
+            : 'N/A';
+
+        const montoStr = pago.moneda === 'Dólares'
+            ? `USD ${Number(pago.monto).toFixed(2)}`
+            : `Bs. ${Number(pago.monto).toFixed(2)}`;
+
+        const concepto = pago.proforma
+            ? `Tratamiento Odontológico - Plan #${pago.proforma.numero}`
+            : 'Tratamiento Odontológico';
+
+        const docDefinition = {
+            pageSize: 'A4',
+            pageMargins: [40, 40, 40, 40],
+            content: [
+                {
+                    columns: [
+                        { image: logoBase64, width: 120, height: 45 },
+                        {
+                            stack: [
+                                { text: 'RECIBO DE PAGO', style: 'header', alignment: 'right' },
+                                { text: `Fecha: ${formatDate(pago.fecha)}`, fontSize: 10, alignment: 'right', margin: [0, 5, 0, 0] }
+                            ]
+                        }
+                    ],
+                    margin: [0, 0, 0, 15]
+                },
+                {
+                    canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 2, lineColor: '#3498db' }],
+                    margin: [0, 0, 0, 20]
+                },
+                {
+                    table: {
+                        widths: ['*'],
+                        body: [
+                            [
+                                {
+                                    fillColor: '#f8f9fa',
+                                    borderColor: ['#3498db', '#3498db', '#3498db', '#3498db'],
+                                    margin: [15, 15, 15, 15],
+                                    stack: [
+                                        {
+                                            columns: [
+                                                { text: 'Nº Recibo:', width: 110, bold: true, fontSize: 11 },
+                                                { text: pago.recibo || String(pago.id), bold: true, fontSize: 11, color: '#2c3e50' },
+                                                pago.factura ? { text: `Factura: ${pago.factura}`, width: 140, alignment: 'right', bold: true, fontSize: 11 } : { text: '' }
+                                            ],
+                                            margin: [0, 0, 0, 12]
+                                        },
+                                        {
+                                            columns: [
+                                                { text: 'Recibí de:', width: 110, bold: true, fontSize: 11 },
+                                                { text: pacienteNombre, fontSize: 11 }
+                                            ],
+                                            margin: [0, 0, 0, 12]
+                                        },
+                                        {
+                                            columns: [
+                                                { text: 'La suma de:', width: 110, bold: true, fontSize: 11 },
+                                                { text: montoStr, bold: true, color: '#27ae60', fontSize: 13 }
+                                            ],
+                                            margin: [0, 0, 0, 12]
+                                        },
+                                        {
+                                            columns: [
+                                                { text: 'Por concepto de:', width: 110, bold: true, fontSize: 11 },
+                                                { text: concepto, fontSize: 11 }
+                                            ],
+                                            margin: [0, 0, 0, 12]
+                                        },
+                                        pago.observaciones ? {
+                                            columns: [
+                                                { text: 'Observaciones:', width: 110, bold: true, fontSize: 11 },
+                                                { text: pago.observaciones, fontSize: 10, italics: true }
+                                            ]
+                                        } : { text: '' }
+                                    ]
+                                }
+                            ]
+                        ]
+                    }
+                }
+            ],
+            styles: {
+                header: { fontSize: 20, bold: true, color: '#2c3e50' }
+            },
+            defaultStyle: { font: 'Helvetica', fontSize: 10 }
+        };
+
+        return new Promise((resolve, reject) => {
+            const pdfDoc = this.printer.createPdfKitDocument(docDefinition);
+            const chunks: Buffer[] = [];
+            pdfDoc.on('data', (chunk: Buffer) => chunks.push(chunk));
+            pdfDoc.on('end', () => resolve(Buffer.concat(chunks)));
+            pdfDoc.on('error', reject);
             pdfDoc.end();
         });
     }

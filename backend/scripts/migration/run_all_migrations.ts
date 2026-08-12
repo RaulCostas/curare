@@ -19,6 +19,7 @@ import { migrateRecetasModule } from './modules/18_recetas';
 import { migrateRecibosYMantenimientoModule } from './modules/19_recibos_y_mantenimiento';
 import { migrateMusicaTelevisionModule } from './modules/20_musica_television';
 import { migrateContactosModule } from './modules/21_contactos';
+import { reconcileDuplicateProformasModule } from './modules/22_reconcile_duplicate_proformas';
 
 async function runAllMigrations() {
   console.log('\n======================================================');
@@ -85,11 +86,11 @@ async function runAllMigrations() {
     console.log('[19/20] Migrando Recibos y Mantenimiento de Consultorios (Repuestos)...');
     await migrateRecibosYMantenimientoModule();
 
-    console.log('[20/21] Migrando Preferencias de Música y Televisión de Pacientes...');
-    await migrateMusicaTelevisionModule();
-
-    console.log('[21/21] Migrando Contactos desde Access...');
+    console.log('[21/22] Migrando Contactos desde Access...');
     await migrateContactosModule();
+
+    console.log('[22/22] Reconciliando y Limpiando Proformas Duplicadas...');
+    await reconcileDuplicateProformasModule();
 
     const duration = ((Date.now() - startTime) / 1000).toFixed(2);
     console.log('\n======================================================');

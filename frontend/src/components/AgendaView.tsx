@@ -9,6 +9,7 @@ import AgendaForm from './AgendaForm';
 import Swal from 'sweetalert2';
 import ManualModal, { type ManualSection } from './ManualModal';
 import QuienAgendoModal from './QuienAgendoModal';
+import Pagination from './Pagination';
 
 import { getLocalDateString, formatDate } from '../utils/dateUtils';
 import { formatFullName, formatPaternoMaternoNombre } from '../utils/formatters';
@@ -40,6 +41,31 @@ const getStatusColor = (estado?: string) => {
             return '#e67e22'; // Orange
         default:
             return '#3498db'; // Blue default
+    }
+};
+
+const getStatusText = (estado?: string) => {
+    if (!estado) return 'Agendado';
+    const est = estado.toLowerCase().trim();
+    switch (est) {
+        case 'agendado':
+        case 'registrado':
+        case 'reservado':
+        case 'pendiente':
+            return 'Agendado';
+        case 'confirmado':
+            return 'Confirmado';
+        case 'cancelado':
+            return 'Cancelado';
+        case 'atendido':
+        case 'completado':
+            return 'Atendido';
+        case 'no asistio':
+        case 'no asistió':
+        case 'falta':
+            return 'No Asistió';
+        default:
+            return estado;
     }
 };
 
@@ -88,6 +114,7 @@ const AgendaView: React.FC<AgendaViewProps> = ({ defaultPacienteId, isEmbedded =
     const [patientHistory, setPatientHistory] = useState<Agenda[]>([]);
     const [showHistoryModal, setShowHistoryModal] = useState(false);
     const [selectedPatientForHistory, setSelectedPatientForHistory] = useState<Paciente | null>(null);
+    const [historyPage, setHistoryPage] = useState(1);
 
     const [showManual, setShowManual] = useState(false);
     const [showQuienAgendoModal, setShowQuienAgendoModal] = useState(false);
@@ -176,6 +203,7 @@ const AgendaView: React.FC<AgendaViewProps> = ({ defaultPacienteId, isEmbedded =
         setSearchTerm(formatPaternoMaternoNombre(patient));
         setShowPatientResults(false);
         setSelectedPatientForHistory(patient);
+        setHistoryPage(1);
 
         try {
             const response = await api.get(`/agenda/paciente/${patient.id}`);
@@ -910,63 +938,101 @@ const AgendaView: React.FC<AgendaViewProps> = ({ defaultPacienteId, isEmbedded =
             )}
 
             {/* History Modal */}
-            {showHistoryModal && selectedPatientForHistory && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999]">
-                    <div className="bg-white dark:bg-gray-800 w-[90%] max-w-4xl max-h-[90vh] rounded-xl shadow-2xl flex flex-col overflow-hidden">
-                        <div className="p-5 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-                            <h2 className="text-xl font-bold text-gray-800 dark:text-white m-0">📅 Historial de Citas: {formatPaternoMaternoNombre(selectedPatientForHistory)}</h2>
-                        </div>
-                        <div className="p-0 overflow-y-auto flex-1 dark:bg-gray-800">
-                            {patientHistory.length === 0 ? (
-                                <p className="text-center text-gray-500 dark:text-gray-400 p-8">No hay citas registradas para este paciente.</p>
-                            ) : (
-                                <table className="w-full text-left border-collapse">
-                                    <thead className="bg-gray-50 dark:bg-gray-700 sticky top-0">
-                                        <tr>
-                                            <th className="p-3 border-b border-gray-200 dark:border-gray-600 font-semibold text-gray-700 dark:text-white">Fecha</th>
-                                            <th className="p-3 border-b border-gray-200 dark:border-gray-600 font-semibold text-gray-700 dark:text-white">Hora</th>
-                                            <th className="p-3 border-b border-gray-200 dark:border-gray-600 font-semibold text-gray-700 dark:text-white">Doctor</th>
-                                            <th className="p-3 border-b border-gray-200 dark:border-gray-600 font-semibold text-gray-700 dark:text-white">Tratamiento</th>
-                                            <th className="p-3 border-b border-gray-200 dark:border-gray-600 font-semibold text-gray-700 dark:text-white">Estado</th>
-                                            <th className="p-3 border-b border-gray-200 dark:border-gray-600 font-semibold text-gray-700 dark:text-white">Motivo</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                                        {patientHistory.map((cita) => (
-                                            <tr key={cita.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                                                <td className="p-3 text-gray-700 dark:text-gray-300">{formatDate(cita.fecha)}</td>
-                                                <td className="p-3 text-gray-700 dark:text-gray-300">{cita.hora ? cita.hora.substring(0, 5) : '-'}</td>
-                                                <td className="p-3 text-gray-700 dark:text-gray-300">{cita.doctor ? `Dr. ${formatPaternoMaternoNombre(cita.doctor)}` : '-'}</td>
-                                                <td className="p-3 text-gray-700 dark:text-gray-300">{cita.tratamiento || '-'}</td>
-                                                <td className="p-3">
-                                                    <span className="px-2 py-1 rounded-full text-xs font-bold text-white shadow-sm" style={{ backgroundColor: getStatusColor(cita.estado) }}>
-                                                        {cita.estado.toUpperCase()}
-                                                    </span>
-                                                </td>
-                                                <td className="p-3 text-gray-700 dark:text-gray-300 text-sm">
-                                                    {cita.estado === 'cancelado' && cita.motivoCancelacion ? (
-                                                        <span className="italic">{cita.motivoCancelacion}</span>
-                                                    ) : (
-                                                        '-'
-                                                    )}
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            )}
-                        </div>
-                        <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-right">
-                            <button
-                                onClick={() => setShowHistoryModal(false)}
-                                className="px-5 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg shadow-sm font-medium transition-colors"
-                            >
-                                Cerrar
-                            </button>
+            {showHistoryModal && selectedPatientForHistory && (() => {
+                const totalHistoryRecords = patientHistory.length;
+                const historyLimit = 10;
+                const totalHistoryPages = Math.ceil(totalHistoryRecords / historyLimit) || 1;
+                const paginatedHistory = patientHistory.slice((historyPage - 1) * historyLimit, historyPage * historyLimit);
+
+                return (
+                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
+                        <div className="bg-white dark:bg-gray-800 w-full max-w-5xl max-h-[90vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-gray-100 dark:border-gray-700">
+                            {/* Modal Header */}
+                            <div className="p-5 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex justify-between items-center">
+                                <h2 className="text-xl font-bold text-gray-800 dark:text-white flex items-center gap-2 m-0">
+                                    <span>📅 Historial de Citas:</span>
+                                    <span className="text-blue-600 dark:text-blue-400">{formatPaternoMaternoNombre(selectedPatientForHistory)}</span>
+                                </h2>
+                            </div>
+
+                            {/* Info Records Count */}
+                            <div className="px-6 pt-4 pb-2 text-sm text-gray-600 dark:text-gray-400 font-medium">
+                                Mostrando {totalHistoryRecords === 0 ? 0 : (historyPage - 1) * historyLimit + 1} - {Math.min(historyPage * historyLimit, totalHistoryRecords)} de {totalHistoryRecords} registros
+                            </div>
+
+                            {/* Table Content */}
+                            <div className="p-6 overflow-y-auto flex-1 bg-white dark:bg-gray-800 space-y-4">
+                                {totalHistoryRecords === 0 ? (
+                                    <p className="text-center text-gray-500 dark:text-gray-400 py-8 italic">No hay citas registradas para este paciente.</p>
+                                ) : (
+                                    <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
+                                        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                                            <thead className="bg-gray-50 dark:bg-gray-700">
+                                                <tr>
+                                                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Fecha</th>
+                                                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Hora</th>
+                                                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Doctor</th>
+                                                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Tratamiento</th>
+                                                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Estado</th>
+                                                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Motivo</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                                                {paginatedHistory.map((cita) => (
+                                                    <tr key={cita.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                                                        <td className="p-3 text-gray-700 dark:text-gray-300 font-medium whitespace-nowrap">{formatDate(cita.fecha)}</td>
+                                                        <td className="p-3 text-gray-700 dark:text-gray-300 whitespace-nowrap">{cita.hora ? cita.hora.substring(0, 5) : '-'}</td>
+                                                        <td className="p-3 text-gray-700 dark:text-gray-300 font-medium">{cita.doctor ? `Dr. ${formatPaternoMaternoNombre(cita.doctor)}` : '-'}</td>
+                                                        <td className="p-3 text-gray-700 dark:text-gray-300">{cita.tratamiento || '-'}</td>
+                                                        <td className="p-3 whitespace-nowrap">
+                                                            <span
+                                                                className="px-2.5 py-1 rounded-full text-xs font-bold text-white shadow-sm inline-block"
+                                                                style={{ backgroundColor: getStatusColor(cita.estado) }}
+                                                            >
+                                                                {getStatusText(cita.estado)}
+                                                            </span>
+                                                        </td>
+                                                        <td className="p-3 text-gray-700 dark:text-gray-300 text-sm">
+                                                            {cita.estado === 'cancelado' && cita.motivoCancelacion ? (
+                                                                <span className="italic text-red-500 dark:text-red-400">{cita.motivoCancelacion}</span>
+                                                            ) : (
+                                                                '-'
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
+
+                                {/* Pagination */}
+                                {totalHistoryPages > 1 && (
+                                    <Pagination
+                                        currentPage={historyPage}
+                                        totalPages={totalHistoryPages}
+                                        onPageChange={setHistoryPage}
+                                    />
+                                )}
+                            </div>
+
+                            {/* Modal Footer */}
+                            <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/80 flex justify-end">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowHistoryModal(false)}
+                                    className="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-5 rounded-xl shadow-md transition-all transform hover:-translate-y-0.5 flex items-center gap-2 text-sm cursor-pointer"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                                    </svg>
+                                    Cerrar
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                );
+            })()}
 
             <ManualModal
                 isOpen={showManual}

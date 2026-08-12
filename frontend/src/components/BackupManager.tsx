@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import Swal from 'sweetalert2';
+import { Download } from 'lucide-react';
 
 interface BackupInfo {
     filename: string;
@@ -35,15 +36,18 @@ const BackupManager: React.FC = () => {
     };
 
     const handleCreateBackup = async () => {
+        const isDark = document.documentElement.classList.contains('dark');
         const result = await Swal.fire({
             title: '¿Crear backup de la base de datos?',
-            text: 'Se creará un archivo de respaldo con todos los datos actuales',
+            text: 'Se creará un archivo .sql con la base de datos',
             icon: 'question',
             showCancelButton: true,
             confirmButtonColor: '#16a34a',
             cancelButtonColor: '#6b7280',
-            confirmButtonText: 'Sí, crear backup',
-            cancelButtonText: 'Cancelar'
+            confirmButtonText: 'Sí, crear backup BD',
+            cancelButtonText: 'Cancelar',
+            background: isDark ? '#1f2937' : '#fff',
+            color: isDark ? '#f3f4f6' : '#000',
         });
 
         if (result.isConfirmed) {
@@ -58,10 +62,11 @@ const BackupManager: React.FC = () => {
                     html: `<p><strong>Archivo:</strong> ${response.data.filename}</p>
                            <p><strong>Ubicación:</strong> ${response.data.path}</p>
                            <p><strong>Tamaño:</strong> ${formatFileSize(response.data.size)}</p>`,
-                    confirmButtonText: 'OK'
+                    confirmButtonText: 'OK',
+                    background: isDark ? '#1f2937' : '#fff',
+                    color: isDark ? '#f3f4f6' : '#000',
                 });
 
-                // Clear custom path after successful backup
                 setCustomPath('');
                 fetchBackups();
             } catch (error: any) {
@@ -69,7 +74,58 @@ const BackupManager: React.FC = () => {
                 Swal.fire({
                     icon: 'error',
                     title: 'Error',
-                    text: error.response?.data?.message || 'No se pudo crear el backup. Verifica que PostgreSQL esté instalado y configurado.'
+                    text: error.response?.data?.message || 'No se pudo crear el backup. Verifica que PostgreSQL esté instalado y configurado.',
+                    background: isDark ? '#1f2937' : '#fff',
+                    color: isDark ? '#f3f4f6' : '#000',
+                });
+            } finally {
+                setLoading(false);
+            }
+        }
+    };
+
+    const handleCreateFullBackup = async () => {
+        const isDark = document.documentElement.classList.contains('dark');
+        const result = await Swal.fire({
+            title: '📦 ¿Crear Respaldo COMPLETO?',
+            html: '<p class="text-sm mb-2 text-gray-800 dark:text-gray-200">Se empaquetará un archivo comprimido (.zip) con:</p><ul class="text-left text-xs bg-gray-100 dark:bg-gray-700 p-3 rounded-lg space-y-1 text-gray-800 dark:text-gray-200"><li>✅ Base de Datos SQL completa</li><li>✅ Firmas digitales de pacientes y proformas</li><li>✅ Fotos de pacientes, radiografías y logotipos</li></ul>',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#2563eb',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: 'Sí, crear respaldo completo',
+            cancelButtonText: 'Cancelar',
+            background: isDark ? '#1f2937' : '#fff',
+            color: isDark ? '#f3f4f6' : '#000',
+        });
+
+        if (result.isConfirmed) {
+            setLoading(true);
+            try {
+                const data = customPath ? { customPath } : {};
+                const response = await api.post<BackupInfo>('/backup/create-full', data);
+
+                await Swal.fire({
+                    icon: 'success',
+                    title: '¡Respaldo Completo Creado!',
+                    html: `<p><strong>Archivo:</strong> ${response.data.filename}</p>
+                           <p><strong>Ubicación:</strong> ${response.data.path}</p>
+                           <p><strong>Tamaño:</strong> ${formatFileSize(response.data.size)}</p>`,
+                    confirmButtonText: 'OK',
+                    background: isDark ? '#1f2937' : '#fff',
+                    color: isDark ? '#f3f4f6' : '#000',
+                });
+
+                setCustomPath('');
+                fetchBackups();
+            } catch (error: any) {
+                console.error('Error creating full backup:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: error.response?.data?.message || 'No se pudo crear el respaldo completo.',
+                    background: isDark ? '#1f2937' : '#fff',
+                    color: isDark ? '#f3f4f6' : '#000',
                 });
             } finally {
                 setLoading(false);
@@ -109,7 +165,6 @@ const BackupManager: React.FC = () => {
                     showConfirmButton: false
                 });
 
-                // Reload the application after restore
                 setTimeout(() => {
                     window.location.reload();
                 }, 3000);
@@ -141,11 +196,11 @@ const BackupManager: React.FC = () => {
             try {
                 await api.delete(`/backup/${filename}`);
 
-                await Swal.fire({
+                Swal.fire({
                     icon: 'success',
                     title: '¡Backup eliminado!',
-                    showConfirmButton: false,
-                    timer: 1500
+                    timer: 1500,
+                    showConfirmButton: false
                 });
 
                 fetchBackups();
@@ -160,53 +215,82 @@ const BackupManager: React.FC = () => {
         }
     };
 
+    const handleDownloadBackup = async (filename: string) => {
+        try {
+            const response = await api.get(`/backup/download/${filename}`, {
+                responseType: 'blob'
+            });
+
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', filename);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error('Error downloading backup:', error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'No se pudo descargar el backup'
+            });
+        }
+    };
+
     const formatFileSize = (bytes: number): string => {
         if (bytes === 0) return '0 Bytes';
         const k = 1024;
         const sizes = ['Bytes', 'KB', 'MB', 'GB'];
         const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     };
 
     const formatDate = (dateString: string): string => {
         const date = new Date(dateString);
-        return date.toLocaleString('es-ES', {
-            year: 'numeric',
-            month: '2-digit',
+        return date.toLocaleDateString('es-ES', {
             day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
             hour: '2-digit',
             minute: '2-digit'
         });
     };
 
     return (
-        <div className="content-card p-6 bg-gray-50 dark:bg-gray-800 min-h-screen">
-            <div className="max-w-5xl mx-auto">
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6 transition-colors duration-300">
+            <div className="max-w-7xl mx-auto">
                 {/* Header */}
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 no-print gap-4">
-                    <div className="flex items-center gap-3 flex-wrap sm:flex-nowrap">
+                <div className="mb-6 flex items-center justify-between">
+                    <div className="flex items-center gap-4">
                         <button
                             onClick={() => navigate('/configuration')}
-                            className="p-2.5 rounded-full bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 shadow-sm transition-all transform hover:-translate-y-0.5 no-print flex items-center justify-center w-10 h-10"
+                            className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors cursor-pointer"
                             title="Volver a Configuración"
                         >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="24"
+                                height="24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2.5"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                className="text-gray-600 dark:text-gray-400"
+                            >
+                                <path d="M19 12H5M12 19l-7-7 7-7" />
                             </svg>
                         </button>
-                        <div className="p-3 bg-blue-100 dark:bg-blue-900/40 rounded-2xl shadow-sm">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-blue-600 dark:text-blue-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
-                            </svg>
-                        </div>
-                        <div>
-                            <h2 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white">
-                                Backup de BD
-                            </h2>
-                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-                                Crear, restaurar y gestionar copias de seguridad de la base de datos
-                            </p>
-                        </div>
+                        <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+                            <span className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg text-blue-600 dark:text-blue-300">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                                </svg>
+                            </span>
+                            Backup de Base de Datos
+                        </h1>
                     </div>
                 </div>
 
@@ -223,23 +307,36 @@ const BackupManager: React.FC = () => {
                             value={customPath}
                             onChange={(e) => setCustomPath(e.target.value)}
                             placeholder="Dejar VACÍO para usar ruta por defecto del servidor"
-                            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                         />
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5 font-medium">
                             ⚠️ Si especificas una ruta personalizada, el backup NO aparecerá en la lista de abajo (solo se listan backups de la carpeta por defecto)
                         </p>
                     </div>
 
-                    <button
-                        onClick={handleCreateBackup}
-                        disabled={loading}
-                        className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-bold py-3 px-6 rounded-lg flex items-center gap-2 transform hover:-translate-y-0.5 transition-all shadow-md"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
-                        </svg>
-                        {loading ? 'Creando backup...' : 'Crear Backup Ahora'}
-                    </button>
+                    <div className="flex flex-wrap gap-4">
+                        <button
+                            onClick={handleCreateFullBackup}
+                            disabled={loading}
+                            className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-bold py-3 px-6 rounded-lg flex items-center gap-2 transform hover:-translate-y-0.5 transition-all shadow-md cursor-pointer"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                            </svg>
+                            {loading ? 'Generando...' : '📦 Respaldo Completo (.zip BD + Fotos + Logos)'}
+                        </button>
+
+                        <button
+                            onClick={handleCreateBackup}
+                            disabled={loading}
+                            className="bg-gray-600 hover:bg-gray-700 disabled:bg-gray-400 text-white font-bold py-3 px-6 rounded-lg flex items-center gap-2 transform hover:-translate-y-0.5 transition-all shadow-md cursor-pointer"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
+                            </svg>
+                            {loading ? 'Generando...' : '💾 Solo Base de Datos (.sql)'}
+                        </button>
+                    </div>
                 </div>
 
                 {/* Backups List */}
@@ -253,7 +350,7 @@ const BackupManager: React.FC = () => {
                         </div>
                         <button
                             onClick={fetchBackups}
-                            className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition-all transform hover:-translate-y-0.5 flex items-center gap-2"
+                            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition-all transform hover:-translate-y-0.5 flex items-center gap-2 cursor-pointer text-sm"
                             title="Recargar lista"
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -277,7 +374,7 @@ const BackupManager: React.FC = () => {
                                 <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                                     {backups.map((backup) => (
                                         <tr key={backup.filename} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white font-mono">
                                                 {backup.filename}
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
@@ -289,9 +386,17 @@ const BackupManager: React.FC = () => {
                                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                                 <div className="flex gap-2">
                                                     <button
+                                                        onClick={() => handleDownloadBackup(backup.filename)}
+                                                        disabled={loading}
+                                                        className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-bold p-2.5 rounded-lg border-none flex items-center justify-center shadow-md transition-all transform hover:-translate-y-0.5 cursor-pointer"
+                                                        title="Descargar"
+                                                    >
+                                                        <Download className="h-5 w-5" />
+                                                    </button>
+                                                    <button
                                                         onClick={() => handleRestoreBackup(backup.filename)}
                                                         disabled={loading}
-                                                        className="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-400 text-white font-bold p-2.5 rounded-lg border-none flex items-center justify-center shadow-md transition-all transform hover:-translate-y-0.5"
+                                                        className="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-400 text-white font-bold p-2.5 rounded-lg border-none flex items-center justify-center shadow-md transition-all transform hover:-translate-y-0.5 cursor-pointer"
                                                         title="Restaurar"
                                                     >
                                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -301,7 +406,7 @@ const BackupManager: React.FC = () => {
                                                     <button
                                                         onClick={() => handleDeleteBackup(backup.filename)}
                                                         disabled={loading}
-                                                        className="bg-red-500 hover:bg-red-600 disabled:bg-gray-400 text-white font-bold p-2.5 rounded-lg border-none flex items-center justify-center shadow-md transition-all transform hover:-translate-y-0.5"
+                                                        className="bg-red-500 hover:bg-red-600 disabled:bg-gray-400 text-white font-bold p-2.5 rounded-lg border-none flex items-center justify-center shadow-md transition-all transform hover:-translate-y-0.5 cursor-pointer"
                                                         title="Eliminar"
                                                     >
                                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -320,7 +425,7 @@ const BackupManager: React.FC = () => {
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
                                 </svg>
                                 <p className="text-lg font-medium">No hay backups disponibles</p>
-                                <p className="text-sm mt-1">Crea tu primer backup usando el botón de arriba</p>
+                                <p className="text-sm mt-1">Crea tu primer backup usando los botones de arriba</p>
                             </div>
                         )}
                     </div>

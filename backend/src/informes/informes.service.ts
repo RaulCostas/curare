@@ -11,30 +11,31 @@ export class InformesService {
         private informesRepository: Repository<Informe>,
     ) {}
 
-    create(createInformeDto: CreateInformeDto) {
+    async create(createInformeDto: CreateInformeDto) {
         const informe = this.informesRepository.create(createInformeDto);
-        return this.informesRepository.save(informe);
+        const saved = await this.informesRepository.save(informe);
+        return this.findOne(saved.id);
     }
 
     findAll() {
         return this.informesRepository.find({
-            relations: ['paciente', 'user'],
-            order: { fecha: 'DESC' }
+            relations: ['paciente', 'user', 'doctor', 'doctor.especialidad'],
+            order: { fecha: 'DESC', id: 'DESC' }
         });
     }
 
     findByPaciente(pacienteId: number) {
         return this.informesRepository.find({
             where: { pacienteId },
-            relations: ['paciente', 'user'],
-            order: { fecha: 'DESC' }
+            relations: ['paciente', 'user', 'doctor', 'doctor.especialidad'],
+            order: { fecha: 'DESC', id: 'DESC' }
         });
     }
 
     async findOne(id: number) {
         const informe = await this.informesRepository.findOne({
             where: { id },
-            relations: ['paciente', 'user']
+            relations: ['paciente', 'user', 'doctor', 'doctor.especialidad']
         });
         if (!informe) {
             throw new NotFoundException(`Informe con id ${id} no encontrado`);
@@ -45,7 +46,8 @@ export class InformesService {
     async update(id: number, updateInformeDto: UpdateInformeDto) {
         const informe = await this.findOne(id);
         Object.assign(informe, updateInformeDto);
-        return this.informesRepository.save(informe);
+        await this.informesRepository.save(informe);
+        return this.findOne(id);
     }
 
     async remove(id: number) {

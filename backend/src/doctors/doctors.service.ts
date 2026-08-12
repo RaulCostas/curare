@@ -71,7 +71,7 @@ export class DoctorsService {
         // Format results
         return rawResults.map(r => ({
             id: r.id,
-            nombreCompleto: `${r.nombre} ${r.paterno} ${r.materno || ''}`.trim(),
+            nombreCompleto: [r.paterno, r.materno, r.nombre].filter(Boolean).join(' ').trim(),
             totalGenerado: parseFloat(r.totalGenerado)
         }));
     }

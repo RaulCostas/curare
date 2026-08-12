@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Printer, Search, Calendar, FileText, Eye, Edit, Image as ImageIcon, XCircle } from 'lucide-react';
+import { Plus, Trash2, Printer, Search, Calendar, FileText, Eye, Edit, Image as ImageIcon, XCircle, User } from 'lucide-react';
 import api from '../services/api';
 import Swal from 'sweetalert2';
 import ReactQuill from 'react-quill-new';
@@ -25,6 +25,10 @@ const PacienteTabInformes: React.FC<PacienteTabInformesProps> = ({ pacienteId, p
     const [showManual, setShowManual] = useState(false);
     const [viewingInforme, setViewingInforme] = useState<any>(null);
     const [submitting, setSubmitting] = useState(false);
+
+    // Doctor selection state
+    const [doctores, setDoctores] = useState<any[]>([]);
+    const [doctorId, setDoctorId] = useState<number | ''>('');
 
     // Extra Data for Historia Clínica & Images
     const [historiaClinica, setHistoriaClinica] = useState<any[]>([]);
@@ -66,11 +70,22 @@ const PacienteTabInformes: React.FC<PacienteTabInformesProps> = ({ pacienteId, p
     const [contenido, setContenido] = useState('');
 
     useEffect(() => {
+        fetchDoctores();
         if (pacienteId) {
             fetchInformes();
             fetchExtraData();
         }
     }, [pacienteId]);
+
+    const fetchDoctores = async () => {
+        try {
+            const res = await api.get('/doctors?limit=1000');
+            const docs = res.data?.data || res.data || [];
+            setDoctores(Array.isArray(docs) ? docs : []);
+        } catch (e) {
+            console.error("Error fetching doctors:", e);
+        }
+    };
 
     const fetchInformes = async () => {
         setIsLoading(true);
@@ -130,6 +145,7 @@ const PacienteTabInformes: React.FC<PacienteTabInformesProps> = ({ pacienteId, p
         setFecha(getLocalDateString());
         setTitulo('Informe Odontológico');
         setContenido('');
+        setDoctorId('');
         setIsFormOpen(true);
     };
 
@@ -138,6 +154,7 @@ const PacienteTabInformes: React.FC<PacienteTabInformesProps> = ({ pacienteId, p
         setFecha(informe.fecha ? getLocalDateString(informe.fecha) : getLocalDateString());
         setTitulo(informe.titulo || 'Informe Odontológico');
         setContenido(informe.contenido || '');
+        setDoctorId(informe.doctorId || informe.doctor?.id || '');
         setIsFormOpen(true);
     };
 
@@ -205,6 +222,10 @@ const PacienteTabInformes: React.FC<PacienteTabInformesProps> = ({ pacienteId, p
 
     const handleSaveInforme = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!doctorId) {
+            Swal.fire('Atención', 'Debe seleccionar un Doctor obligatorio.', 'warning');
+            return;
+        }
         if (!contenido || contenido === '<p><br></p>') {
             Swal.fire('Atención', 'El contenido del informe no puede estar vacío.', 'warning');
             return;
@@ -214,6 +235,7 @@ const PacienteTabInformes: React.FC<PacienteTabInformesProps> = ({ pacienteId, p
         try {
             const payload = {
                 pacienteId: Number(pacienteId),
+                doctorId: Number(doctorId),
                 fecha,
                 titulo: titulo.trim() || 'Informe Odontológico',
                 contenido,
@@ -276,6 +298,19 @@ const PacienteTabInformes: React.FC<PacienteTabInformesProps> = ({ pacienteId, p
 
         const nombrePaciente = paciente ? formatPaternoMaternoNombre(paciente) : 'Paciente';
 
+        let doctorNombreFirma = 'FIRMA DEL PROFESIONAL ODONTÓLOGO';
+        let doctorEspecialidadFirma = 'Profesional Odontólogo';
+
+        if (informe.doctor) {
+            const docPaterno = informe.doctor.paterno || '';
+            const docMaterno = informe.doctor.materno || '';
+            const docNombre = informe.doctor.nombre || '';
+            doctorNombreFirma = `DR. ${docPaterno} ${docMaterno} ${docNombre}`.replace(/\s+/g, ' ').trim().toUpperCase();
+            if (informe.doctor.especialidad?.especialidad) {
+                doctorEspecialidadFirma = `Odontólogo - ${informe.doctor.especialidad.especialidad}`;
+            }
+        }
+
         printWindow.document.write(`
             <!DOCTYPE html>
             <html>
@@ -294,7 +329,7 @@ const PacienteTabInformes: React.FC<PacienteTabInformesProps> = ({ pacienteId, p
                     .content th { background-color: #102a6b; color: #ffffff; }
                     .content img { max-width: 350px; height: auto; border-radius: 6px; margin: 10px; }
                     .signature-line { margin-top: 80px; text-align: center; }
-                    .signature-line div { display: inline-block; border-top: 1px solid #374151; width: 220px; pt: 5px; font-weight: bold; }
+                    .signature-box { display: inline-block; border-top: 1px solid #374151; width: 280px; padding-top: 6px; text-align: center; }
                 </style>
             </head>
             <body>
@@ -304,13 +339,17 @@ const PacienteTabInformes: React.FC<PacienteTabInformesProps> = ({ pacienteId, p
                 </div>
                 <div class="info-box">
                     <p><strong>Paciente:</strong> ${nombrePaciente}</p>
+                    <p><strong>Doctor Tratante:</strong> ${informe.doctor ? `${informe.doctor.paterno} ${informe.doctor.materno || ''} ${informe.doctor.nombre}`.replace(/\s+/g, ' ').trim() : 'No asignado'}</p>
                     <p><strong>Fecha del Informe:</strong> ${informe.fecha || getLocalDateString()}</p>
                 </div>
                 <div class="content">
                     ${informe.contenido}
                 </div>
                 <div class="signature-line">
-                    <div>Firma del Profesional Odontólogo</div>
+                    <div class="signature-box">
+                        <div style="font-weight: bold; font-size: 13px; color: #111827;">${doctorNombreFirma}</div>
+                        <div style="font-size: 11px; color: #4b5563; margin-top: 2px;">${doctorEspecialidadFirma}</div>
+                    </div>
                 </div>
             </body>
             </html>
@@ -358,6 +397,57 @@ const PacienteTabInformes: React.FC<PacienteTabInformesProps> = ({ pacienteId, p
                     color: #9ca3af;
                     font-style: italic;
                 }
+                /* ReactQuill Dark Mode Customization */
+                .dark .ql-toolbar {
+                    background-color: #1f2937 !important;
+                    border-color: #4b5563 !important;
+                    border-top-left-radius: 0.75rem;
+                    border-top-right-radius: 0.75rem;
+                }
+                .dark .ql-toolbar .ql-stroke {
+                    stroke: #f3f4f6 !important;
+                }
+                .dark .ql-toolbar .ql-fill {
+                    fill: #f3f4f6 !important;
+                }
+                .dark .ql-toolbar .ql-picker {
+                    color: #f3f4f6 !important;
+                }
+                .dark .ql-toolbar .ql-picker-options {
+                    background-color: #1f2937 !important;
+                    border-color: #4b5563 !important;
+                    color: #f3f4f6 !important;
+                    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+                }
+                .dark .ql-toolbar button:hover .ql-stroke,
+                .dark .ql-toolbar button.ql-active .ql-stroke,
+                .dark .ql-toolbar .ql-picker-label:hover .ql-stroke,
+                .dark .ql-toolbar .ql-picker-label.ql-active .ql-stroke {
+                    stroke: #60a5fa !important;
+                }
+                .dark .ql-toolbar button:hover .ql-fill,
+                .dark .ql-toolbar button.ql-active .ql-fill,
+                .dark .ql-toolbar .ql-picker-label:hover .ql-fill,
+                .dark .ql-toolbar .ql-picker-label.ql-active .ql-fill {
+                    fill: #60a5fa !important;
+                }
+                .dark .ql-toolbar button:hover,
+                .dark .ql-toolbar button.ql-active,
+                .dark .ql-toolbar .ql-picker-label:hover,
+                .dark .ql-toolbar .ql-picker-label.ql-active {
+                    color: #60a5fa !important;
+                    background-color: rgba(59, 130, 246, 0.2) !important;
+                    border-radius: 6px;
+                }
+                .dark .ql-container {
+                    border-color: #4b5563 !important;
+                    background-color: #111827 !important;
+                    border-bottom-left-radius: 0.75rem;
+                    border-bottom-right-radius: 0.75rem;
+                }
+                .dark .ql-editor {
+                    color: #f9fafb !important;
+                }
             `}</style>
         <div className="space-y-6">
 
@@ -383,7 +473,7 @@ const PacienteTabInformes: React.FC<PacienteTabInformesProps> = ({ pacienteId, p
                     </button>
                     <button
                         onClick={handleOpenCreate}
-                        className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-xl shadow-md transition-all transform hover:-translate-y-0.5 flex items-center gap-2 text-sm"
+                        className="bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 px-5 rounded-xl shadow-md transition-all transform hover:-translate-y-0.5 flex items-center gap-2 text-sm cursor-pointer"
                     >
                         <Plus size={18} /> Nuevo Informe
                     </button>
@@ -429,6 +519,7 @@ const PacienteTabInformes: React.FC<PacienteTabInformesProps> = ({ pacienteId, p
                         <tr className="bg-gray-50 dark:bg-gray-700/50 text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wider border-b border-gray-100 dark:border-gray-700">
                             <th className="py-3 px-5 font-semibold">Fecha</th>
                             <th className="py-3 px-5 font-semibold">Título del Informe</th>
+                            <th className="py-3 px-5 font-semibold">Doctor</th>
                             <th className="py-3 px-5 font-semibold">Resumen</th>
                             <th className="py-3 px-5 font-semibold text-center">Acciones</th>
                         </tr>
@@ -436,7 +527,7 @@ const PacienteTabInformes: React.FC<PacienteTabInformesProps> = ({ pacienteId, p
                     <tbody className="divide-y divide-gray-100 dark:divide-gray-700/50 text-xs text-gray-800 dark:text-gray-200">
                         {isLoading ? (
                             <tr>
-                                <td colSpan={4} className="py-8 text-center text-gray-400">Cargando informes...</td>
+                                <td colSpan={5} className="py-8 text-center text-gray-400">Cargando informes...</td>
                             </tr>
                         ) : paginatedInformes.length > 0 ? (
                             paginatedInformes.map((inf) => (
@@ -445,6 +536,9 @@ const PacienteTabInformes: React.FC<PacienteTabInformesProps> = ({ pacienteId, p
                                         <Calendar size={14} /> {inf.fecha || 'N/A'}
                                     </td>
                                     <td className="py-3.5 px-5 font-bold">{inf.titulo || 'Informe Odontológico'}</td>
+                                    <td className="py-3.5 px-5 font-medium text-gray-700 dark:text-gray-300">
+                                        {inf.doctor ? `Dr. ${inf.doctor.paterno} ${inf.doctor.materno || ''} ${inf.doctor.nombre}` : '-'}
+                                    </td>
                                     <td className="py-3.5 px-5 text-gray-500 dark:text-gray-400 max-w-xs truncate">
                                         {stripHtmlTags(inf.contenido)}
                                     </td>
@@ -488,7 +582,7 @@ const PacienteTabInformes: React.FC<PacienteTabInformesProps> = ({ pacienteId, p
                             ))
                         ) : (
                             <tr>
-                                <td colSpan={4} className="py-8 text-center text-gray-400">
+                                <td colSpan={5} className="py-8 text-center text-gray-400">
                                     No hay informes registrados para este paciente.
                                 </td>
                             </tr>
@@ -525,7 +619,7 @@ const PacienteTabInformes: React.FC<PacienteTabInformesProps> = ({ pacienteId, p
                         {/* Form Content */}
                         <div className="p-5 overflow-y-auto flex-1 space-y-4">
                             <form id="informe-form" onSubmit={handleSaveInforme} className="space-y-4">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <div>
                                         <label className="block mb-2 text-sm font-semibold text-gray-700 dark:text-gray-300">
                                             Título del Documento <span className="text-red-500">*</span>
@@ -555,6 +649,27 @@ const PacienteTabInformes: React.FC<PacienteTabInformesProps> = ({ pacienteId, p
                                                 className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition duration-200 text-sm"
                                                 required
                                             />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block mb-2 text-sm font-semibold text-gray-700 dark:text-gray-300">
+                                            Doctor Tratante <span className="text-red-500">*</span>
+                                        </label>
+                                        <div className="relative">
+                                            <User size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                                            <select
+                                                value={doctorId}
+                                                onChange={e => setDoctorId(e.target.value ? Number(e.target.value) : '')}
+                                                className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition duration-200 text-sm cursor-pointer"
+                                                required
+                                            >
+                                                <option value="">-- Seleccionar Doctor --</option>
+                                                {doctores.map((doc: any) => (
+                                                    <option key={doc.id} value={doc.id}>
+                                                        Dr. {doc.paterno} {doc.materno || ''} {doc.nombre} {doc.especialidad ? `(${doc.especialidad.especialidad})` : ''}
+                                                    </option>
+                                                ))}
+                                            </select>
                                         </div>
                                     </div>
                                 </div>

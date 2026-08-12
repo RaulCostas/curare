@@ -57,7 +57,8 @@ export class PagosController {
                 : null;
 
             // 2. Generate PDF
-            const pdfBuffer = await this.pagosPdfService.generatePagosPdf(patientEntity, proformaEntity, filteredPagos, resumen);
+            const filteredHistoria = historia.filter(h => h.estadoTratamiento === 'terminado' && (!proformaId || h.proformaId === proformaId));
+            const pdfBuffer = await this.pagosPdfService.generatePagosPdf(patientEntity, proformaEntity, filteredPagos, resumen, filteredHistoria);
 
             // 3. Send via Chatbot
             const phoneNumber = patientEntity.celular;
@@ -83,6 +84,42 @@ export class PagosController {
         } catch (error) {
             console.error('Error sending WhatsApp:', error);
             return { success: false, message: 'Error al enviar el mensaje: ' + error.message };
+        }
+    }
+
+    @Post(':id/send-whatsapp')
+    async sendReciboByWhatsapp(@Param('id') id: string) {
+        try {
+            const pago = await this.pagosService.findOne(+id);
+            if (!pago) {
+                return { success: false, message: 'No se encontró el registro de pago.' };
+            }
+
+            const paciente = pago.paciente;
+            if (!paciente || !paciente.celular) {
+                return { success: false, message: 'El paciente no tiene número de celular registrado.' };
+            }
+
+            const pdfBuffer = await this.pagosPdfService.generateReciboSinglePdf(pago);
+
+            const cleanPhone = paciente.celular.replace(/\D/g, '');
+            const countryCode = cleanPhone.length === 8 ? '591' : '';
+            const jid = `${countryCode}${cleanPhone}@s.whatsapp.net`;
+
+            const reciboNum = pago.recibo ? `R-${pago.recibo}` : `#${pago.id}`;
+            const montoStr = pago.moneda === 'Dólares' ? `USD ${Number(pago.monto).toFixed(2)}` : `Bs. ${Number(pago.monto).toFixed(2)}`;
+
+            await this.chatbotService.sendMessage(jid, {
+                document: pdfBuffer,
+                mimetype: 'application/pdf',
+                fileName: `Recibo_Pago_${pago.recibo || pago.id}.pdf`,
+                caption: `Hola ${paciente.nombre}, le enviamos adjunto su recibo de pago ${reciboNum} por un monto de ${montoStr}. ¡Gracias por su preferencia!`
+            });
+
+            return { success: true, message: 'Recibo enviado por WhatsApp correctamente' };
+        } catch (error) {
+            console.error('Error sending recibo WhatsApp:', error);
+            return { success: false, message: 'Error al enviar el recibo por WhatsApp: ' + error.message };
         }
     }
 

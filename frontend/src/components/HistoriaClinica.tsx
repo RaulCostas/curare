@@ -13,6 +13,7 @@ import MaterialUtilizadoModal from './MaterialUtilizadoModal';
 import PlanTratamientoModal from './PlanTratamientoModal';
 import RecordatorioTratamientoModal from './RecordatorioTratamientoModal';
 import RecordatorioPlanModal from './RecordatorioPlanModal';
+import SeguimientoClinicoModal from './SeguimientoClinicoModal';
 import { Activity } from 'lucide-react';
 import { formatCurrency } from '../utils/formatters';
 import { formatDateUTC } from '../utils/formatters';
@@ -32,6 +33,7 @@ const HistoriaClinica: React.FC = () => {
     const [historiaToEdit, setHistoriaToEdit] = useState<HistoriaClinicaType | null>(null);
     const [showForm, setShowForm] = useState(false);
     const [showPlanModal, setShowPlanModal] = useState(false);
+    const [showSeguimientoModal, setShowSeguimientoModal] = useState(false);
     const [showRecordatorioPlanModal, setShowRecordatorioPlanModal] = useState(false);
     const [showReminderModal, setShowReminderModal] = useState(false);
     const [selectedReminderHistoria, setSelectedReminderHistoria] = useState<HistoriaClinicaType | null>(null);
@@ -531,11 +533,13 @@ const HistoriaClinica: React.FC = () => {
 
                                 <HistoriaClinicaList
                                     historia={filteredHistoria}
+                                    allHistoria={historia}
                                     onDelete={handleDelete}
                                     onEdit={handleEdit}
                                     onNewHistoria={!showForm && !historiaToEdit ? () => setShowForm(true) : undefined}
                                     onPrint={handlePrintHistory}
                                     onViewPlan={() => setShowPlanModal(true)}
+                                    onViewHistorial={() => setShowSeguimientoModal(true)}
                                     onPlanTiempo={() => setShowRecordatorioPlanModal(true)}
                                     onReminder={(item) => {
                                         setSelectedReminderHistoria(item);
@@ -673,6 +677,16 @@ const HistoriaClinica: React.FC = () => {
                 onClose={() => setShowRecordatorioPlanModal(false)}
                 proformaId={selectedProformaId}
                 proforma={proformas.find(p => p.id === selectedProformaId) || null}
+            />
+
+            {/* Seguimiento Clinico Modal */}
+            <SeguimientoClinicoModal
+                isOpen={showSeguimientoModal}
+                onClose={() => setShowSeguimientoModal(false)}
+                historia={filteredHistoria}
+                paciente={paciente}
+                selectedProformaId={selectedProformaId}
+                proformas={proformas}
             />
         </div >
     );

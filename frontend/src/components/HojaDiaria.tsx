@@ -561,7 +561,10 @@ const HojaDiaria: React.FC = () => {
     };
 
     const handlePrintEgresos = () => {
-        const filteredEgresos = egresos.filter(e => e.destino === activeEgresosTab);
+        const filteredEgresos = egresos.filter(e => {
+            const dest = (e.destino || 'consultorio').toLowerCase();
+            return dest === activeEgresosTab.toLowerCase();
+        });
         const iframe = document.createElement('iframe');
         iframe.style.position = 'fixed';
         iframe.style.right = '0';

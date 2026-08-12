@@ -25,7 +25,7 @@ const Login: React.FC = () => {
             // Update chat context with new user
             loginUser(response.data.user);
 
-            navigate('/agenda');
+            navigate('/home');
         } catch (error: any) {
             console.error('Login error:', error);
             let errorMsg = 'No se pudo conectar con el servidor backend o las credenciales no son válidas.';

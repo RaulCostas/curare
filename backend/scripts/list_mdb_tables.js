@@ -1,9 +1,14 @@
-const path = require('path');
 const fs = require('fs');
-const MDBReader = require('mdb-reader').default || require('mdb-reader');
+const path = require('path');
+const mdbReaderModule = require('mdb-reader');
+const MDBReader = mdbReaderModule.default || mdbReaderModule;
 
-const mdbPath = 'D:/SOFT-MEDIC/Antigravity/CURARE/backups/curare.mdb';
-const buffer = fs.readFileSync(mdbPath);
-const reader = new MDBReader(buffer);
+const MDB_PATH = path.resolve(__dirname, '../../backups/curare.mdb');
 
-console.log('Tables:', reader.getTableNames());
+function main() {
+    const buffer = fs.readFileSync(MDB_PATH);
+    const reader = new MDBReader(buffer);
+    console.log("Table names in MDB:", reader.getTableNames());
+}
+
+main();

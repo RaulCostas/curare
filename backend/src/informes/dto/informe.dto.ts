@@ -7,8 +7,16 @@ export class CreateInformeDto {
     pacienteId: number;
 
     @IsNumber()
+    @IsNotEmpty({ message: 'El doctor es obligatorio' })
+    doctorId: number;
+
+    @IsNumber()
     @IsOptional()
     userId?: number;
+
+    @IsString()
+    @IsOptional()
+    titulo?: string;
 
     @IsString()
     @IsNotEmpty()

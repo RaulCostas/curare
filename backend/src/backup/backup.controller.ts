@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Delete, Param, Body } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Param, Body, Res } from '@nestjs/common';
 import { BackupService } from './backup.service';
 import { CreateBackupDto } from './dto/create-backup.dto';
 
@@ -11,9 +11,20 @@ export class BackupController {
         return await this.backupService.createBackup(createBackupDto);
     }
 
+    @Post('create-full')
+    async createFullBackup(@Body() createBackupDto: CreateBackupDto) {
+        return await this.backupService.createFullBackup(createBackupDto);
+    }
+
     @Get('list')
     async listBackups() {
         return await this.backupService.listBackups();
+    }
+
+    @Get('download/:filename')
+    async downloadBackup(@Param('filename') filename: string, @Res() res: any) {
+        const backupInfo = await this.backupService.getBackupInfo(filename);
+        res.download(backupInfo.path, filename);
     }
 
     @Get('info/:filename')

@@ -1,6 +1,7 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 import { Paciente } from '../../pacientes/entities/paciente.entity';
 import { User } from '../../users/entities/user.entity';
+import { Doctor } from '../../doctors/entities/doctor.entity';
 
 @Entity('informes')
 export class Informe {
@@ -12,6 +13,12 @@ export class Informe {
 
     @Column({ type: 'int', name: 'user_id', nullable: true })
     userId: number;
+
+    @Column({ type: 'int', name: 'doctor_id', nullable: true })
+    doctorId: number;
+
+    @Column({ type: 'varchar', nullable: true })
+    titulo: string;
 
     @Column({ type: 'date' })
     fecha: string;
@@ -29,6 +36,10 @@ export class Informe {
     @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
     @JoinColumn({ name: 'user_id' })
     user: User;
+
+    @ManyToOne(() => Doctor, { nullable: true, onDelete: 'SET NULL' })
+    @JoinColumn({ name: 'doctor_id' })
+    doctor: Doctor;
 
     @CreateDateColumn()
     createdAt: Date;

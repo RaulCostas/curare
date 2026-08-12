@@ -194,7 +194,7 @@ const EstadisticasDoctores: React.FC = () => {
 
                             return (
                                 <div key={stat.id} className="flex items-center">
-                                    <div className="w-48 text-right pr-4 font-medium text-gray-700 dark:text-gray-300 truncate" title={stat.nombreCompleto}>
+                                    <div className="w-64 text-right pr-4 font-medium text-gray-700 dark:text-gray-300 truncate" title={stat.nombreCompleto}>
                                         {stat.nombreCompleto}
                                     </div>
                                     <div className="flex-1 h-8 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden relative group">

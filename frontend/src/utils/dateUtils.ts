@@ -77,12 +77,18 @@ export const formatDateUTC = formatDate;
 export const formatDateLocal = (date: string | Date | undefined | null): string => {
     if (!date) return '-';
     
-    if (typeof date === 'string' && (date.includes('T') || date.includes('Z') || date.includes(' '))) {
-        const d = new Date(date);
-        if (isNaN(d.getTime())) return '-';
-        const day = d.getDate().toString().padStart(2, '0');
-        const month = (d.getMonth() + 1).toString().padStart(2, '0');
-        const year = d.getFullYear();
+    if (typeof date === 'string') {
+        const datePart = date.split(/[T ]/)[0];
+        if (datePart.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            const [year, month, day] = datePart.split('-').map(Number);
+            return `${day.toString().padStart(2, '0')}/${month.toString().padStart(2, '0')}/${year}`;
+        }
+    }
+
+    if (date instanceof Date && !isNaN(date.getTime())) {
+        const day = date.getDate().toString().padStart(2, '0');
+        const month = (date.getMonth() + 1).toString().padStart(2, '0');
+        const year = date.getFullYear();
         return `${day}/${month}/${year}`;
     }
 

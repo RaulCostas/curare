@@ -16,19 +16,21 @@ const CategoriaPacienteForm: React.FC<CategoriaPacienteFormProps> = ({ isOpen, o
     const [formData, setFormData] = useState({
         sigla: '',
         descripcion: '',
-        color: '#87CEEB',
+        color: '#42a5f5',
         estado: 'activo'
     });
 
     const colors = [
-        { name: 'Rojo', value: '#FF0000' },
-        { name: 'Amarillo', value: '#FFFF00' },
-        { name: 'Verde', value: '#008000' },
-        { name: 'Azul', value: '#0000FF' },
-        { name: 'Naranja', value: '#FFA500' },
-        { name: 'Morado', value: '#800080' },
-        { name: 'Rosa', value: '#FFC0CB' },
-        { name: 'Celeste', value: '#87CEEB' }
+        { name: 'Rojo Suave', value: '#ef5350' },
+        { name: 'Amarillo Suave', value: '#fbbf24' },
+        { name: 'Verde Suave', value: '#66bb6a' },
+        { name: 'Azul Suave', value: '#42a5f5' },
+        { name: 'Naranja Suave', value: '#ffa726' },
+        { name: 'Morado Suave', value: '#ab47bc' },
+        { name: 'Rosa Suave', value: '#ec407a' },
+        { name: 'Celeste Suave', value: '#26c6da' },
+        { name: 'Gris Suave', value: '#90a4ae' },
+        { name: 'Menta Suave', value: '#80cbc4' }
     ];
     const [showManual, setShowManual] = useState(false);
 
@@ -53,7 +55,7 @@ const CategoriaPacienteForm: React.FC<CategoriaPacienteFormProps> = ({ isOpen, o
                 setFormData({
                     sigla: '',
                     descripcion: '',
-                    color: '#87CEEB',
+                    color: '#42a5f5',
                     estado: 'activo'
                 });
             }

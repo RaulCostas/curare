@@ -94,6 +94,9 @@ const Layout: React.FC = () => {
     };
 
     const isActive = (path: string) => {
+        if (path === '/home' || path === '/') {
+            return (location.pathname === '/' || location.pathname === '/home') ? 'active' : '';
+        }
         return location.pathname === path ? 'active' : '';
     };
 
@@ -126,8 +129,8 @@ const Layout: React.FC = () => {
                         {hasAccess('agenda') && (
                             <li className="nav-item">
                                 <Link
-                                    to="/"
-                                    className={`nav-link ${isActive('/')}`}
+                                    to="/home"
+                                    className={`nav-link ${isActive('/home')}`}
                                     onClick={closeSidebar}
                                     title="Inicio"
                                 >
@@ -953,7 +956,7 @@ const Layout: React.FC = () => {
                                 )}
                             </button>
                             <button
-                                onClick={() => navigate('/')}
+                                onClick={() => navigate('/home')}
                                 className="header-icon-btn dark:text-white"
                                 title="Inicio"
                             >
