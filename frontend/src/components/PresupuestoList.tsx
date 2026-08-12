@@ -6,7 +6,7 @@ import type { Paciente } from '../types';
 import jsPDF from 'jspdf';
 import Pagination from './Pagination';
 import autoTable from 'jspdf-autotable';
-import { formatDateSpanish, formatDateUTC, formatCurrency, numberToWords } from '../utils/formatters';
+import { formatDateSpanish, formatDateUTC, formatCurrency, numberToWords, formatFullName } from '../utils/formatters';
 import ManualModal, { type ManualSection } from './ManualModal';
 import PlanTratamientoModal from './PlanTratamientoModal';
 import { FileText, Plus, X } from 'lucide-react';
@@ -300,8 +300,11 @@ const PresupuestoList: React.FC = () => {
                 throw new Error('Error al generar el PDF');
             }
 
+            const fullPatientName = (formatFullName(paciente) || `${paciente?.nombre || ''} ${paciente?.paterno || ''} ${paciente?.materno || ''}`).trim() || 'Paciente';
+            const safeDocName = `${fullPatientName} - Presupuesto #${proforma.numero}`.replace(/[/\\?%*:|"<>]/g, '');
+
             const formData = new FormData();
-            formData.append('file', pdfBlob, `Presupuesto_${proforma.numero}.pdf`);
+            formData.append('file', pdfBlob, `${safeDocName}.pdf`);
 
             await api.post(`/proformas/${proforma.id}/send-whatsapp`, formData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
@@ -612,7 +615,9 @@ const PresupuestoList: React.FC = () => {
                 doc.output('dataurlnewwindow');
             }
         } else if (action === 'download') {
-            doc.save(`presupuesto_${proforma.numero}_${paciente?.paterno}.pdf`);
+            const fullPatientName = (formatFullName(paciente) || `${paciente?.nombre || ''} ${paciente?.paterno || ''} ${paciente?.materno || ''}`).trim() || 'Paciente';
+            const safeDocName = `${fullPatientName} - Presupuesto #${proforma.numero}`.replace(/[/\\?%*:|"<>]/g, '');
+            doc.save(`${safeDocName}.pdf`);
         } else if (action === 'blob') {
             return doc.output('blob');
         }

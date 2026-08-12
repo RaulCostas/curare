@@ -155,7 +155,7 @@ const PacientePerfilView: React.FC = () => {
         { id: 'ficha-medica', label: 'FICHA MÉDICA', icon: <Heart size={15} /> },
         { id: 'citas', label: 'CITAS', icon: <Calendar size={15} /> },
         { id: 'presupuestos', label: 'PLANES DE TRATAMIENTO', icon: <CreditCard size={15} /> },
-        { id: 'historia-clinica', label: 'SEGUIMIENTO CLÍNICO', icon: <Activity size={15} /> },
+        { id: 'historia-clinica', label: 'HISTORIA CLÍNICA', icon: <Activity size={15} /> },
         { id: 'pagos', label: 'PAGOS', icon: <FileText size={15} /> },
         { id: 'imagenes', label: 'IMÁGENES', icon: <ImageIcon size={15} /> },
         { id: 'propuestas', label: 'PROPUESTAS', icon: <ClipboardList size={15} /> },

@@ -15,7 +15,7 @@ const Layout: React.FC = () => {
     const { logoutUser } = useChat();
     const { unreadCount } = useCorreos();
     const [currentUser, setCurrentUser] = useState<any>(null);
-    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(() => window.innerWidth > 768);
     const [isLabsOpen, setIsLabsOpen] = useState(false);
     const [isDoctorsOpen, setIsDoctorsOpen] = useState(false);
     const [isPatientsOpen, setIsPatientsOpen] = useState(false);
@@ -62,6 +62,12 @@ const Layout: React.FC = () => {
     };
 
     useEffect(() => {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            navigate('/login', { replace: true });
+            return;
+        }
+
         fetchUserData();
 
         // Listen for user updates (e.g. photo change)
@@ -74,7 +80,7 @@ const Layout: React.FC = () => {
         return () => {
             window.removeEventListener('user-updated', handleUserUpdate);
         };
-    }, []);
+    }, [location.pathname]);
 
     const hasAccess = (moduleId: string) => {
         return !permisos.includes(moduleId);
@@ -96,7 +102,9 @@ const Layout: React.FC = () => {
     };
 
     const closeSidebar = () => {
-        setIsSidebarOpen(false);
+        if (window.innerWidth <= 768) {
+            setIsSidebarOpen(false);
+        }
     };
 
     return (
@@ -108,10 +116,10 @@ const Layout: React.FC = () => {
             />
 
             {/* Sidebar */}
-            <aside className={`sidebar ${isSidebarOpen ? 'active' : ''}`}>
+            <aside className={`sidebar ${isSidebarOpen ? 'active' : 'collapsed'}`}>
                 <div className="sidebar-header">
                     <img src={logoSidebar} alt="Curare Centro Dental" className="sidebar-logo-img" />
-                    <button className="close-sidebar-btn" onClick={closeSidebar}>×</button>
+                    <button className="close-sidebar-btn" onClick={toggleSidebar} title="Ocultar menú">×</button>
                 </div>
                 <nav className="sidebar-nav">
                     <ul className="nav-list">
@@ -121,12 +129,13 @@ const Layout: React.FC = () => {
                                     to="/"
                                     className={`nav-link ${isActive('/')}`}
                                     onClick={closeSidebar}
+                                    title="Inicio"
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '10px' }}>
                                         <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
                                         <polyline points="9 22 9 12 15 12 15 22"></polyline>
                                     </svg>
-                                    Inicio
+                                    <span className="nav-text">Inicio</span>
                                 </Link>
                             </li>
                         )}
@@ -136,6 +145,7 @@ const Layout: React.FC = () => {
                                     to="/agenda"
                                     className={`nav-link ${isActive('/agenda')}`}
                                     onClick={closeSidebar}
+                                    title="Agenda"
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '10px' }}>
                                         <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
@@ -143,7 +153,7 @@ const Layout: React.FC = () => {
                                         <line x1="8" y1="2" x2="8" y2="6"></line>
                                         <line x1="3" y1="10" x2="21" y2="10"></line>
                                     </svg>
-                                    Agenda
+                                    <span className="nav-text">Agenda</span>
                                 </Link>
                             </li>
                         )}
@@ -152,8 +162,12 @@ const Layout: React.FC = () => {
                             <li className="nav-item">
                                 <div
                                     className={`nav-link ${isPatientsOpen || isActive('/pacientes') || isActive('/pagos') || isActive('/pacientes-deudores') ? 'active' : ''}`}
-                                    onClick={() => setIsPatientsOpen(!isPatientsOpen)}
+                                    onClick={() => {
+                                        if (!isSidebarOpen) setIsSidebarOpen(true);
+                                        setIsPatientsOpen(!isPatientsOpen);
+                                    }}
                                     style={{ cursor: 'pointer', justifyContent: 'space-between' }}
+                                    title="Pacientes"
                                 >
                                     <div style={{ display: 'flex', alignItems: 'center' }}>
                                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '10px' }}>
@@ -162,9 +176,10 @@ const Layout: React.FC = () => {
                                             <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
                                             <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
                                         </svg>
-                                        Pacientes
+                                        <span className="nav-text">Pacientes</span>
                                     </div>
                                     <svg
+                                        className="nav-arrow"
                                         xmlns="http://www.w3.org/2000/svg"
                                         width="16"
                                         height="16"
@@ -241,16 +256,21 @@ const Layout: React.FC = () => {
                             <li className="nav-item">
                                 <div
                                     className={`nav-link ${isDoctorsOpen || isActive('/doctors') || isActive('/pagos-doctores') ? 'active' : ''}`}
-                                    onClick={() => setIsDoctorsOpen(!isDoctorsOpen)}
+                                    onClick={() => {
+                                        if (!isSidebarOpen) setIsSidebarOpen(true);
+                                        setIsDoctorsOpen(!isDoctorsOpen);
+                                    }}
                                     style={{ cursor: 'pointer', justifyContent: 'space-between' }}
+                                    title="Doctores"
                                 >
                                     <div style={{ display: 'flex', alignItems: 'center' }}>
                                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '10px' }}>
                                             <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
                                         </svg>
-                                        Doctores
+                                        <span className="nav-text">Doctores</span>
                                     </div>
                                     <svg
+                                        className="nav-arrow"
                                         xmlns="http://www.w3.org/2000/svg"
                                         width="16"
                                         height="16"
@@ -309,8 +329,12 @@ const Layout: React.FC = () => {
                             <li className="nav-item">
                                 <div
                                     className={`nav-link ${isLabsOpen || isActive('/laboratorios') || isActive('/trabajos-laboratorios') || isActive('/pagos-laboratorios') || isActive('/precios-laboratorios') || isActive('/cubetas') ? 'active' : ''}`}
-                                    onClick={() => setIsLabsOpen(!isLabsOpen)}
+                                    onClick={() => {
+                                        if (!isSidebarOpen) setIsSidebarOpen(true);
+                                        setIsLabsOpen(!isLabsOpen);
+                                    }}
                                     style={{ cursor: 'pointer', justifyContent: 'space-between' }}
+                                    title="Laboratorios"
                                 >
                                     <div style={{ display: 'flex', alignItems: 'center' }}>
                                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '10px' }}>
@@ -319,9 +343,10 @@ const Layout: React.FC = () => {
                                             <path d="M8.5 2h7"></path>
                                             <path d="M14 9.3a6.5 6.5 0 1 1-4 0"></path>
                                         </svg>
-                                        Laboratorios
+                                        <span className="nav-text">Laboratorios</span>
                                     </div>
                                     <svg
+                                        className="nav-arrow"
                                         xmlns="http://www.w3.org/2000/svg"
                                         width="16"
                                         height="16"
@@ -431,8 +456,12 @@ const Layout: React.FC = () => {
                             <li className="nav-item">
                                 <div
                                     className={`nav-link ${isProvidersOpen || isActive('/proveedores') || isActive('/pedidos') ? 'active' : ''}`}
-                                    onClick={() => setIsProvidersOpen(!isProvidersOpen)}
+                                    onClick={() => {
+                                        if (!isSidebarOpen) setIsSidebarOpen(true);
+                                        setIsProvidersOpen(!isProvidersOpen);
+                                    }}
                                     style={{ cursor: 'pointer', justifyContent: 'space-between' }}
+                                    title="Proveedores"
                                 >
                                     <div style={{ display: 'flex', alignItems: 'center' }}>
                                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '10px' }}>
@@ -441,9 +470,10 @@ const Layout: React.FC = () => {
                                             <circle cx="5.5" cy="18.5" r="2.5"></circle>
                                             <circle cx="18.5" cy="18.5" r="2.5"></circle>
                                         </svg>
-                                        Proveedores
+                                        <span className="nav-text">Proveedores</span>
                                     </div>
                                     <svg
+                                        className="nav-arrow"
                                         xmlns="http://www.w3.org/2000/svg"
                                         width="16"
                                         height="16"
@@ -521,8 +551,12 @@ const Layout: React.FC = () => {
                             <li className="nav-item">
                                 <div
                                     className={`nav-link ${isPersonalOpen || isActive('/personal') || isActive('/vacaciones') ? 'active' : ''}`}
-                                    onClick={() => setIsPersonalOpen(!isPersonalOpen)}
+                                    onClick={() => {
+                                        if (!isSidebarOpen) setIsSidebarOpen(true);
+                                        setIsPersonalOpen(!isPersonalOpen);
+                                    }}
                                     style={{ cursor: 'pointer', justifyContent: 'space-between' }}
+                                    title="Personal"
                                 >
                                     <div style={{ display: 'flex', alignItems: 'center' }}>
                                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '10px' }}>
@@ -531,9 +565,10 @@ const Layout: React.FC = () => {
                                             <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
                                             <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
                                         </svg>
-                                        Personal
+                                        <span className="nav-text">Personal</span>
                                     </div>
                                     <svg
+                                        className="nav-arrow"
                                         xmlns="http://www.w3.org/2000/svg"
                                         width="16"
                                         height="16"
@@ -604,18 +639,19 @@ const Layout: React.FC = () => {
                         )}
 
 
-                        {/* ARANCELES - part of Presupuestos or ADMs? Or separate. Leaving open. */}
+                        {/* ARANCELES */}
                         <li className="nav-item">
                             <Link
                                 to="/arancel"
                                 className={`nav-link ${isActive('/arancel')}`}
                                 onClick={closeSidebar}
+                                title="Aranceles"
                             >
                                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '10px' }}>
                                     <line x1="12" y1="1" x2="12" y2="23"></line>
                                     <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
                                 </svg>
-                                Aranceles
+                                <span className="nav-text">Aranceles</span>
                             </Link>
                         </li>
 
@@ -625,27 +661,29 @@ const Layout: React.FC = () => {
                                     to="/inventario"
                                     className={`nav-link ${isActive('/inventario')}`}
                                     onClick={closeSidebar}
+                                    title="Inventario"
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '10px' }}>
                                         <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
                                         <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
                                     </svg>
-                                    Inventario
+                                    <span className="nav-text">Inventario</span>
                                 </Link>
                             </li>
                         )}
 
-                        {/* EGRESOS - part of Caja Diaria? */}
+                        {/* EGRESOS */}
                         <li className="nav-item">
                             <Link
                                 to="/egresos"
                                 className={`nav-link ${isActive('/egresos')}`}
                                 onClick={closeSidebar}
+                                title="Egresos Diarios"
                             >
                                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '10px' }}>
                                     <path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
                                 </svg>
-                                Egresos Diarios
+                                <span className="nav-text">Egresos Diarios</span>
                             </Link>
                         </li>
 
@@ -655,12 +693,13 @@ const Layout: React.FC = () => {
                                     to="/gastos-fijos"
                                     className={`nav-link ${isActive('/gastos-fijos')}`}
                                     onClick={closeSidebar}
+                                    title="Gastos Fijos"
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '10px' }}>
                                         <polyline points="23 18 13.5 8.5 8.5 13.5 1 6"></polyline>
                                         <polyline points="17 18 23 18 23 12"></polyline>
                                     </svg>
-                                    Gastos Fijos
+                                    <span className="nav-text">Gastos Fijos</span>
                                 </Link>
                             </li>
                         )}
@@ -670,6 +709,7 @@ const Layout: React.FC = () => {
                                     to="/hoja-diaria"
                                     className={`nav-link ${isActive('/hoja-diaria')}`}
                                     onClick={closeSidebar}
+                                    title="Hoja Diaria"
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '10px' }}>
                                         <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
@@ -677,7 +717,7 @@ const Layout: React.FC = () => {
                                         <line x1="8" y1="2" x2="8" y2="6"></line>
                                         <line x1="3" y1="10" x2="21" y2="10"></line>
                                     </svg>
-                                    Hoja Diaria
+                                    <span className="nav-text">Hoja Diaria</span>
                                 </Link>
                             </li>
                         )}
@@ -688,12 +728,13 @@ const Layout: React.FC = () => {
                                     to="/utilidades"
                                     className={`nav-link ${isActive('/utilidades')}`}
                                     onClick={closeSidebar}
+                                    title="Utilidades"
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '10px' }}>
                                         <line x1="12" y1="1" x2="12" y2="23"></line>
                                         <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
                                     </svg>
-                                    Utilidades
+                                    <span className="nav-text">Utilidades</span>
                                 </Link>
                             </li>
                         )}
@@ -704,13 +745,14 @@ const Layout: React.FC = () => {
                                     to="/otros"
                                     className={`nav-link ${isActive('/otros') || location.pathname.startsWith('/otros') ? 'active' : ''}`}
                                     onClick={closeSidebar}
+                                    title="Otros"
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '10px' }}>
                                         <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
                                         <line x1="12" y1="11" x2="12" y2="17"></line>
                                         <line x1="9" y1="14" x2="15" y2="14"></line>
                                     </svg>
-                                    Otros
+                                    <span className="nav-text">Otros</span>
                                 </Link>
                             </li>
                         )}
@@ -720,8 +762,12 @@ const Layout: React.FC = () => {
                             <li className="nav-item">
                                 <div
                                     className={`nav-link ${isStatsOpen || isActive('/estadisticas') ? 'active' : ''}`}
-                                    onClick={() => setIsStatsOpen(!isStatsOpen)}
+                                    onClick={() => {
+                                        if (!isSidebarOpen) setIsSidebarOpen(true);
+                                        setIsStatsOpen(!isStatsOpen);
+                                    }}
                                     style={{ cursor: 'pointer', justifyContent: 'space-between' }}
+                                    title="Estadísticas"
                                 >
                                     <div style={{ display: 'flex', alignItems: 'center' }}>
                                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '10px' }}>
@@ -729,9 +775,10 @@ const Layout: React.FC = () => {
                                             <line x1="12" y1="20" x2="12" y2="4"></line>
                                             <line x1="6" y1="20" x2="6" y2="14"></line>
                                         </svg>
-                                        Estadísticas
+                                        <span className="nav-text">Estadísticas</span>
                                     </div>
                                     <svg
+                                        className="nav-arrow"
                                         xmlns="http://www.w3.org/2000/svg"
                                         width="16"
                                         height="16"
@@ -841,13 +888,14 @@ const Layout: React.FC = () => {
                                     to="/configuration"
                                     className={`nav-link ${isActive('/configuration') || isActive('/users') || isActive('/personal-tipo') || isActive('/comision-tarjeta') || isActive('/especialidad') || isActive('/categoria-paciente') || isActive('/forma-pago') || isActive('/grupo-inventario') || isActive('/musica-television') || isActive('/cambiar-password') || isActive('/backup') ? 'active' : ''}`}
                                     onClick={closeSidebar}
+                                    title="Configuración"
                                 >
                                     <div style={{ display: 'flex', alignItems: 'center' }}>
                                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '10px' }}>
                                             <circle cx="12" cy="12" r="3"></circle>
                                             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
                                         </svg>
-                                        Configuración
+                                        <span className="nav-text">Configuración</span>
                                     </div>
                                 </Link>
                             </li>
@@ -860,7 +908,12 @@ const Layout: React.FC = () => {
             <div className="main-content">
                 <header className="top-header">
                     <div className="header-left">
-                        <button className="hamburger-btn" onClick={toggleSidebar}>
+                        <button
+                            className="hamburger-btn"
+                            onClick={toggleSidebar}
+                            title={isSidebarOpen ? "Ocultar menú" : "Mostrar menú"}
+                            aria-label="Mostrar u ocultar menú lateral"
+                        >
                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                 <line x1="3" y1="12" x2="21" y2="12"></line>
                                 <line x1="3" y1="6" x2="21" y2="6"></line>

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource, Between } from 'typeorm';
 import { Pago } from './entities/pago.entity';
@@ -20,6 +20,12 @@ export class PagosService {
 
     async create(createDto: CreatePagoDto): Promise<Pago> {
         try {
+            const hasRecibo = createDto.recibo && createDto.recibo.trim() !== '';
+            const hasFactura = createDto.factura && createDto.factura.trim() !== '';
+            if (!hasRecibo && !hasFactura) {
+                throw new BadRequestException('Debe registrar obligatoriamente al menos un número de Recibo o de Factura.');
+            }
+
             const pago = this.pagoRepository.create(createDto);
             if (createDto.formaPagoId) {
                 pago.formaPagoRel = { id: createDto.formaPagoId } as any;
@@ -82,6 +88,12 @@ export class PagosService {
     async update(id: number, updateDto: UpdatePagoDto): Promise<Pago> {
         const pago = await this.findOne(id);
         this.pagoRepository.merge(pago, updateDto);
+
+        const hasRecibo = pago.recibo && pago.recibo.trim() !== '';
+        const hasFactura = pago.factura && pago.factura.trim() !== '';
+        if (!hasRecibo && !hasFactura) {
+            throw new BadRequestException('Debe registrar obligatoriamente al menos un número de Recibo o de Factura.');
+        }
         if (updateDto.formaPagoId) {
             pago.formaPagoRel = { id: updateDto.formaPagoId } as any;
         }

@@ -25,7 +25,7 @@ const Login: React.FC = () => {
             // Update chat context with new user
             loginUser(response.data.user);
 
-            navigate('/');
+            navigate('/agenda');
         } catch (error: any) {
             console.error('Login error:', error);
             if (error.response && error.response.data && error.response.data.message) {

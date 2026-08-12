@@ -734,7 +734,7 @@ const PresupuestoForm: React.FC = () => {
                                                     <React.Fragment key={idx}>
                                                         <span
                                                             className={`${isPiezaCompleted
-                                                                ? 'text-green-600 dark:text-green-400 line-through decoration-2 font-bold'
+                                                                ? 'text-green-600 dark:text-green-400 font-bold'
                                                                 : 'text-gray-900 dark:text-gray-200'
                                                                 }`}
                                                         >
@@ -751,7 +751,7 @@ const PresupuestoForm: React.FC = () => {
                                 return (
                                     <tr key={index} className={`transition-colors duration-150 ${editingIndex === index ? 'bg-blue-50 dark:bg-blue-900/40 border-l-4 border-blue-500' : (item.posible ? 'bg-amber-50 dark:bg-amber-900/20' : 'hover:bg-gray-50 dark:hover:bg-gray-700/50')}`}>
                                         <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200 text-center font-medium">{index + 1}</td>
-                                        <td className={`px-4 py-3 whitespace-nowrap text-sm font-medium ${isCompleted ? 'text-green-600 dark:text-green-400 line-through decoration-2' : 'text-gray-900 dark:text-gray-200'}`}>
+                                        <td className={`px-4 py-3 whitespace-nowrap text-sm font-medium ${isCompleted ? 'text-green-600 dark:text-green-400' : 'text-gray-900 dark:text-gray-200'}`}>
                                             {item.tratamiento}
                                             {isCompleted && <span className="ml-2 text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 px-2 py-0.5 rounded-full no-underline">COMPLETADO</span>}
                                         </td>

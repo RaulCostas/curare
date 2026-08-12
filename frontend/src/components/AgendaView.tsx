@@ -16,7 +16,7 @@ import { formatFullName, formatPaternoMaternoNombre } from '../utils/formatters'
 type ValuePiece = Date | null;
 type Value = ValuePiece | [ValuePiece, ValuePiece];
 
-import { Calendar as CalendarIcon, X as CloseIcon } from 'lucide-react';
+import { Calendar as CalendarIcon, X as CloseIcon, UserCheck, Bell, Contact } from 'lucide-react';
 
 const getStatusColor = (estado?: string) => {
     if (!estado) return '#3498db';
@@ -92,6 +92,7 @@ const AgendaView: React.FC<AgendaViewProps> = ({ defaultPacienteId, isEmbedded =
     const [showManual, setShowManual] = useState(false);
     const [showQuienAgendoModal, setShowQuienAgendoModal] = useState(false);
     const [showMobileCalendar, setShowMobileCalendar] = useState(false);
+    const [isCompact, setIsCompact] = useState(true);
 
     const manualSections: ManualSection[] = [
         {
@@ -527,53 +528,106 @@ const AgendaView: React.FC<AgendaViewProps> = ({ defaultPacienteId, isEmbedded =
                     </div>
                 </div>
 
-                <div className="flex gap-2 flex-wrap justify-center md:justify-end items-center">
-                    <button
-                        onClick={() => setShowManual(true)}
-                        className="bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 p-1.5 rounded-full flex items-center justify-center w-[30px] h-[30px] text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors self-center mr-2"
-                        title="Ayuda / Manual"
-                    >
-                        ?
-                    </button>
+                <div className="flex flex-col items-end gap-2">
+                    <div className="flex items-center gap-2 flex-wrap justify-end">
+                        {/* 1. Botón Manual/Ayuda (?) */}
+                        <button
+                            onClick={() => setShowManual(true)}
+                            className="bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 p-1.5 rounded-full flex items-center justify-center w-[30px] h-[30px] text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors self-center mr-1"
+                            title="Ayuda / Manual"
+                        >
+                            ?
+                        </button>
 
-                    <div className="flex bg-gray-100/80 dark:bg-gray-700/80 rounded-lg p-1 shadow-inner border border-gray-200 dark:border-gray-600 backdrop-blur-sm">
+                        {/* 2. Quién Agendó */}
                         <button
-                            onClick={() => setViewMode('day')}
-                            className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all duration-300 border-none outline-none ${viewMode === 'day' ? 'bg-blue-600 text-white shadow-md transform scale-105' : 'bg-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
+                            onClick={() => setShowQuienAgendoModal(true)}
+                            className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 active:bg-purple-800 text-white rounded-lg font-bold text-xs sm:text-sm shadow-md flex items-center justify-center gap-2 transition-all duration-200 transform hover:scale-105 active:scale-95 hover:-translate-y-0.5 cursor-pointer"
+                            title="Buscar quién agendó"
                         >
-                            Día
+                            <UserCheck size={16} />
+                            <span>Quién Agendó</span>
                         </button>
-                        <button
-                            onClick={() => setViewMode('month')}
-                            className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all duration-300 border-none outline-none ${viewMode === 'month' ? 'bg-blue-600 text-white shadow-md transform scale-105' : 'bg-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
-                        >
-                            Mes
-                        </button>
+
+                        {/* 3. Recordatorios & 4. Contactos */}
+                        {!isEmbedded && (
+                            <>
+                                <button
+                                    onClick={() => navigate('/recordatorio')}
+                                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-lg font-bold text-xs sm:text-sm shadow-md flex items-center justify-center gap-2 transition-all duration-200 transform hover:scale-105 active:scale-95 hover:-translate-y-0.5 cursor-pointer"
+                                    title="Gestionar recordatorios"
+                                >
+                                    <Bell size={16} />
+                                    <span>Recordatorios</span>
+                                </button>
+                                <button
+                                    onClick={() => navigate('/contactos')}
+                                    className="px-3 py-1.5 bg-teal-600 hover:bg-teal-700 active:bg-teal-800 text-white rounded-lg font-bold text-xs sm:text-sm shadow-md flex items-center justify-center gap-2 transition-all duration-200 transform hover:scale-105 active:scale-95 hover:-translate-y-0.5 cursor-pointer"
+                                    title="Ver Contactos"
+                                >
+                                    <Contact size={16} />
+                                    <span>Contactos</span>
+                                </button>
+                            </>
+                        )}
+
+                        <div className="flex bg-gray-100/80 dark:bg-gray-700/80 rounded-lg p-1 shadow-inner border border-gray-200 dark:border-gray-600 backdrop-blur-sm">
+                            <button
+                                onClick={() => setViewMode('day')}
+                                className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all duration-300 border-none outline-none ${viewMode === 'day' ? 'bg-blue-600 text-white shadow-md transform scale-105' : 'bg-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
+                            >
+                                Día
+                            </button>
+                            <button
+                                onClick={() => setViewMode('month')}
+                                className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all duration-300 border-none outline-none ${viewMode === 'month' ? 'bg-blue-600 text-white shadow-md transform scale-105' : 'bg-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
+                            >
+                                Mes
+                            </button>
+                        </div>
+
+                        {/* View Density Switch */}
+                        <div className="flex bg-gray-100/80 dark:bg-gray-700/80 rounded-lg p-1 shadow-inner border border-gray-200 dark:border-gray-600 backdrop-blur-sm">
+                            <button
+                                onClick={() => setIsCompact(true)}
+                                className={`px-2.5 py-1.5 rounded-md text-xs font-bold transition-all duration-300 border-none outline-none ${isCompact ? 'bg-indigo-600 text-white shadow-md' : 'bg-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
+                                title="Ver toda la jornada (8:00 - 20:30) en una sola vista sin desplazar"
+                            >
+                                Ver Todo (8:00-20:30)
+                            </button>
+                            <button
+                                onClick={() => setIsCompact(false)}
+                                className={`px-2.5 py-1.5 rounded-md text-xs font-bold transition-all duration-300 border-none outline-none ${!isCompact ? 'bg-indigo-600 text-white shadow-md' : 'bg-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
+                                title="Vista ampliada con filas grandes"
+                            >
+                                Amplio
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Status Legend (Compact, placed directly below Día/Mes) */}
+                    <div className="flex flex-wrap items-center gap-2.5 px-3 py-1 bg-white/80 dark:bg-gray-800/80 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm no-print">
+                        <span className="text-[10px] font-black text-gray-400 dark:text-gray-400 uppercase tracking-wider mr-0.5">Estados:</span>
+                        {[
+                            { label: 'Agendado', color: '#3498db' },
+                            { label: 'Confirmado', color: '#2ecc71' },
+                            { label: 'Atendido', color: '#95a5a6' },
+                            { label: 'No Asistió', color: '#e67e22' },
+                            { label: 'Cancelado', color: '#e74c3c' }
+                        ].map(s => (
+                            <div key={s.label} className="flex items-center gap-1.5">
+                                <div className="w-2.5 h-2.5 rounded-full shadow-xs" style={{ backgroundColor: s.color }}></div>
+                                <span className="text-[10px] font-bold text-gray-700 dark:text-gray-300 uppercase">{s.label}</span>
+                            </div>
+                        ))}
                     </div>
                 </div>
-            </div>
-
-            {/* Status Legend */}
-            <div className="flex flex-wrap gap-4 mb-4 px-2 py-2 bg-white/50 dark:bg-gray-800/50 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm no-print">
-                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest mr-2 flex items-center">Estados:</span>
-                {[
-                    { label: 'Agendado', color: '#3498db' },
-                    { label: 'Confirmado', color: '#2ecc71' },
-                    { label: 'Atendido', color: '#95a5a6' },
-                    { label: 'No Asistió', color: '#e67e22' },
-                    { label: 'Cancelado', color: '#e74c3c' }
-                ].map(s => (
-                    <div key={s.label} className="flex items-center gap-1.5">
-                        <div className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: s.color }}></div>
-                        <span className="text-[10px] font-bold text-gray-600 dark:text-gray-300 uppercase">{s.label}</span>
-                    </div>
-                ))}
             </div>
 
             <div className="flex flex-col md:flex-row-reverse gap-5 flex-1 overflow-hidden">
 
                 {/* Sidebar Calendar - Hidden on mobile */}
-                <div className="hidden md:flex w-[300px] flex-shrink-0 flex-col gap-5">
+                <div className="hidden md:flex w-[300px] flex-shrink-0 flex-col gap-4 overflow-y-auto">
 
                     {/* Patient Search Widget */}
                     <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm relative border border-gray-100 dark:border-gray-700">
@@ -590,8 +644,19 @@ const AgendaView: React.FC<AgendaViewProps> = ({ defaultPacienteId, isEmbedded =
                                 placeholder="Nombre, Apellido o CI..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full pl-10 pr-3 py-2 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                className="w-full pl-10 pr-8 py-2 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                             />
+                            {searchTerm && (
+                                <button
+                                    type="button"
+                                    onClick={() => setSearchTerm('')}
+                                    className="absolute inset-y-0 right-1.5 my-auto h-6 w-6 flex items-center justify-center bg-transparent hover:bg-gray-200 dark:hover:bg-gray-600 border-none p-0 rounded-full text-gray-400 hover:text-gray-700 dark:text-gray-300 dark:hover:text-white transition-all cursor-pointer outline-none shadow-none"
+                                    style={{ background: 'transparent' }}
+                                    title="Limpiar búsqueda"
+                                >
+                                    <CloseIcon size={16} />
+                                </button>
+                            )}
                         </div>
                         {showPatientResults && filteredPacientes.length > 0 && (
                             <div className="absolute top-full left-0 right-0 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-b-lg shadow-lg z-[9999] max-h-[200px] overflow-y-auto">
@@ -608,6 +673,38 @@ const AgendaView: React.FC<AgendaViewProps> = ({ defaultPacienteId, isEmbedded =
                         )}
                     </div>
 
+                    {/* Date Navigation Controls (Placed directly ABOVE Calendar) */}
+                    <div className="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col gap-2">
+                        <div className="flex items-center justify-between gap-1.5">
+                            <button
+                                onClick={handlePrevDay}
+                                className="px-3 py-1.5 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg font-bold transition-all transform hover:scale-105 active:scale-95 text-xs shadow-sm cursor-pointer"
+                                title={viewMode === 'day' ? 'Día anterior' : 'Mes anterior'}
+                            >
+                                {'<<'}
+                            </button>
+                            <span className="text-xs sm:text-sm font-extrabold text-center text-gray-800 dark:text-white capitalize flex-1 truncate px-1">
+                                {viewMode === 'day' 
+                                    ? formatDate(currentDate) 
+                                    : new Intl.DateTimeFormat('es-ES', { month: 'long', year: 'numeric' }).format(new Date(currentDate + 'T00:00:00'))}
+                            </span>
+                            <button
+                                onClick={handleNextDay}
+                                className="px-3 py-1.5 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg font-bold transition-all transform hover:scale-105 active:scale-95 text-xs shadow-sm cursor-pointer"
+                                title={viewMode === 'day' ? 'Día siguiente' : 'Mes siguiente'}
+                            >
+                                {'>>'}
+                            </button>
+                        </div>
+                        <button
+                            onClick={handleToday}
+                            className="w-full py-1.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-lg font-bold transition-all duration-200 transform hover:scale-102 active:scale-95 text-xs shadow-md flex items-center justify-center cursor-pointer"
+                            title="Ir a hoy"
+                        >
+                            Hoy
+                        </button>
+                    </div>
+
                     <div className="bg-white dark:bg-gray-800 p-2.5 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 calendar-wrapper">
                         <Calendar
                             onChange={handleCalendarChange}
@@ -622,35 +719,9 @@ const AgendaView: React.FC<AgendaViewProps> = ({ defaultPacienteId, isEmbedded =
                 {/* Main Agenda Grid */}
                 <div className="flex-1 flex flex-col bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden min-w-0">
 
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-2 sm:p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 z-10 gap-2">
-                        <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto pb-1 no-scrollbar mr-auto">
-                            <button
-                                onClick={() => setShowQuienAgendoModal(true)}
-                                className="flex-shrink-0 px-3 py-1.5 bg-purple-500 hover:bg-purple-600 text-white rounded font-bold transition-all text-xs sm:text-sm shadow-md"
-                                title="Buscar quién agendó"
-                            >
-                                Quien Agendó
-                            </button>
-                            {!isEmbedded && (
-                                <>
-                                    <button
-                                        onClick={() => navigate('/recordatorio')}
-                                        className="flex-shrink-0 px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white rounded font-bold transition-all text-xs sm:text-sm shadow-md"
-                                        title="Gestionar recordatorios"
-                                    >
-                                        Recordatorio
-                                    </button>
-                                    <button
-                                        onClick={() => navigate('/contactos')}
-                                        className="flex-shrink-0 px-3 py-1.5 bg-teal-500 hover:bg-teal-600 text-white rounded font-bold transition-all text-xs sm:text-sm shadow-md"
-                                        title="Ver Contactos"
-                                    >
-                                        Contactos
-                                    </button>
-                                </>
-                            )}
-                        </div>
-                        <div className="flex items-center gap-1 sm:gap-2 w-full sm:w-auto justify-between sm:justify-end mt-1 sm:mt-0">
+                    {/* Mobile-only date controls bar (Hidden on desktop to maximize vertical space) */}
+                    <div className="md:hidden flex justify-between items-center p-2 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 z-10">
+                        <div className="flex items-center gap-1 sm:gap-2 w-full justify-between">
                             <button
                                 onClick={handleToday}
                                 className="px-2 sm:px-4 py-1.5 bg-blue-500 hover:bg-blue-600 text-white rounded font-bold transition-all transform hover:-translate-y-0.5 text-xs sm:text-sm shadow-md"
@@ -660,7 +731,7 @@ const AgendaView: React.FC<AgendaViewProps> = ({ defaultPacienteId, isEmbedded =
                             </button>
                             <button
                                 onClick={() => setShowMobileCalendar(true)}
-                                className="md:hidden px-2 py-1.5 bg-blue-600 text-white rounded font-bold transition-all shadow-md flex items-center justify-center translate-y-[2px]"
+                                className="px-2 py-1.5 bg-blue-600 text-white rounded font-bold transition-all shadow-md flex items-center justify-center"
                                 title="Abrir Calendario"
                             >
                                 <CalendarIcon size={16} />
@@ -672,7 +743,7 @@ const AgendaView: React.FC<AgendaViewProps> = ({ defaultPacienteId, isEmbedded =
                             >
                                 {'<<'}
                             </button>
-                            <span className="text-sm sm:text-lg font-bold min-w-[90px] sm:min-w-[120px] text-center text-gray-800 dark:text-white capitalize">
+                            <span className="text-xs sm:text-sm font-bold min-w-[90px] text-center text-gray-800 dark:text-white capitalize truncate max-w-[110px]">
                                 {viewMode === 'day' 
                                     ? formatDate(currentDate) 
                                     : new Intl.DateTimeFormat('es-ES', { month: 'long', year: 'numeric' }).format(new Date(currentDate + 'T00:00:00'))}
@@ -692,9 +763,9 @@ const AgendaView: React.FC<AgendaViewProps> = ({ defaultPacienteId, isEmbedded =
                             <table className="min-w-[800px] w-full border-collapse table-fixed">
                                 <thead className="sticky top-0 bg-gray-50 dark:bg-gray-700 z-10 shadow-sm">
                                     <tr>
-                                        <th className="border border-gray-300 dark:border-gray-600 p-2 text-center font-bold text-gray-700 dark:text-gray-200 w-20 text-[10px] sm:text-xs">HORA</th>
+                                        <th className="border border-gray-300 dark:border-gray-600 p-1 text-center font-bold text-gray-700 dark:text-gray-200 w-16 text-[10px]">HORA</th>
                                         {[1, 2, 3, 4, 5].map(num => (
-                                            <th key={num} className="border border-gray-300 dark:border-gray-600 p-2 text-center font-bold text-gray-700 dark:text-gray-200 text-[10px] sm:text-xs">
+                                            <th key={num} className="border border-gray-300 dark:border-gray-600 p-1 text-center font-bold text-gray-700 dark:text-gray-200 text-[10px] sm:text-xs">
                                                 CONSULTORIO #{num}
                                             </th>
                                         ))}
@@ -703,7 +774,7 @@ const AgendaView: React.FC<AgendaViewProps> = ({ defaultPacienteId, isEmbedded =
                                 <tbody>
                                     {timeSlots.map(time => (
                                         <tr key={time}>
-                                            <td className="border border-gray-300 dark:border-gray-600 p-1 text-center bg-gray-50 dark:bg-gray-700 font-bold text-gray-600 dark:text-gray-400 text-[10px] sm:text-xs align-middle">{time}</td>
+                                            <td className={`border border-gray-300 dark:border-gray-600 text-center bg-gray-50 dark:bg-gray-700 font-black text-gray-700 dark:text-gray-300 text-[10px] align-middle ${isCompact ? 'py-0.5 px-0.5' : 'p-1'}`}>{time}</td>
                                             {[1, 2, 3, 4, 5].map(consultorio => {
                                                 const cellKey = `${time}-${consultorio}`;
                                                 if (skipCells.has(cellKey)) {
@@ -721,24 +792,25 @@ const AgendaView: React.FC<AgendaViewProps> = ({ defaultPacienteId, isEmbedded =
 
                                                 const statusColor = appointment ? getStatusColor(appointment.estado) : undefined;
                                                 const isLight = isLightColor(bgColor);
+                                                const cellSlotHeight = isCompact ? '24px' : '40px';
 
                                                 return (
                                                     <td
                                                         key={cellKey}
                                                         rowSpan={rowSpan}
-                                                        className={`border border-gray-300 dark:border-gray-600 p-1 align-top cursor-pointer transition-colors hover:opacity-95 ${!appointment ? 'bg-white dark:bg-gray-800' : ''}`}
+                                                        className={`border border-gray-300 dark:border-gray-600 align-top cursor-pointer transition-colors hover:opacity-95 ${isCompact ? 'p-0.5' : 'p-1'} ${!appointment ? 'bg-white dark:bg-gray-800' : ''}`}
                                                         style={{
                                                             backgroundColor: bgColor,
-                                                            borderLeft: statusColor ? `6px solid ${statusColor}` : undefined,
-                                                            height: appointment ? 'auto' : '40px'
+                                                            borderLeft: statusColor ? `5px solid ${statusColor}` : undefined,
+                                                            height: appointment ? 'auto' : cellSlotHeight
                                                         }}
                                                         onClick={() => handleCellClick(time, consultorio)}
                                                     >
                                                         {appointment && (
-                                                            <div className={`h-full flex flex-col justify-between text-[10px] overflow-hidden pl-2 pr-1 py-1 rounded-sm relative ${isLight ? 'text-gray-900 font-extrabold' : 'text-white drop-shadow-md'}`}>
+                                                            <div className={`h-full flex flex-col justify-between text-[10px] overflow-hidden ${isCompact ? 'px-1 py-0.5' : 'pl-2 pr-1 py-1'} rounded-sm relative ${isLight ? 'text-gray-900 font-extrabold' : 'text-white drop-shadow-md'}`}>
                                                                 
                                                                 {appointment.paciente && (appointment.paciente as any).clasificacion && (
-                                                                    <div className={`absolute top-0 right-0 px-1.5 py-0.5 rounded-bl-md text-[8px] font-black backdrop-blur-sm z-10 border-l border-b border-black/20 shadow-sm ${
+                                                                    <div className={`absolute top-0 right-0 px-1 py-0.2 rounded-bl text-[8px] font-black backdrop-blur-sm z-10 border-l border-b border-black/20 shadow-xs ${
                                                                         (appointment.paciente as any).clasificacion.charAt(0) === 'A' ? 'bg-amber-600/90 text-white' :
                                                                         (appointment.paciente as any).clasificacion.charAt(0) === 'B' ? 'bg-slate-700/90 text-slate-50' :
                                                                             'bg-orange-600/90 text-orange-50'
@@ -748,7 +820,7 @@ const AgendaView: React.FC<AgendaViewProps> = ({ defaultPacienteId, isEmbedded =
                                                                 )}
 
                                                                 <div>
-                                                                    <div className="font-extrabold text-[11px] truncate pr-6 ml-0.5 leading-tight">
+                                                                    <div className={`font-extrabold truncate pr-5 leading-tight ${isCompact ? 'text-[10px]' : 'text-[11px]'}`}>
                                                                         {appointment.paciente ? (
                                                                             <span 
                                                                                 className={`hover:underline cursor-pointer transition-all ${isLight ? 'hover:text-blue-900 text-gray-900 font-black' : 'hover:text-white/80 font-black'}`}
@@ -766,15 +838,15 @@ const AgendaView: React.FC<AgendaViewProps> = ({ defaultPacienteId, isEmbedded =
                                                                             </span>
                                                                         )}
                                                                     </div>
-                                                                    <div className={`truncate mt-0.5 ${isLight ? 'text-gray-800 font-bold' : 'opacity-90'}`}>{appointment.doctor ? `Dr. ${formatPaternoMaternoNombre(appointment.doctor)}` : ''}</div>
+                                                                    <div className={`truncate ${isCompact ? 'text-[9px] mt-0' : 'mt-0.5'} ${isLight ? 'text-gray-800 font-bold' : 'opacity-90'}`}>{appointment.doctor ? `Dr. ${formatPaternoMaternoNombre(appointment.doctor)}` : ''}</div>
                                                                     {appointment.paciente && appointment.tratamiento && (
-                                                                        <div className={`text-[9px] italic mt-0.5 truncate ${isLight ? 'text-gray-800 font-medium' : 'opacity-85'}`}>
+                                                                        <div className={`text-[8.5px] italic truncate ${isCompact ? 'mt-0' : 'mt-0.5'} ${isLight ? 'text-gray-800 font-medium' : 'opacity-85'}`}>
                                                                             {appointment.tratamiento}
                                                                         </div>
                                                                     )}
                                                                 </div>
 
-                                                                <div className="text-[9px] mt-1.5 font-bold uppercase flex items-center gap-1.5 flex-wrap">
+                                                                <div className={`text-[8.5px] font-bold uppercase flex items-center gap-1 flex-wrap ${isCompact ? 'mt-0.5' : 'mt-1.5'}`}>
                                                                     {appointment.paciente && appointment.pacienteId ? (
                                                                         <select
                                                                             value={appointment.estado}
@@ -782,7 +854,7 @@ const AgendaView: React.FC<AgendaViewProps> = ({ defaultPacienteId, isEmbedded =
                                                                                 backgroundColor: getStatusColor(appointment.estado),
                                                                                 color: isLightColor(getStatusColor(appointment.estado)) ? '#111827' : '#ffffff'
                                                                             }}
-                                                                            className="border border-black/30 shadow-md rounded-full px-2.5 py-0.5 cursor-pointer font-black text-[9px] outline-none tracking-wider ring-1 ring-white/50 uppercase"
+                                                                            className="border border-black/30 shadow-xs rounded-full px-2 py-0 cursor-pointer font-black text-[8px] outline-none tracking-wider uppercase"
                                                                             onClick={(e) => e.stopPropagation()}
                                                                             onChange={(e) => handleStatusChange(appointment.id, e.target.value, e)}
                                                                         >
@@ -793,17 +865,17 @@ const AgendaView: React.FC<AgendaViewProps> = ({ defaultPacienteId, isEmbedded =
                                                                             <option value="cancelado" className="bg-[#e74c3c] text-white font-bold">● CANCELADO</option>
                                                                         </select>
                                                                     ) : (
-                                                                        <span className="bg-slate-700/80 text-slate-100 px-2 py-0.5 rounded-full font-extrabold text-[8px] tracking-wider uppercase border border-slate-500/50 shadow-sm">
-                                                                            BLOQUEO / EVENTO
+                                                                        <span className="bg-slate-700/80 text-slate-100 px-1.5 py-0 rounded-full font-extrabold text-[7.5px] tracking-wider uppercase border border-slate-500/50 shadow-xs">
+                                                                            BLOQUEO
                                                                         </span>
                                                                     )}
                                                                     {(appointment.paciente || appointment.pacienteId) && (appointment.fecha || currentDate) >= getLocalDateString() && (
                                                                         <button
                                                                             onClick={(e) => handleEnviarRecordatorioIndividual(appointment.id, e)}
-                                                                            className="ml-1 flex-shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white p-1 rounded-full transition-all shadow-md flex items-center justify-center border border-white/30"
+                                                                            className="ml-0.5 flex-shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white p-0.5 rounded-full transition-all shadow-xs flex items-center justify-center border border-white/30"
                                                                             title="Enviar recordatorio por WhatsApp"
                                                                         >
-                                                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                                                                             </svg>
                                                                         </button>
@@ -932,12 +1004,37 @@ const AgendaView: React.FC<AgendaViewProps> = ({ defaultPacienteId, isEmbedded =
                                 className="dark:bg-gray-800 dark:text-white dark:border-none w-full border-none"
                             />
                         </div>
-                        <div className="p-3 bg-gray-50 dark:bg-gray-800 border-t border-gray-100 dark:border-gray-700 text-center">
+                        <div className="p-3 bg-gray-50 dark:bg-gray-800 border-t border-gray-100 dark:border-gray-700 flex flex-col gap-2">
+                            <button
+                                onClick={() => { setShowMobileCalendar(false); setShowQuienAgendoModal(true); }}
+                                className="w-full py-2 bg-purple-600 hover:bg-purple-700 active:bg-purple-800 text-white rounded-xl font-bold text-xs shadow-md flex items-center justify-center gap-2 transition-all duration-200 transform hover:scale-105 active:scale-95 cursor-pointer"
+                            >
+                                <UserCheck size={16} />
+                                <span>Quién Agendó</span>
+                            </button>
+                            {!isEmbedded && (
+                                <div className="grid grid-cols-2 gap-2">
+                                    <button
+                                        onClick={() => { setShowMobileCalendar(false); navigate('/recordatorio'); }}
+                                        className="w-full py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-xl font-bold text-xs shadow-md flex items-center justify-center gap-1.5 transition-all duration-200 transform hover:scale-105 active:scale-95 cursor-pointer"
+                                    >
+                                        <Bell size={16} />
+                                        <span>Recordatorios</span>
+                                    </button>
+                                    <button
+                                        onClick={() => { setShowMobileCalendar(false); navigate('/contactos'); }}
+                                        className="w-full py-2 bg-teal-600 hover:bg-teal-700 active:bg-teal-800 text-white rounded-xl font-bold text-xs shadow-md flex items-center justify-center gap-1.5 transition-all duration-200 transform hover:scale-105 active:scale-95 cursor-pointer"
+                                    >
+                                        <Contact size={16} />
+                                        <span>Contactos</span>
+                                    </button>
+                                </div>
+                            )}
                             <button
                                 onClick={() => setShowMobileCalendar(false)}
-                                className="w-full py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-xl font-bold hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+                                className="w-full py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-xl font-bold text-xs hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors mt-1"
                             >
-                                Cancelar
+                                Cerrar
                             </button>
                         </div>
                     </div>

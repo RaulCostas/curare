@@ -78,7 +78,8 @@ function App() {
                         <Routes>
                             <Route path="/login" element={<Login />} />
                             <Route path="/" element={<Layout />}>
-                                <Route index element={<Home />} />
+                                <Route index element={<Navigate to="/login" replace />} />
+                                <Route path="/home" element={<Home />} />
 
                                 {/* Agenda */}
                                 <Route element={<ProtectedRoute moduleId="agenda" />}>

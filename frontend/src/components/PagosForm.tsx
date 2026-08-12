@@ -192,6 +192,14 @@ const PagosForm: React.FC<PagosFormProps> = ({ isOpen, onClose, id, defaultPacie
             return;
         }
 
+        const hasRecibo = formData.recibo && formData.recibo.trim() !== '';
+        const hasFactura = formData.factura && formData.factura.trim() !== '';
+
+        if (!hasRecibo && !hasFactura) {
+            Swal.fire('Atención', 'Debe registrar obligatoriamente al menos un número de Recibo o de Factura', 'warning');
+            return;
+        }
+
         const payload: any = {
             pacienteId: pacienteIdToUse,
             fecha: formData.fecha,
@@ -257,8 +265,8 @@ const PagosForm: React.FC<PagosFormProps> = ({ isOpen, onClose, id, defaultPacie
                     <button
                         type="button"
                         onClick={() => setShowManual(true)}
-                        className="bg-gray-100 dark:bg-gray-700 p-1.5 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-                        title="Ayuda"
+                        className="bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 p-1.5 rounded-full flex items-center justify-center w-[30px] h-[30px] text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors cursor-pointer"
+                        title="Ayuda / Manual"
                     >
                         ?
                     </button>
@@ -391,7 +399,9 @@ const PagosForm: React.FC<PagosFormProps> = ({ isOpen, onClose, id, defaultPacie
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300">No. Recibo:</label>
+                            <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300">
+                                No. Recibo <span className="text-red-500 font-bold text-xs">*</span>:
+                            </label>
                             <div className="relative flex-1 w-full">
                                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
                                     <Hash className="h-4 w-4" />
@@ -408,7 +418,9 @@ const PagosForm: React.FC<PagosFormProps> = ({ isOpen, onClose, id, defaultPacie
                         </div>
 
                         <div>
-                            <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300">No. Factura:</label>
+                            <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300">
+                                No. Factura <span className="text-red-500 font-bold text-xs">*</span>:
+                            </label>
                             <div className="relative flex-1 w-full">
                                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
                                     <FileText className="h-4 w-4" />
@@ -506,19 +518,28 @@ const PagosForm: React.FC<PagosFormProps> = ({ isOpen, onClose, id, defaultPacie
                         </div>
                     </div>
 
-                    <div className="pt-4 border-t border-gray-100 dark:border-gray-700 flex justify-start gap-3 mt-6">
+                    <div className="pt-4 border-t border-gray-100 dark:border-gray-700 flex justify-start items-center gap-3 mt-6">
                         <button
                             type="submit"
-                            className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg shadow-md transition-all transform hover:-translate-y-0.5 active:scale-95 text-sm"
+                            className="bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 px-6 rounded-xl shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5 active:scale-95 text-sm flex items-center gap-2 cursor-pointer"
                         >
-                            {id ? 'Actualizar' : 'Guardar'}
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                                <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                                <polyline points="7 3 7 8 15 8"></polyline>
+                            </svg>
+                            <span>{id ? 'Actualizar' : 'Guardar'}</span>
                         </button>
                         <button
                             type="button"
                             onClick={onClose}
-                            className="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-5 rounded-lg shadow-md transition-all transform hover:-translate-y-0.5 active:scale-95 text-sm"
+                            className="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2.5 px-5 rounded-xl shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5 active:scale-95 text-sm flex items-center gap-2 cursor-pointer"
                         >
-                            Cancelar
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                            <span>Cancelar</span>
                         </button>
                     </div>
                 </form>

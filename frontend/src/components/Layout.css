@@ -142,8 +142,65 @@ body {
   padding: 8px;
   color: var(--secondary-color);
   margin-right: 15px;
-  display: none;
-  /* Hidden by default */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+html.dark .hamburger-btn {
+  color: #e0e0e0;
+}
+
+.hamburger-btn:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+html.dark .hamburger-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+@media (min-width: 769px) {
+  .sidebar {
+    transition: width var(--transition-speed), padding var(--transition-speed);
+  }
+
+  .sidebar.collapsed {
+    width: 70px !important;
+    padding: 20px 8px !important;
+  }
+
+  .sidebar.collapsed .sidebar-logo-img {
+    max-height: 38px;
+    max-width: 38px;
+    object-fit: contain;
+  }
+
+  .sidebar.collapsed .close-sidebar-btn {
+    display: none;
+  }
+
+  .sidebar.collapsed .nav-link {
+    justify-content: center !important;
+    padding: 12px 0 !important;
+    text-align: center;
+  }
+
+  .sidebar.collapsed .nav-link > div {
+    justify-content: center !important;
+    width: 100%;
+  }
+
+  .sidebar.collapsed .nav-link svg {
+    margin-right: 0 !important;
+  }
+
+  .sidebar.collapsed .nav-text,
+  .sidebar.collapsed .nav-arrow,
+  .sidebar.collapsed .submenu-list {
+    display: none !important;
+  }
 }
 
 .content-area {
@@ -252,23 +309,9 @@ body {
   color: #ef4444;
 }
 
-/* Sidebar Overlay */
+/* Sidebar Overlay (Mobile only) */
 .sidebar-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background-color: rgba(0, 0, 0, 0.5);
-  z-index: 90;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity var(--transition-speed);
-}
-
-.sidebar-overlay.active {
-  opacity: 1;
-  pointer-events: auto;
+  display: none;
 }
 
 /* Responsive Support */
@@ -286,6 +329,25 @@ body {
 }
 
 @media (max-width: 768px) {
+  .sidebar-overlay {
+    display: block;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 90;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--transition-speed);
+  }
+
+  .sidebar-overlay.active {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
   .dashboard-container {
     flex-direction: column;
   }
@@ -311,7 +373,7 @@ body {
   }
 
   .hamburger-btn {
-    display: block;
+    display: flex;
   }
 
   .user-profile-header {
