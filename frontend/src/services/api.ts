@@ -20,4 +20,21 @@ api.interceptors.request.use((config) => {
     return config;
 });
 
+export const getMediaUrl = (path: string) => {
+    if (!path) return '';
+    if (path.startsWith('data:') || path.startsWith('http://') || path.startsWith('https://')) {
+        return path;
+    }
+
+    const cleanPath = path.replace(/^\/+/, '');
+    const apiBase = (api.defaults.baseURL || '/api').replace(/\/+$/, '');
+
+    if (apiBase.startsWith('/')) {
+        return `${apiBase}/${cleanPath}`;
+    }
+
+    const baseWithoutApi = apiBase.replace(/\/api$/, '');
+    return `${baseWithoutApi}/${cleanPath}`;
+};
+
 export default api;

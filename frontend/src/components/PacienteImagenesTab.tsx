@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import api from '../services/api';
+import api, { getMediaUrl } from '../services/api';
 import Swal from 'sweetalert2';
 import { formatDateLocal } from '../utils/dateUtils';
 import { Image as ImageIcon, Upload, ArrowLeft, Trash2, MessageSquare, ChevronLeft, ChevronRight, X } from 'lucide-react';
@@ -325,8 +325,7 @@ const PacienteImagenesTab: React.FC<PacienteImagenesTabProps> = ({ pacienteId })
                     ) : (
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                             {images.map((img, idx) => {
-                                const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-                                const fullUrl = `${backendUrl}/uploads/proformas/${img.nombre_archivo}`;
+                                const fullUrl = getMediaUrl(`uploads/proformas/${img.nombre_archivo}`);
                                 return (
                                     <div key={img.id} className="group relative bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
                                         <div>
@@ -454,7 +453,7 @@ const PacienteImagenesTab: React.FC<PacienteImagenesTabProps> = ({ pacienteId })
                         onClick={e => e.stopPropagation()}
                     >
                         <img
-                            src={`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/uploads/proformas/${currentImg.nombre_archivo}`}
+                            src={getMediaUrl(`uploads/proformas/${currentImg.nombre_archivo}`)}
                             alt={currentImg.nombre_archivo}
                             style={{
                                 transform: `scale(${zoomLevel}) rotate(${rotation}deg)`,

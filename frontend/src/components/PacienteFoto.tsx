@@ -1,6 +1,7 @@
 import React, { useState, useRef, useCallback } from 'react';
 import Webcam from 'react-webcam';
 import { Camera, Upload, X, User } from 'lucide-react';
+import { getMediaUrl } from '../services/api';
 
 interface PacienteFotoProps {
     foto?: string; // Existing photo filename or URL
@@ -95,7 +96,7 @@ const PacienteFoto: React.FC<PacienteFotoProps> = ({ foto, onPhotoSelected }) =>
                 </div>
             ) : foto ? (
                 <div className="relative w-48 h-48 rounded-full border-4 border-gray-200 dark:border-gray-600 shadow-lg group bg-gray-100 dark:bg-gray-700 flex items-center justify-center overflow-hidden">
-                    <img src={`http://localhost:3000/pacientes/foto/file/${foto}`} alt="Foto paciente" className="w-full h-full object-cover rounded-full" />
+                    <img src={getMediaUrl(`pacientes/foto/file/${foto}`)} alt="Foto paciente" className="w-full h-full object-cover rounded-full" />
                     <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-full flex items-center justify-center">
                         <button type="button" onClick={clearPhoto} className="text-white hover:text-red-400 flex flex-col items-center">
                             <X size={24} />

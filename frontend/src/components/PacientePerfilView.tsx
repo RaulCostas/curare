@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import api from '../services/api';
+import api, { getMediaUrl } from '../services/api';
 import type { Paciente } from '../types';
 import FichaMedicaTab from './FichaMedicaTab';
 import PacienteCitasTab from './PacienteCitasTab';
@@ -209,7 +209,7 @@ const PacientePerfilView: React.FC = () => {
                     <div className="flex items-center gap-4">
                         <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center shadow-inner flex-shrink-0 overflow-hidden">
                             {paciente?.foto ? (
-                                <img src={paciente.foto.startsWith('data:') ? paciente.foto : `${api.defaults.baseURL?.replace(/\/+$/, '') || 'http://localhost:3000'}/pacientes/foto/file/${paciente.foto.replace(/^\/+/, '')}`} alt="Foto" className="w-full h-full object-cover" />
+                                <img src={getMediaUrl(`pacientes/foto/file/${paciente.foto.replace(/^\/+/, '')}`)} alt="Foto" className="w-full h-full object-cover" />
                             ) : (
                                 <User size={28} className="text-white" />
                             )}

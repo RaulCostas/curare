@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../services/api';
+import api, { getMediaUrl } from '../services/api';
 import type { Paciente } from '../types';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
@@ -885,7 +885,7 @@ const PacienteList: React.FC = () => {
                                 <td className="p-3">
                                     <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
                                         {paciente.foto ? (
-                                            <img src={paciente.foto.startsWith('data:') ? paciente.foto : `${api.defaults.baseURL?.replace(/\/+$/, '') || 'http://localhost:3000'}/pacientes/foto/file/${paciente.foto.replace(/^\/+/, '')}`} alt="Foto" className="w-full h-full object-cover" />
+                                            <img src={getMediaUrl(`pacientes/foto/file/${paciente.foto.replace(/^\/+/, '')}`)} alt="Foto" className="w-full h-full object-cover" />
                                         ) : (
                                             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
