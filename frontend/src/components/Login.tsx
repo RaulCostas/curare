@@ -28,19 +28,25 @@ const Login: React.FC = () => {
             navigate('/agenda');
         } catch (error: any) {
             console.error('Login error:', error);
-            if (error.response && error.response.data && error.response.data.message) {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error de Inicio de Sesión',
-                    text: error.response.data.message
-                });
-            } else {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error de Inicio de Sesión',
-                    text: 'Credenciales incorrectas o error de conexión'
-                });
+            let errorMsg = 'No se pudo conectar con el servidor backend o las credenciales no son válidas.';
+            if (error.response?.data?.message) {
+                const rawMsg = error.response.data.message;
+                if (Array.isArray(rawMsg)) {
+                    errorMsg = rawMsg.join(', ');
+                } else if (typeof rawMsg === 'string') {
+                    errorMsg = rawMsg === 'Unauthorized' ? 'Correo o contraseña incorrectos' : rawMsg;
+                } else {
+                    errorMsg = JSON.stringify(rawMsg);
+                }
+            } else if (error.message) {
+                errorMsg = error.message;
             }
+
+            Swal.fire({
+                icon: 'error',
+                title: 'Error de Inicio de Sesión',
+                text: errorMsg
+            });
         }
     };
 

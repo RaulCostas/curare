@@ -13,7 +13,7 @@ export class AuthService {
     async signIn(email: string, pass: string): Promise<{ access_token: string, user: any }> {
         const user = await this.usersService.findOneByEmail(email);
         if (!user) {
-            throw new UnauthorizedException();
+            throw new UnauthorizedException('Correo o contraseña incorrectos');
         }
 
         if (user.estado && user.estado.toLowerCase() !== 'activo') {
@@ -22,7 +22,7 @@ export class AuthService {
 
         const isMatch = await bcrypt.compare(pass, user.password);
         if (!isMatch) {
-            throw new UnauthorizedException();
+            throw new UnauthorizedException('Correo o contraseña incorrectos');
         }
         const payload = { sub: user.id, username: user.email };
         return {
