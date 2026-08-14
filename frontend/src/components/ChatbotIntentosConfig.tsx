@@ -5,7 +5,7 @@ import Swal from 'sweetalert2';
 interface ChatbotIntento {
     id: number;
     keywords: string;
-    action: 'CONSULTAR_CITA' | 'CONSULTAR_SALDO' | 'TEXTO_LIBRE' | 'CONSULTAR_PRESUPUESTO' | 'MENU_PRINCIPAL' | 'CONSULTAR_DIRECCION' | 'CONSULTAR_HORARIO' | 'CONSULTAR_INVENTARIO' | 'CONSULTAR_CITA_HOY';
+    action: 'MENU_PRINCIPAL' | 'CONSULTAR_CITA' | 'CONSULTAR_INVENTARIO' | 'CONSULTAR_CITA_HOY';
     replyTemplate?: string;
     active: boolean;
     target?: 'PACIENTE' | 'USUARIO';
@@ -147,8 +147,8 @@ const ChatbotIntentosConfig: React.FC = () => {
                                             {intento.action}
                                         </span>
                                     </td>
-                                    <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400 max-w-md truncate" title={intento.action === 'TEXTO_LIBRE' ? intento.replyTemplate : ''}>
-                                        {intento.action === 'TEXTO_LIBRE' ? intento.replyTemplate : <span className="text-gray-400 dark:text-gray-500 italic">(Dinámico)</span>}
+                                    <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400 max-w-md truncate" title="">
+                                        <span className="text-gray-400 dark:text-gray-500 italic">(Dinámico)</span>
                                     </td>
                                     <td className="p-3 whitespace-nowrap text-center font-medium">
                                         <div

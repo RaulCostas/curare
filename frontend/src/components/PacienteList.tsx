@@ -10,6 +10,8 @@ import ManualModal, { type ManualSection } from './ManualModal';
 import { formatDate } from '../utils/dateUtils';
 import PacienteImagenesModal from './PacienteImagenesModal';
 import Swal from 'sweetalert2';
+import SignatureModal from './SignatureModal';
+import { CheckCircle } from 'lucide-react';
 
 const PacienteList: React.FC = () => {
     const [pacientes, setPacientes] = useState<Paciente[]>([]);
@@ -21,6 +23,8 @@ const PacienteList: React.FC = () => {
     const [showManual, setShowManual] = useState(false);
     const [showImagenesModal, setShowImagenesModal] = useState(false);
     const [selectedPacienteIdForImages, setSelectedPacienteIdForImages] = useState<number | null>(null);
+    const [showSignatureModal, setShowSignatureModal] = useState(false);
+    const [selectedPacienteIdForSignature, setSelectedPacienteIdForSignature] = useState<number | null>(null);
     const limit = 10;
     const navigate = useNavigate();
 
@@ -440,7 +444,14 @@ const PacienteList: React.FC = () => {
             const fullPaciente = response.data;
             const ficha = fullPaciente.fichaMedica;
 
-
+            let patientSignature = null;
+            try {
+                const firmasRes = await api.get(`/firmas/documento/paciente/${pacientePreview.id}`);
+                const firmas = firmasRes.data || [];
+                patientSignature = firmas.find((s: any) => s.rolFirmante === 'paciente');
+            } catch (e) {
+                console.error('Error al obtener firma del paciente:', e);
+            }
 
             // Helper for boolean checks
             const check = (val: boolean | undefined) => val ? 'SÍ' : 'NO';
@@ -704,9 +715,10 @@ const PacienteList: React.FC = () => {
 
                             <div class="signature-section" style="margin-top: auto; padding-bottom: 1cm; text-align: center;">
                                 <div style="display: inline-block; text-align: center;">
-                                    <div style="border-top: 1px solid #333; width: 250px; margin-bottom: 5px;"></div>
+                                    ${patientSignature ? `<img src="${getMediaUrl(patientSignature.firmaData)}" style="max-height: 55px; margin-bottom: 2px; position: relative; z-index: 1; display: block; margin-left: auto; margin-right: auto;" />` : '<div style="height: 55px; margin-bottom: 2px;"></div>'}
+                                    <div style="border-top: 1px solid #333; width: 250px; margin-bottom: 5px; ${patientSignature ? 'margin-top: -10px;' : ''}"></div>
                                     <div style="font-weight: bold;">Firma del Paciente</div>
-                                    <div style="font-size: 10px;">${fullPaciente.nombre} ${fullPaciente.paterno}</div>
+                                    <div style="font-size: 10px;">${fullPaciente.paterno} ${fullPaciente.materno} ${fullPaciente.nombre}</div>
                                 </div>
                             </div>
                         </div>
@@ -724,11 +736,7 @@ const PacienteList: React.FC = () => {
             doc.write(printContent);
             doc.close();
 
-            // Wait for images to load (like logo) before printing
-            // Wait for images to load (like logo) before printing
-            const logo = doc.querySelector('img');
             let printTriggered = false;
-
             const doPrint = () => {
                 if (printTriggered) return;
                 printTriggered = true;
@@ -750,18 +758,32 @@ const PacienteList: React.FC = () => {
                 }, 2000);
             };
 
-            if (logo) {
-                if (logo.complete) {
-                    doPrint();
-                } else {
-                    logo.onload = doPrint;
-                    logo.onerror = doPrint;
-                }
+            // Wait for all images to load before printing
+            const images = Array.from(doc.querySelectorAll('img'));
+            
+            if (images.length > 0) {
+                let loadedCount = 0;
+                const checkAllLoaded = () => {
+                    loadedCount++;
+                    if (loadedCount === images.length) {
+                        // All images loaded, wait a tiny bit more for rendering
+                        setTimeout(doPrint, 200);
+                    }
+                };
 
-                // Fallback if image fails or takes too long
+                images.forEach((img) => {
+                    if (img.complete) {
+                        checkAllLoaded();
+                    } else {
+                        img.onload = checkAllLoaded;
+                        img.onerror = checkAllLoaded;
+                    }
+                });
+
+                // Fallback if any image fails or takes too long
                 setTimeout(doPrint, 2000);
             } else {
-                doPrint();
+                setTimeout(doPrint, 200);
             }
 
         } catch (error) {
@@ -875,6 +897,7 @@ const PacienteList: React.FC = () => {
                             <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Fecha Nacimiento</th>
                             <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Estado</th>
                             <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Categoría</th>
+                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Firmado</th>
                             <th className="no-print px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Acciones</th>
                         </tr>
                     </thead>
@@ -912,6 +935,29 @@ const PacienteList: React.FC = () => {
                                             <span>{paciente.categoria.sigla}</span>
                                         </div>
                                     ) : '-'}
+                                </td>
+                                <td className="p-3 text-center">
+                                    <div className="flex justify-center items-center gap-2">
+                                        {paciente.tieneFirma ? (
+                                            <div className="flex items-center text-green-600 dark:text-green-400 font-bold" title="Paciente Firmado">
+                                                <CheckCircle size={20} className="mr-1" />
+                                                <span className="text-xs">Firmado</span>
+                                            </div>
+                                        ) : (
+                                            <button
+                                                onClick={() => {
+                                                    setSelectedPacienteIdForSignature(paciente.id);
+                                                    setShowSignatureModal(true);
+                                                }}
+                                                className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-md transition-all transform hover:-translate-y-0.5"
+                                                title="Firmar Paciente"
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                                </svg>
+                                            </button>
+                                        )}
+                                    </div>
                                 </td>
                                 <td className="no-print p-3 flex gap-2">
                                     <button
@@ -985,6 +1031,18 @@ const PacienteList: React.FC = () => {
                 onClose={() => setShowImagenesModal(false)}
                 pacienteId={selectedPacienteIdForImages}
             />
+            {showSignatureModal && selectedPacienteIdForSignature && (
+                <SignatureModal
+                    isOpen={showSignatureModal}
+                    onClose={() => setShowSignatureModal(false)}
+                    documentoId={selectedPacienteIdForSignature}
+                    tipoDocumento="paciente"
+                    rolFirmante="paciente"
+                    onSuccess={() => {
+                        fetchPacientes();
+                    }}
+                />
+            )}
         </div>
     );
 };

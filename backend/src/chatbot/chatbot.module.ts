@@ -17,6 +17,7 @@ import { WhatsappSession } from './entities/whatsapp-session.entity';
 
 import { PersonalModule } from '../personal/personal.module';
 import { EspecialidadModule } from '../especialidad/especialidad.module';
+import { DatosCentroDentalModule } from '../datos_centro_dental/datos_centro_dental.module';
 
 @Module({
     imports: [
@@ -29,7 +30,8 @@ import { EspecialidadModule } from '../especialidad/especialidad.module';
         DoctorsModule,
         InventarioModule,
         PersonalModule,
-        EspecialidadModule
+        EspecialidadModule,
+        DatosCentroDentalModule
     ],
     controllers: [ChatbotController, ChatbotIntentosController],
     providers: [ChatbotService, ChatbotIntentosService, ChatbotPdfService],

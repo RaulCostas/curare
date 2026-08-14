@@ -211,6 +211,7 @@ export interface Paciente {
     estado: string;
     foto?: string;
     fichaMedica?: FichaMedica;
+    tieneFirma?: boolean;
 }
 
 export interface PersonalTipo {

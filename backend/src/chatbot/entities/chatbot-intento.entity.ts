@@ -1,13 +1,8 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 
 export enum ChatbotAction {
-    CONSULTAR_CITA = 'CONSULTAR_CITA',
-    CONSULTAR_SALDO = 'CONSULTAR_SALDO',
-    CONSULTAR_PRESUPUESTO = 'CONSULTAR_PRESUPUESTO',
-    TEXTO_LIBRE = 'TEXTO_LIBRE',
     MENU_PRINCIPAL = 'MENU_PRINCIPAL',
-    CONSULTAR_DIRECCION = 'CONSULTAR_DIRECCION',
-    CONSULTAR_HORARIO = 'CONSULTAR_HORARIO',
+    CONSULTAR_CITA = 'CONSULTAR_CITA',
     CONSULTAR_INVENTARIO = 'CONSULTAR_INVENTARIO',
     CONSULTAR_CITA_HOY = 'CONSULTAR_CITA_HOY'
 }
@@ -23,7 +18,7 @@ export class ChatbotIntento {
     @Column({
         type: 'enum',
         enum: ChatbotAction,
-        default: ChatbotAction.TEXTO_LIBRE
+        default: ChatbotAction.MENU_PRINCIPAL
     })
     action: ChatbotAction;
 

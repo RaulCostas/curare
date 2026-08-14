@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import api from '../services/api';
+import api, { getMediaUrl } from '../services/api';
 import Swal from 'sweetalert2';
 import type { Paciente } from '../types';
 import jsPDF from 'jspdf';
@@ -10,6 +10,8 @@ import { formatDateSpanish, formatDateUTC, formatCurrency, numberToWords, format
 import ManualModal, { type ManualSection } from './ManualModal';
 import PlanTratamientoModal from './PlanTratamientoModal';
 import { FileText, Plus, X } from 'lucide-react';
+import SignatureModal from './SignatureModal';
+import { CheckCircle } from 'lucide-react';
 
 interface Proforma {
     id: number;
@@ -22,6 +24,7 @@ interface Proforma {
     detalles: any[];
     usuarioAprobado?: { name: string };
     fecha_aprobado?: string;
+    tieneFirma?: boolean;
 }
 
 const PresupuestoList: React.FC = () => {
@@ -35,6 +38,10 @@ const PresupuestoList: React.FC = () => {
     const [budgetsWithRelations, setBudgetsWithRelations] = useState<Set<number>>(new Set());
     const [completedBudgets, setCompletedBudgets] = useState<Set<number>>(new Set());
     const [historiaList, setHistoriaList] = useState<any[]>([]);
+
+    // Signature Modal State
+    const [showSignatureModal, setShowSignatureModal] = useState(false);
+    const [selectedProformaIdForSignature, setSelectedProformaIdForSignature] = useState<number | null>(null);
 
     // Pagination
     const [currentPage, setCurrentPage] = useState(1);
@@ -331,37 +338,41 @@ const PresupuestoList: React.FC = () => {
         }
     };
 
-
-
     const generatePDF = async (proforma: Proforma, action: 'print' | 'download' | 'blob', includePaymentInfo: boolean = true) => {
+        // Show loading alert because we are not opening a window immediately
+        if (action !== 'blob') {
+            Swal.fire({
+                title: 'Generando PDF...',
+                text: 'Por favor espere',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+        }
+
         const doc = new jsPDF();
+        
+        let patientSignatureBase64 = null;
+        try {
+            const firmasRes = await api.get(`/firmas/documento/presupuesto/${proforma.id}`);
+            const firmas = firmasRes.data || [];
+            const patientSignature = firmas.find((s: any) => s.rolFirmante === 'paciente');
+            if (patientSignature && patientSignature.firmaData) {
+                const url = getMediaUrl(patientSignature.firmaData);
+                const response = await fetch(url);
+                const blob = await response.blob();
+                patientSignatureBase64 = await new Promise<string>((resolve) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => resolve(reader.result as string);
+                    reader.readAsDataURL(blob);
+                });
+            }
+        } catch (e) {
+            console.error('Error al cargar firma:', e);
+        }
 
-
-
-        // [Same Date/Salutation/Table Logic - lines 131-216 are unchanged, but I need to be careful not to delete them if I'm not replacing them. 
-        // Wait, replace_file_content needs me to replace the function definition if I change the signature.
-        // I'll start the replacement at the function definition line.]
-
-        // ... (I will reuse the existing logic but I need to provide the full function or a chunk).
-        // It's a large function (lines 128-299).
-        // I will do two edits.
-        // 1. Update signature and Payment System logic.
-        // 2. Update the buttons in the table.
-
-        // This tool call is for step 1: Update signature and logic? 
-        // No, I can't easily change signature without rewriting the whole function body in replace_file_content or using specific targeted replaces if possible.
-        // I'll change the signature first.
-
-        // Actually, I'll update the whole `generatePDF` opening and the specific section 7.
-        // But `replace_file_content` works best with contiguous blocks.
-        // Use `multi_replace_file_content`? I don't have that tool enabled for me? I do! `multi_replace_file_content`.
-        // Ah, checked tools... yes I have `multi_replace_file_content`.
-
-        // I will use `replace_file_content` for the signature change and payment section?
-        // No, signature is line 128. Section 7 is line 256. They are far apart.
-        // I'll use `multi_replace_file_content`.
-
-
+        const patientName = (formatFullName(paciente) || `${paciente?.nombre || ''} ${paciente?.paterno || ''} ${paciente?.materno || ''}`).trim() || 'Paciente';
 
         // 1. Date (Right aligned)
         doc.setFontSize(10);
@@ -374,8 +385,7 @@ const PresupuestoList: React.FC = () => {
         doc.text('Señor(a):', 14, 35);
 
         doc.setFont('helvetica', 'bold');
-        const patientName = `${paciente?.paterno || ''} ${paciente?.materno || ''} ${paciente?.nombre || ''}`.trim().toUpperCase();
-        doc.text(patientName, 14, 40);
+        doc.text(patientName.toUpperCase(), 14, 40);
 
         doc.setFont('helvetica', 'normal');
         doc.text('De mi consideración:', 14, 50);
@@ -600,8 +610,15 @@ const PresupuestoList: React.FC = () => {
         doc.text('Dr. JOSE ARTIEDA S.', 35, sigY + 5);
 
         // Right Signature
+        if (patientSignatureBase64) {
+            doc.addImage(patientSignatureBase64, 'PNG', 130, sigY - 20, 40, 20);
+        }
         doc.line(120, sigY, 180, sigY);
         doc.text(patientName, 125, sigY + 5);
+
+        if (action !== 'blob') {
+            if (Swal.isVisible()) Swal.close();
+        }
 
         if (action === 'print') {
             const blobUrl = doc.output('bloburl');
@@ -702,6 +719,7 @@ const PresupuestoList: React.FC = () => {
                             <th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider no-print">Enviar</th>
                             <th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider no-print">Imprimir</th>
                             <th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider no-print">Exportar</th>
+                            <th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Firmado</th>
                             <th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider no-print">Acciones</th>
                         </tr>
                     </thead>
@@ -724,10 +742,10 @@ const PresupuestoList: React.FC = () => {
                                     <td className="px-5 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                                         {proforma.usuario?.name || 'Sistema'}
                                     </td>
-                                    <td className="px-5 py-4 whitespace-nowrap text-sm font-bold text-gray-800 dark:text-gray-200">
+                                    <td className="px-5 py-4 whitespace-nowrap text-sm font-semibold text-gray-800 dark:text-white">
                                         {formatCurrency(proforma.total)}
                                     </td>
-                                    <td className="px-5 py-4 whitespace-nowrap text-center">
+                                    <td className="px-5 py-4 whitespace-nowrap text-center text-sm">
                                         <span
                                             className={`px-3 py-1 rounded-full text-xs font-bold shadow-sm cursor-help ${proforma.aprobado
                                                 ? 'bg-gradient-to-r from-green-400 to-green-600 text-white'
@@ -807,6 +825,29 @@ const PresupuestoList: React.FC = () => {
                                             </button>
                                         </div>
                                     </td>
+                                    <td className="p-3 text-center">
+                                        <div className="flex justify-center items-center gap-2">
+                                            {proforma.tieneFirma ? (
+                                                <div className="flex items-center text-green-600 dark:text-green-400 font-bold" title="Presupuesto Firmado">
+                                                    <CheckCircle size={20} className="mr-1" />
+                                                    <span className="text-xs">Firmado</span>
+                                                </div>
+                                            ) : (
+                                                <button
+                                                    onClick={() => {
+                                                        setSelectedProformaIdForSignature(proforma.id);
+                                                        setShowSignatureModal(true);
+                                                    }}
+                                                    className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-md transition-all transform hover:-translate-y-0.5"
+                                                    title="Firmar Presupuesto"
+                                                >
+                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                                    </svg>
+                                                </button>
+                                            )}
+                                        </div>
+                                    </td>
                                     <td className="px-5 py-4 whitespace-nowrap text-center no-print">
                                         <div className="flex gap-2 justify-center">
                                             <button
@@ -856,7 +897,7 @@ const PresupuestoList: React.FC = () => {
                         })}
                         {filteredProformas.length === 0 && (
                             <tr>
-                                <td colSpan={8} className="px-5 py-10 text-center text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800">
+                                <td colSpan={11} className="px-5 py-10 text-center text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800">
                                     <div className="flex flex-col items-center justify-center">
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mb-2 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -885,6 +926,22 @@ const PresupuestoList: React.FC = () => {
                 title="Manual de Usuario - Presupuestos"
                 sections={manualSections}
             />
+
+            {showSignatureModal && selectedProformaIdForSignature && (
+                <SignatureModal
+                    isOpen={showSignatureModal}
+                    onClose={() => {
+                        setShowSignatureModal(false);
+                        setSelectedProformaIdForSignature(null);
+                    }}
+                    tipoDocumento="presupuesto"
+                    documentoId={selectedProformaIdForSignature}
+                    rolFirmante="paciente"
+                    onSuccess={() => {
+                        fetchProformas(Number(id));
+                    }}
+                />
+            )}
 
             <PlanTratamientoModal
                 isOpen={!!viewProforma}

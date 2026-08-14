@@ -109,11 +109,21 @@ export class ProformasService {
   }
 
   async findAllByPaciente(pacienteId: number) {
-    return this.proformaRepository.find({
+    const proformas = await this.proformaRepository.find({
       where: { pacienteId },
       relations: ['usuario', 'usuarioAprobado', 'detalles', 'detalles.arancel'],
       order: { numero: 'ASC' }
     });
+
+    for (const proforma of proformas) {
+      const firmas = await this.proformaRepository.manager.query(
+        `SELECT id FROM firmas_digitales WHERE "tipoDocumento" = 'presupuesto' AND "documentoId" = $1 LIMIT 1`,
+        [proforma.id]
+      );
+      (proforma as any).tieneFirma = firmas.length > 0;
+    }
+
+    return proformas;
   }
 
   async findOne(id: number) {

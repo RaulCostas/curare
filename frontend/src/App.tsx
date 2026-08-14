@@ -17,6 +17,7 @@ import PagosLaboratoriosList from './components/PagosLaboratoriosList';
 import SeguimientoTrabajoComponent from './components/SeguimientoTrabajo';
 import PacienteList from './components/PacienteList';
 import PacienteCreateView from './components/PacienteCreateView';
+import RegistroPacienteView from './components/RegistroPacienteView';
 import PacientePerfilView from './components/PacientePerfilView';
 import CategoriaPacienteList from './components/CategoriaPacienteList';
 import PersonalTipoList from './components/PersonalTipoList';
@@ -77,6 +78,7 @@ function App() {
                     <ThemeProvider>
                         <Routes>
                             <Route path="/login" element={<Login />} />
+                            <Route path="/registro-paciente" element={<RegistroPacienteView />} />
                             <Route path="/" element={<Layout />}>
                                 <Route index element={<Navigate to="/home" replace />} />
                                 <Route path="/home" element={<Home />} />

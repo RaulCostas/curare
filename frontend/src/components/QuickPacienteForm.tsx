@@ -113,7 +113,7 @@ const QuickPacienteForm: React.FC<QuickPacienteFormProps> = ({ isOpen, onClose, 
                 <form onSubmit={handleSubmit}>
                     <div className="grid gap-3">
                         <div>
-                            <label className="block mb-1 font-bold text-sm text-gray-700 dark:text-gray-300">Nombre:</label>
+                            <label className="block mb-1 font-bold text-sm text-gray-700 dark:text-gray-300">Nombre <span className="text-red-500">*</span>:</label>
                             <input
                                 type="text"
                                 name="nombre"
@@ -125,7 +125,7 @@ const QuickPacienteForm: React.FC<QuickPacienteFormProps> = ({ isOpen, onClose, 
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div>
-                                <label className="block mb-1 font-bold text-sm text-gray-700 dark:text-gray-300">Paterno:</label>
+                                <label className="block mb-1 font-bold text-sm text-gray-700 dark:text-gray-300">Paterno <span className="text-red-500">*</span>:</label>
                                 <input
                                     type="text"
                                     name="paterno"
@@ -136,18 +136,19 @@ const QuickPacienteForm: React.FC<QuickPacienteFormProps> = ({ isOpen, onClose, 
                                 />
                             </div>
                             <div>
-                                <label className="block mb-1 font-bold text-sm text-gray-700 dark:text-gray-300">Materno:</label>
+                                <label className="block mb-1 font-bold text-sm text-gray-700 dark:text-gray-300">Materno <span className="text-red-500">*</span>:</label>
                                 <input
                                     type="text"
                                     name="materno"
                                     value={formData.materno}
                                     onChange={handleChange}
+                                    required
                                     className="w-full p-2 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 />
                             </div>
                         </div>
                         <div>
-                            <label className="block mb-1 font-bold text-sm text-gray-700 dark:text-gray-300">Celular:</label>
+                            <label className="block mb-1 font-bold text-sm text-gray-700 dark:text-gray-300">Celular <span className="text-red-500">*</span>:</label>
                             <input
                                 type="text"
                                 name="celular"
@@ -159,7 +160,7 @@ const QuickPacienteForm: React.FC<QuickPacienteFormProps> = ({ isOpen, onClose, 
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div>
-                                <label className="block mb-1 font-bold text-sm text-gray-700 dark:text-gray-300">Fecha Nacimiento:</label>
+                                <label className="block mb-1 font-bold text-sm text-gray-700 dark:text-gray-300">Fecha Nacimiento <span className="text-red-500">*</span>:</label>
                                 <input
                                     type="date"
                                     name="fecha_nacimiento"

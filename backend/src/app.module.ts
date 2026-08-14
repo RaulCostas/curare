@@ -136,6 +136,7 @@ import { ConsentimientosPlantillasModule } from './consentimientos-plantillas/co
 import { ConsentimientoPlantilla } from './consentimientos-plantillas/entities/consentimiento-plantilla.entity';
 import { ConsentimientosPacientesModule } from './consentimientos-pacientes/consentimientos-pacientes.module';
 import { ConsentimientoPaciente } from './consentimientos-pacientes/entities/consentimiento-paciente.entity';
+import { FirmaDigital } from './firmas/entities/firma-digital.entity';
 
 @Module({
   imports: [
@@ -214,6 +215,7 @@ import { ConsentimientoPaciente } from './consentimientos-pacientes/entities/con
         Informe,
         ConsentimientoPlantilla,
         ConsentimientoPaciente,
+        FirmaDigital,
       ],
       synchronize: false,
     }),

@@ -19,6 +19,7 @@ import { ChatbotIntento } from './entities/chatbot-intento.entity';
 import { WhatsappSession } from './entities/whatsapp-session.entity';
 import { ChatbotPdfService } from './chatbot-pdf.service';
 import { InventarioService } from '../inventario/inventario.service';
+import { DatosCentroDentalService } from '../datos_centro_dental/datos_centro_dental.service';
 import pino from 'pino';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -57,6 +58,7 @@ export class ChatbotService implements OnModuleInit, OnModuleDestroy {
         private readonly inventarioService: InventarioService,
         private readonly personalService: PersonalService,
         private readonly especialidadService: EspecialidadService,
+        private readonly datosCentroDentalService: DatosCentroDentalService,
         private readonly dataSource: DataSource,
         @InjectRepository(WhatsappSession)
         private readonly whatsappSessionRepository: Repository<WhatsappSession>,
@@ -459,11 +461,6 @@ export class ChatbotService implements OnModuleInit, OnModuleDestroy {
         const isOption = options.includes(currentOption);
         const isSessionValid = menuSession && (Date.now() - menuSession.timestamp < 300000);
 
-        if (currentOption === '0' || currentOption === 'menu' || currentOption === 'inicio') {
-            await this.sendMenu(remoteJid);
-            return;
-        }
-
         if (isOption && isSessionValid && menuSession.type) {
             await this.handleMenuOption(remoteJid, currentOption, actor, menuSession.type);
             return;
@@ -473,30 +470,27 @@ export class ChatbotService implements OnModuleInit, OnModuleDestroy {
             try {
                 switch (matchedIntent.action) {
                     case 'MENU_PRINCIPAL' as any:
-                        await this.sendMenu(remoteJid);
+                        if (actor) {
+                            await this.sendSubmenuRegistered(remoteJid, actor);
+                        } else {
+                            await this.sendSubmenuNew(remoteJid);
+                        }
                         break;
                     case 'CONSULTAR_CITA_HOY':
                         if (isDoctor) {
                             await this.checkDoctorAppointmentsToday(actor, remoteJid);
                         }
                         break;
-                    case 'TEXTO_LIBRE':
-                        if (matchedIntent.replyTemplate) {
-                            await this.sendMessage(remoteJid, matchedIntent.replyTemplate);
-                        }
-                        break;
+
                     case 'CONSULTAR_INVENTARIO' as any:
                         await this.handleConsultarInventario(remoteJid, normalizedText);
                         break;
                     default:
-                        await this.sendMenu(remoteJid);
                         break;
                 }
             } catch (error) {
                 console.error('[Chatbot] Error in matchedIntent:', error);
             }
-        } else {
-            await this.sendMenu(remoteJid);
         }
     }
 
@@ -519,9 +513,9 @@ export class ChatbotService implements OnModuleInit, OnModuleDestroy {
         const nombre = actor ? `${actor.nombre || ''} ${actor.paterno || ''}`.trim() : 'estimado paciente';
         const message = `¡Qué gusto atenderte de nuevo ${nombre}! 😊 ¿En qué te podemos ayudar?\n\n` +
             `*Menú:*\n` +
-            `*1* 🗓️ Agendar o reprogramar mi cita de control/tratamiento\n` +
+            `*1* 🗓️ Agendar o reprogramar mi cita\n` +
             `*2* 🦷 Consultar sobre mi tratamiento actual\n` +
-            `*3* 💳 Consultar mi saldo o plan de pago\n` +
+            `*3* 💳 Consultar mi estado de cuentas\n` +
             `*4* 📅 Consultar mis citas programadas\n\n` +
             `Por favor, responde con el número de la opción elegida.`;
 
@@ -531,7 +525,7 @@ export class ChatbotService implements OnModuleInit, OnModuleDestroy {
 
     async sendSubmenuNew(remoteJid: string) {
         const session = this.getSession();
-        const message = `¡Bienvenido a CURARE! 🦷 Nos encantará cuidar de tu salud bucodental. ¿En qué te podemos ayudar?\n\n` +
+        const message = `¡Bienvenido a CURARE CENTRO DENTAL! 🦷 Nos encantará cuidar de tu salud bucodental. ¿En qué te podemos ayudar?\n\n` +
             `*Menú:*\n` +
             `*1* 📍 Dirección y ubicación del consultorio\n` +
             `*2* 🕒 Horarios de atención\n` +
@@ -566,8 +560,7 @@ export class ChatbotService implements OnModuleInit, OnModuleDestroy {
                 await this.sendMessage(remoteJid, 'Un asistente o doctor revisará tu tratamiento y te responderá en breve.');
             } else if (option === '3') {
                 if (actor) {
-                    const reply = await this.getPresupuestoSummary(actor);
-                    await this.sendMessage(remoteJid, reply);
+                    await this.sendEstadoCuentasPdfs(remoteJid, actor);
                 }
             } else if (option === '4') {
                 if (actor) {
@@ -577,9 +570,37 @@ export class ChatbotService implements OnModuleInit, OnModuleDestroy {
             session.userSessions.delete(remoteJid);
         } else if (sessionType === 'submenu_new') {
             if (option === '1') {
-                await this.sendMessage(remoteJid, '📍 Nos encontramos en la clínica. Te esperamos.');
+                const cds = await this.datosCentroDentalService.findAll();
+                const cd = cds && cds.length > 0 ? cds[0] : null;
+                if (cd) {
+                    if (cd.direccion) {
+                        await this.sendMessage(remoteJid, cd.direccion);
+                    }
+                    if (cd.latitud && cd.longitud) {
+                        try {
+                            await session.sock.sendMessage(remoteJid, {
+                                location: {
+                                    degreesLatitude: Number(cd.latitud),
+                                    degreesLongitude: Number(cd.longitud),
+                                }
+                            });
+                        } catch (e) {
+                            console.error('[Chatbot] Error enviando ubicación:', e);
+                        }
+                    } else {
+                        await this.sendMessage(remoteJid, '📍 Nos encontramos en la clínica. Te esperamos.');
+                    }
+                } else {
+                    await this.sendMessage(remoteJid, '📍 Nos encontramos en la clínica. Te esperamos.');
+                }
             } else if (option === '2') {
-                await this.sendMessage(remoteJid, '🕒 Nuestro horario de atención es de Lunes a Viernes.');
+                const cds = await this.datosCentroDentalService.findAll();
+                const cd = cds && cds.length > 0 ? cds[0] : null;
+                if (cd && cd.horarios) {
+                    await this.sendMessage(remoteJid, cd.horarios);
+                } else {
+                    await this.sendMessage(remoteJid, '🕒 Nuestro horario de atención es de Lunes a Viernes.');
+                }
             } else if (option === '3') {
                 await this.sendMessage(remoteJid, 'Por favor déjanos tu nombre completo y el motivo de consulta para agendar tu primera cita.');
             }
@@ -587,58 +608,59 @@ export class ChatbotService implements OnModuleInit, OnModuleDestroy {
         }
     }
 
-    async getPresupuestoSummary(paciente: any): Promise<string> {
+    async sendEstadoCuentasPdfs(remoteJid: string, paciente: any): Promise<void> {
         const proformas = await this.proformasService.findAllByPaciente(paciente.id);
         const pagos = await this.pagosService.findAllByPaciente(paciente.id);
+        const historia = await this.historiaClinicaService.findAllByPaciente(paciente.id);
 
         if (!proformas || proformas.length === 0) {
-            return "No tiene presupuestos o planes registrados en el sistema.";
+            await this.sendMessage(remoteJid, "No tiene presupuestos registrados en el sistema / .");
+            return;
         }
 
-        const report = new Map<number, { numero: number, ejecutado: number, pagado: number }>();
+        const proformaGroups = proformas.map(p => {
+            const h = historia.filter((hist: any) => hist.proformaId === p.id);
+            const pg = pagos.filter((pago: any) => pago.proformaId === p.id);
+            
+            const totalEjecutado = h
+                .filter((hist: any) => hist.estadoTratamiento === 'terminado')
+                .reduce((acc, curr) => acc + Number(curr.precio || 0), 0);
+            
+            const totalPagado = pg.reduce((acc, curr) => acc + Number(curr.monto || 0), 0);
+            const diff = totalEjecutado - totalPagado;
+            const saldoPendiente = diff > 0 ? diff : 0;
 
-        proformas.forEach(p => {
-            const executedItemsTotal = p.detalles
-                ? p.detalles
-                    .filter((d: any) => d.posible === true)
-                    .reduce((sum: number, d: any) => sum + Number(d.total || 0), 0)
-                : 0;
-
-            report.set(p.id, {
-                numero: p.numero,
-                ejecutado: executedItemsTotal,
-                pagado: 0
-            });
+            return {
+                proforma: p,
+                historias: h,
+                pagos: pg,
+                totalEjecutado,
+                totalPagado,
+                saldoPendiente
+            };
         });
 
-        pagos.forEach(p => {
-            if (p.proformaId && report.has(p.proformaId)) {
-                const current = report.get(p.proformaId);
-                if (current) {
-                    current.pagado += Number(p.monto);
-                }
+        // Send a PDF for each proforma independently
+        for (const group of proformaGroups) {
+            try {
+                const pdfBuffer = await this.pdfService.generateEstadoCuentaPdf(paciente, [group]);
+                const base64 = pdfBuffer.toString('base64');
+                await this.sendPdf(remoteJid, base64, `Estado_Cuenta_Plan_${group.proforma.numero || group.proforma.id}.pdf`);
+            } catch (err) {
+                console.error('[Chatbot] Error generating PDF for proforma:', group.proforma.id, err);
             }
-        });
-
-        let messageParts: string[] = [];
-
-        report.forEach((data) => {
-            const saldo = data.ejecutado - data.pagado;
-            const saldoFavor = saldo < 0 ? Math.abs(saldo) : 0;
-            const saldoContra = saldo > 0 ? saldo : 0;
-
-            messageParts.push(`Plan de Tratamiento #${data.numero}
-- Total Plan: ${data.ejecutado}
-- Total Pagado: ${data.pagado}
-- Saldo a Favor: ${saldoFavor}
-- Saldo en contra: ${saldoContra}`);
-        });
-
-        if (messageParts.length === 0) {
-            return "No tiene presupuestos registrados en el sistema.";
         }
 
-        return messageParts.join('\n\n');
+        // Send QR
+        try {
+            const cds = await this.datosCentroDentalService.findAll();
+            const cd = cds && cds.length > 0 ? cds[0] : null;
+            if (cd && cd.qr) {
+                await this.sendMedia(remoteJid, cd.qr, 'Aquí le compartimos nuestro código QR para transferencias.');
+            }
+        } catch (err) {
+            console.error('[Chatbot] Error sending QR:', err);
+        }
     }
 
     async checkAppointments(paciente: any, remoteJid: string) {
@@ -656,13 +678,18 @@ export class ChatbotService implements OnModuleInit, OnModuleDestroy {
             const replies = futureAppointments.map(app => {
                 const timeParts = app.hora.split(':');
                 const timeFormatted = timeParts.length >= 2 ? `${timeParts[0]}:${timeParts[1]}` : app.hora;
-                return `- 📅 *${app.fecha}* 🕒 *${timeFormatted}*`;
+                const dateParts = app.fecha.toString().split('-');
+                let dateFormatted = app.fecha;
+                if (dateParts.length === 3) {
+                    dateFormatted = `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`; // dd/mm/aaaa
+                }
+                return `📅 ${dateFormatted} 🕒 ${timeFormatted}`;
             });
 
-            const reply = `Hola *${paciente.nombre}*, tienes las siguientes citas programadas:\n\n${replies.join('\n')}`;
+            const reply = `Hola ${paciente.nombre}, tienes las siguientes citas programadas:\n\n${replies.join('\n')}`;
             await this.sendMessage(remoteJid, reply);
         } else {
-            const reply = `Hola *${paciente.nombre}*, no encontré citas futuras agendadas.`;
+            const reply = `Hola ${paciente.nombre}, no encontré citas futuras agendadas.`;
             await this.sendMessage(remoteJid, reply);
         }
     }

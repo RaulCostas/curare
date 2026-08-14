@@ -1,5 +1,6 @@
 import { Controller, Get, Post, Body, Param, Delete, Request, UseGuards, Query } from '@nestjs/common';
 import { FirmasService } from './firmas.service';
+// TRIGGER HOT RELOAD 2
 import { CreateFirmaDto } from './dto/create-firma.dto';
 import { VerifyFirmaDto } from './dto/verify-firma.dto';
 
@@ -15,6 +16,15 @@ export class FirmasController {
     create(@Body() createFirmaDto: CreateFirmaDto, @Request() req) {
         const usuarioId = req.user?.id || createFirmaDto['usuarioId']; // Fallback for testing
         return this.firmasService.create(createFirmaDto, usuarioId);
+    }
+
+    @Post('test2')
+    async test2(@Body() body: any) {
+        try {
+            return await this.firmasService.create(body, 1);
+        } catch (e: any) {
+            return { error: e.message, stack: e.stack };
+        }
     }
 
     /**

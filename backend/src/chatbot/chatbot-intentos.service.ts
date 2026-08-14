@@ -26,41 +26,12 @@ export class ChatbotIntentosService implements OnModuleInit {
         console.log('Checking default chatbot intents...');
         const defaults = [
             {
-                keywords: 'saldo, deuda, cuenta, cuanto debo, estado de cuenta',
-                action: 'CONSULTAR_SALDO',
-                active: true,
-                target: 'PACIENTE'
-            },
-            {
-                keywords: 'cita, cuando, turno, hora, agendar',
-                action: 'CONSULTAR_CITA',
-                active: true,
-                target: 'PACIENTE'
-            },
-            {
-                keywords: 'presupuesto, proforma, cotizacion, plan, precio',
-                action: 'CONSULTAR_PRESUPUESTO',
-                active: true,
-                target: 'PACIENTE'
-            },
-            {
                 keywords: 'hola, buenos dias, buenas tardes, buenas noches, info, menu, menú',
                 action: 'MENU_PRINCIPAL',
                 active: true,
                 target: 'PACIENTE'
             },
-            {
-                keywords: 'ubicacion, direccion, donde, mapa, sucursal',
-                action: 'CONSULTAR_DIRECCION',
-                active: true,
-                target: 'PACIENTE'
-            },
-            {
-                keywords: 'horario, atencion, abierto, cierran',
-                action: 'CONSULTAR_HORARIO',
-                active: true,
-                target: 'PACIENTE'
-            },
+
 
             {
                 keywords: 'citas, pacientes agendados, mi agenda',
@@ -93,12 +64,6 @@ export class ChatbotIntentosService implements OnModuleInit {
             if (!exists) {
                 console.log(`Seeding missing intent: ${d.action} (${d.target})`);
                 await this.intentoRepository.save(this.intentoRepository.create(d as any));
-            } else {
-                if (exists.keywords !== d.keywords) {
-                    console.log(`Updating keywords for intent: ${d.action} (${d.target})`);
-                    exists.keywords = d.keywords;
-                    await this.intentoRepository.save(exists);
-                }
             }
         }
 
@@ -107,7 +72,19 @@ export class ChatbotIntentosService implements OnModuleInit {
             await this.intentoRepository.delete({ keywords: k });
         }
 
+        const obsoleteActions = [
+            'CONSULTAR_SALDO',
+            'CONSULTAR_PRESUPUESTO',
+            'CONSULTAR_DIRECCION',
+            'CONSULTAR_HORARIO',
+            'TEXTO_LIBRE'
+        ];
+        for (const action of obsoleteActions) {
+            await this.intentoRepository.delete({ action: action as any });
+        }
+
         await this.intentoRepository.delete({ action: 'CONSULTAR_INVENTARIO' as any, target: 'PACIENTE' as any });
+        await this.intentoRepository.delete({ action: 'CONSULTAR_CITA' as any, target: 'PACIENTE' as any });
     }
 
     async removeDuplicates() {

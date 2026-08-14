@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, ILike } from 'typeorm';
 import { Paciente } from './entities/paciente.entity';
@@ -20,6 +20,21 @@ export class PacientesService {
 
     async create(createPacienteDto: CreatePacienteDto): Promise<Paciente> {
         console.log('Creating Paciente with DTO:', createPacienteDto);
+        
+        // Verificar duplicados por Nombre + Paterno + Materno + Fecha Nacimiento
+        const existingPaciente = await this.pacientesRepository.findOne({
+            where: {
+                nombre: ILike(createPacienteDto.nombre),
+                paterno: ILike(createPacienteDto.paterno),
+                materno: ILike(createPacienteDto.materno),
+                fecha_nacimiento: createPacienteDto.fecha_nacimiento
+            }
+        });
+
+        if (existingPaciente) {
+            throw new ConflictException('Ya existe un paciente con el mismo nombre y fecha de nacimiento registrado en el sistema.');
+        }
+
         const paciente = this.pacientesRepository.create(createPacienteDto);
         return await this.pacientesRepository.save(paciente);
     }
@@ -50,6 +65,15 @@ export class PacientesService {
 
         const [data, total] = await queryBuilder.getManyAndCount();
 
+        // Check if each patient has a signature
+        for (const paciente of data) {
+            const firmas = await this.pacientesRepository.manager.query(
+                `SELECT id FROM firmas_digitales WHERE "tipoDocumento" = 'paciente' AND "documentoId" = $1 LIMIT 1`,
+                [paciente.id]
+            );
+            (paciente as any).tieneFirma = firmas.length > 0;
+        }
+
         return {
             data,
             total,
@@ -73,6 +97,28 @@ export class PacientesService {
         const paciente = await this.findOne(id);
         if (!paciente) {
             throw new NotFoundException(`Paciente #${id} not found`);
+        }
+
+        // Si estamos actualizando datos personales, verificamos que no colisione con otro paciente
+        if (
+            updatePacienteDto.nombre || 
+            updatePacienteDto.paterno || 
+            updatePacienteDto.materno || 
+            updatePacienteDto.fecha_nacimiento
+        ) {
+            const existingPaciente = await this.pacientesRepository.findOne({
+                where: {
+                    nombre: ILike(updatePacienteDto.nombre || paciente.nombre),
+                    paterno: ILike(updatePacienteDto.paterno || paciente.paterno),
+                    materno: ILike(updatePacienteDto.materno || paciente.materno),
+                    fecha_nacimiento: updatePacienteDto.fecha_nacimiento || paciente.fecha_nacimiento
+                }
+            });
+
+            // Si existe otro paciente (diferente ID) con los mismos datos
+            if (existingPaciente && existingPaciente.id !== id) {
+                throw new ConflictException('Ya existe otro paciente con el mismo nombre y fecha de nacimiento registrado en el sistema.');
+            }
         }
 
         // Merge main patient data

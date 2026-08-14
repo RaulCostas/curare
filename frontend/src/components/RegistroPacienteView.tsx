@@ -13,7 +13,7 @@ import { getLocalDateString } from '../utils/dateUtils';
 
 
 
-const PacienteCreateView: React.FC = () => {
+const RegistroPacienteView: React.FC = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const { id } = useParams<{ id: string }>();
@@ -131,6 +131,11 @@ const PacienteCreateView: React.FC = () => {
     const [countryCode, setCountryCode] = useState('+591');
     const [localCelular, setLocalCelular] = useState('');
     const [categorias, setCategorias] = useState<any[]>([]);
+
+    const [currentStep, setCurrentStep] = useState<'form' | 'signature' | 'success'>('form');
+    const [newPatientId, setNewPatientId] = useState<number | null>(null);
+    const [isEnglish, setIsEnglish] = useState(false);
+    const t = (es: string, en: string) => isEnglish ? en : es;
     const [selectedMusicas, setSelectedMusicas] = useState<number[]>([]);
     const [selectedTelevisiones, setSelectedTelevisiones] = useState<number[]>([]);
     const [selectedFotoFile, setSelectedFotoFile] = useState<File | Blob | null>(null);
@@ -354,21 +359,16 @@ const PacienteCreateView: React.FC = () => {
                     timer: 1500,
                     showConfirmButton: false
                 });
+                navigate('/pacientes');
             } else {
                 const response = await api.post('/pacientes', payload);
                 const newId = response.data.id || response.data.paciente?.id || response.data.data?.id;
                 
                 await uploadFotoReq(newId);
-
-                await Swal.fire({
-                    icon: 'success',
-                    title: 'Paciente Creado',
-                    text: 'Paciente creado exitosamente',
-                    timer: 1500,
-                    showConfirmButton: false
-                });
+                
+                setNewPatientId(newId);
+                setCurrentStep('signature');
             }
-            navigate('/pacientes');
         } catch (error: any) {
             console.error('Error saving paciente:', error);
             const errorMessage = error.response?.data?.message || 'Error al guardar el paciente';
@@ -380,29 +380,70 @@ const PacienteCreateView: React.FC = () => {
         }
     };
 
-    return (
-        <div className="content-card max-w-[700px] mx-auto text-gray-800 dark:text-white">
-            <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-gray-800 dark:text-white flex items-center gap-3">
-                    <span className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg text-blue-600 dark:text-blue-300">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                        </svg>
-                    </span>
-                    {isEditing ? 'Editar Paciente' : 'Nuevo Paciente'}
-                </h2>
-                <button
-                    type="button"
-                    onClick={() => setShowManual(true)}
-                    className="bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 p-1.5 rounded-full flex items-center justify-center w-[30px] h-[30px] text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-                    title="Ayuda / Manual"
-                >
-                    ?
-                </button>
+    if (currentStep === 'signature') {
+        return (
+            <div className="dark min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
+                <div className="bg-white dark:bg-gray-800 dark:text-white p-8 rounded-2xl shadow-xl max-w-lg w-full text-center">
+                    <SignatureModal 
+                        isOpen={true} 
+                        onClose={() => setCurrentStep('success')} 
+                        onSuccess={() => {
+                            Swal.fire({
+                                icon: 'success',
+                                title: t('¡Registro Exitoso!', 'Registration Successful!'),
+                                text: t('El paciente ha sido registrado correctamente.', 'The patient has been successfully registered.'),
+                                confirmButtonColor: '#3085d6',
+                            }).then(() => {
+                                setCurrentStep('success');
+                            });
+                        }} 
+                        documentoId={newPatientId || 0}
+                        tipoDocumento="paciente"
+                        rolFirmante="paciente"
+                    />
+                </div>
+            </div>
+        );
+    }
 
+    if (currentStep === 'success') {
+        return (
+            <div className="dark min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
+                <div className="bg-white dark:bg-gray-800 dark:text-white p-8 rounded-2xl shadow-xl max-w-lg w-full text-center space-y-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-20 h-20 text-green-500 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <h2 className="text-3xl font-black text-gray-800">{t('¡Gracias por registrarte!', 'Thank you for registering!')}</h2>
+                    <p className="text-gray-600 text-lg">
+                        {t('Tus datos han sido enviados correctamente a CURARE Centro Dental. Nuestro equipo te contactará pronto si es necesario.', 'Your data has been successfully sent to CURARE Centro Dental. Our team will contact you soon if necessary.')}
+                    </p>
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="dark min-h-screen bg-gray-50 dark:bg-gray-900 py-10 px-4 w-full flex items-center justify-center">
+            <div className="max-w-4xl w-full mx-auto space-y-4 bg-white dark:bg-gray-800 dark:text-white p-4 md:p-8 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 relative">
+            <button 
+                onClick={(e) => { e.preventDefault(); setIsEnglish(!isEnglish); }}
+                className="absolute right-4 top-4 flex items-center justify-center w-10 h-10 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 rounded-full shadow-sm border border-gray-300 dark:border-gray-600 transition-colors z-10"
+                title="Change Language"
+            >
+                <span className="text-sm font-bold text-gray-700 dark:text-gray-300">
+                    {isEnglish ? 'EN' : 'ES'}
+                </span>
+            </button>
+            <div className="flex flex-col items-center justify-center gap-2 py-4 w-full text-center mb-6">
+                <h2 className="text-3xl font-black text-gray-800 dark:text-white uppercase tracking-tight mt-4">
+                    CURARE CENTRO DENTAL
+                </h2>
+                <p className="text-gray-500 dark:text-gray-400 text-lg font-medium">
+                    {t('Registro de Nuevo Paciente', 'New Patient Registration')}
+                </p>
             </div>
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-6 leading-relaxed italic bg-blue-50/30 dark:bg-blue-900/10 p-4 rounded-lg">
-                "Toda la información proporcionada en este documento es confidencial y de uso exclusivo de la clínica para fines terapéuticos."
+                {t("Toda la información proporcionada en este documento es confidencial y de uso exclusivo de CURARE para fines terapéuticos.", "All information provided in this document is confidential and for the exclusive use of CURARE for therapeutic purposes.")}
             </p>
 
             <form onSubmit={handleSubmit} className="grid gap-5">
@@ -444,7 +485,7 @@ const PacienteCreateView: React.FC = () => {
                         {/* Row 2: Nombres & Celular */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300">Nombres <span className="text-red-500">*</span>:</label>
+                                <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300">{t('Nombres', 'First Name')} <span className="text-red-500">*</span>:</label>
                                 <div className="relative flex-1 w-full">
                                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
                                         <FileText className="h-4 w-4" />
@@ -453,7 +494,7 @@ const PacienteCreateView: React.FC = () => {
                                 </div>
                             </div>
                             <div>
-                                <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300">Celular <span className="text-red-500">*</span>:</label>
+                                <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300">{t('Celular', 'Phone Number')} <span className="text-red-500">*</span>:</label>
                                 <div className="flex gap-2">
                                     <select value={countryCode} onChange={(e) => setCountryCode(e.target.value)} className="w-[80px] px-1 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                                         {countryCodes.map(c => <option key={c.code} value={c.code}>{c.label}</option>)}
@@ -466,7 +507,7 @@ const PacienteCreateView: React.FC = () => {
                         {/* Row 3: Domicilio, Telf. Domicilio */}
                         <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
                             <div className="md:col-span-8">
-                                <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300">Domicilio:</label>
+                                <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300">{t('Domicilio', 'Address')}:</label>
                                 <div className="relative flex-1 w-full">
                                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
                                         <MapPin className="h-4 w-4" />
@@ -475,7 +516,7 @@ const PacienteCreateView: React.FC = () => {
                                 </div>
                             </div>
                             <div className="md:col-span-4">
-                                <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300">Telf. Domicilio:</label>
+                                <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300">{t('Telf. Domicilio', 'Home Phone')}:</label>
                                 <div className="relative flex-1 w-full">
                                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
                                         <Phone className="h-4 w-4" />
@@ -488,7 +529,7 @@ const PacienteCreateView: React.FC = () => {
                         {/* Row 4: Casilla, Email */}
                         <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
                             <div className="md:col-span-3">
-                                <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300">Casilla:</label>
+                                <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300">{t('Casilla', 'PO Box')}:</label>
                                 <div className="relative flex-1 w-full">
                                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
                                         <Clipboard className="h-4 w-4" />
@@ -497,7 +538,7 @@ const PacienteCreateView: React.FC = () => {
                                 </div>
                             </div>
                             <div className="md:col-span-9">
-                                <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300">Email:</label>
+                                <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300">{t('Email', 'Email')}:</label>
                                 <div className="relative flex-1 w-full">
                                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
                                         <Mail className="h-4 w-4" />
@@ -510,7 +551,7 @@ const PacienteCreateView: React.FC = () => {
                         {/* Row 5: Profesión, Estado Civil */}
                         <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
                             <div className="md:col-span-8">
-                                <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300">Profesión u ocupación:</label>
+                                <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300">{t('Profesión u ocupación', 'Profession or Occupation')}:</label>
                                 <div className="relative flex-1 w-full">
                                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
                                         <Briefcase className="h-4 w-4" />
@@ -519,7 +560,7 @@ const PacienteCreateView: React.FC = () => {
                                 </div>
                             </div>
                             <div className="md:col-span-4">
-                                <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300">Estado Civil:</label>
+                                <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300">{t('Estado Civil', 'Marital Status')}:</label>
                                 <select name="estado_civil" value={formData.estado_civil} onChange={handleChange} className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-2 focus:outline-none focus:ring-blue-500">
                                     <option value="">-- Seleccione --</option>
                                     <option value="Soltero/a">Soltero/a</option>
@@ -535,7 +576,7 @@ const PacienteCreateView: React.FC = () => {
                         {/* Row 6: Dirección de Oficina, Telf. Oficina */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300">Dirección de Oficina:</label>
+                                <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300">{t('Dirección de Oficina', 'Office Address')}:</label>
                                 <div className="relative flex-1 w-full">
                                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
                                         <MapPin className="h-4 w-4" />
@@ -544,7 +585,7 @@ const PacienteCreateView: React.FC = () => {
                                 </div>
                             </div>
                             <div>
-                                <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300">Telf. Oficina:</label>
+                                <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300">{t('Telf. Oficina', 'Office Phone')}:</label>
                                 <div className="relative flex-1 w-full">
                                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
                                         <Phone className="h-4 w-4" />
@@ -557,7 +598,7 @@ const PacienteCreateView: React.FC = () => {
                         {/* Row 7: Fax, Casilla Postal */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300">Fax:</label>
+                                <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300">{t('Fax', 'Fax')}:</label>
                                 <div className="relative flex-1 w-full">
                                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
                                         <Phone className="h-4 w-4" />
@@ -566,7 +607,7 @@ const PacienteCreateView: React.FC = () => {
                                 </div>
                             </div>
                             <div>
-                                <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300">Casilla Postal:</label>
+                                <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300">{t('Casilla Postal', 'Postal Box')}:</label>
                                 <div className="relative flex-1 w-full">
                                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
                                         <Clipboard className="h-4 w-4" />
@@ -579,7 +620,7 @@ const PacienteCreateView: React.FC = () => {
                         {/* Row 8: Fecha Nacimiento, Edad, Sexo */}
                         <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
                             <div className="md:col-span-5">
-                                <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300">Fecha Nacimiento <span className="text-red-500">*</span>:</label>
+                                <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300">{t('Fecha Nacimiento', 'Date of Birth')} <span className="text-red-500">*</span>:</label>
                                 <div className="relative flex-1 w-full">
                                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
                                         <Calendar className="h-4 w-4" />
@@ -588,14 +629,14 @@ const PacienteCreateView: React.FC = () => {
                                 </div>
                             </div>
                             <div className="md:col-span-3">
-                                <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300">Edad:</label>
+                                <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300">{t('Edad', 'Age')}:</label>
                                 <div className="flex items-center gap-2">
                                     <input type="text" readOnly value={calculateAge(formData.fecha_nacimiento) || ''} className="w-full px-4 py-2 bg-gray-100 dark:bg-gray-600 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm rounded-lg cursor-not-allowed" />
                                     <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Años</span>
                                 </div>
                             </div>
                             <div className="md:col-span-4">
-                                <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300">Sexo:</label>
+                                <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300">{t('Sexo', 'Gender')}:</label>
                                 <div className="flex items-center gap-4 h-[38px]">
                                     <label className="flex items-center gap-2 cursor-pointer">
                                         <input type="radio" name="sexo" value="Masculino" checked={formData.sexo?.toLowerCase() === 'masculino' || formData.sexo?.toLowerCase() === 'm'} onChange={handleChange} className="text-blue-600 focus:ring-blue-500" />
@@ -614,7 +655,7 @@ const PacienteCreateView: React.FC = () => {
                         {/* Row 9: Seguro Médico, Póliza */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300 uppercase">Seguro Médico:</label>
+                                <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300 uppercase">{t('Seguro Médico', 'Health Insurance')}:</label>
                                 <div className="relative flex-1 w-full">
                                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
                                         <Shield className="h-4 w-4" />
@@ -623,7 +664,7 @@ const PacienteCreateView: React.FC = () => {
                                 </div>
                             </div>
                             <div>
-                                <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300">Póliza No.:</label>
+                                <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300">{t('Póliza No.', 'Policy No.')}:</label>
                                 <div className="relative flex-1 w-full">
                                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
                                         <FileText className="h-4 w-4" />
@@ -637,7 +678,7 @@ const PacienteCreateView: React.FC = () => {
 
                         {/* Row 10: Recomendado por */}
                         <div>
-                            <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300">Recomendado por:</label>
+                            <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300">{t('Recomendado por', 'Recommended by')}:</label>
                             <div className="relative flex-1 w-full">
                                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
                                     <User className="h-4 w-4" />
@@ -649,7 +690,7 @@ const PacienteCreateView: React.FC = () => {
                         {/* Row 11: Responsable, Parentesco */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
                             <div>
-                                <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300">Responsable familia <span className="text-xs text-gray-500 font-normal">(Si es menor de edad)</span>:</label>
+                                <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300">{t('Responsable familia', 'Family Guardian')}<span className="text-xs text-gray-500 font-normal">(Si es menor de edad)</span>:</label>
                                 <div className="relative flex-1 w-full">
                                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
                                         <User className="h-4 w-4" />
@@ -658,7 +699,7 @@ const PacienteCreateView: React.FC = () => {
                                 </div>
                             </div>
                             <div>
-                                <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300">Parentesco:</label>
+                                <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300">{t('Parentesco', 'Relationship')}:</label>
                                 <div className="relative flex-1 w-full">
                                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
                                         <User className="h-4 w-4" />
@@ -692,66 +733,11 @@ const PacienteCreateView: React.FC = () => {
 
                         <hr className="my-2 border-gray-200 dark:border-gray-700" />
 
-                        {/* Row 13: Categoría, Nomenclatura */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
-                            <div>
-                                <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300 uppercase">Categoría:</label>
-                                <select name="idCategoria" value={(formData as any).idCategoria || 0} onChange={handleChange} className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-2 focus:outline-none focus:ring-blue-500 cursor-pointer">
-                                    <option value={0}>-- Sin Categoría --</option>
-                                    {categorias.map((c: any) => (
-                                        <option key={c.id} value={c.id}>{c.sigla} - {c.descripcion}</option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300">Nomenclatura:</label>
-                                <div className="relative flex-1 w-full">
-                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
-                                        <FileText className="h-4 w-4" />
-                                    </div>
-                                    <input type="text" name="nomenclatura" value={formData.nomenclatura} onChange={handleChange} placeholder="Ej: 12-A" className="w-full pl-9 pr-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-2 focus:outline-none focus:ring-blue-500" />
-                                </div>
-                            </div>
                         </div>
-
-                        {/* Row 14: Tipo Paciente */}
-                        <div>
-                            <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300 uppercase">Tipo de Paciente:</label>
-                            <div className="flex items-center gap-6 py-2">
-                                <label className="flex items-center gap-2 cursor-pointer">
-                                    <input type="radio" name="tipo_paciente" value="NORMAL" checked={formData.tipo_paciente === 'NORMAL' || formData.tipo_paciente === 'Particular'} onChange={() => setFormData(p => ({ ...p, tipo_paciente: 'NORMAL' }))} className="text-blue-600 focus:ring-blue-500" />
-                                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300 uppercase">Normal</span>
-                                </label>
-                                <label className="flex items-center gap-2 cursor-pointer">
-                                    <input type="radio" name="tipo_paciente" value="ESPECIAL" checked={formData.tipo_paciente === 'ESPECIAL' || formData.tipo_paciente === 'Seguro'} onChange={() => setFormData(p => ({ ...p, tipo_paciente: 'ESPECIAL' }))} className="text-blue-600 focus:ring-blue-500" />
-                                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300 uppercase">Especial</span>
-                                </label>
-                            </div>
-                        </div>
-
-                        {/* Row 15: Forma de Pago */}
-                        <div className="mt-4 bg-blue-900 dark:bg-blue-900/60 p-2 rounded-t-lg">
-                            <h4 className="text-white text-center font-bold italic uppercase tracking-widest">Forma de Pago</h4>
-                        </div>
-                        <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-b-lg border border-t-0 border-gray-200 dark:border-gray-600 flex gap-6">
-                            <label className="flex items-center gap-2 cursor-pointer">
-                                <input type="radio" name="forma_pago" value="Efectivo" checked={(formData as any).forma_pago === 'Efectivo'} onChange={handleChange} className="text-blue-600 focus:ring-blue-500 w-4 h-4" />
-                                <span className="text-sm font-medium text-gray-600 dark:text-gray-300 uppercase">Efectivo</span>
-                            </label>
-                            <label className="flex items-center gap-2 cursor-pointer">
-                                <input type="radio" name="forma_pago" value="Tarjeta de Crédito" checked={(formData as any).forma_pago === 'Tarjeta de Crédito'} onChange={handleChange} className="text-blue-600 focus:ring-blue-500 w-4 h-4" />
-                                <span className="text-sm font-medium text-gray-600 dark:text-gray-300 uppercase">Tarjeta de Crédito</span>
-                            </label>
-                            <label className="flex items-center gap-2 cursor-pointer">
-                                <input type="radio" name="forma_pago" value="Cheque" checked={(formData as any).forma_pago === 'Cheque'} onChange={handleChange} className="text-blue-600 focus:ring-blue-500 w-4 h-4" />
-                                <span className="text-sm font-medium text-gray-600 dark:text-gray-300 uppercase">Cheque</span>
-                            </label>
-                        </div>
-                    </div>
                 </fieldset>
 
                 <fieldset className="border border-gray-300 dark:border-gray-700 p-4 rounded-lg mt-4 bg-gray-50 dark:bg-gray-800">
-                    <legend className="font-bold px-2 text-gray-700 dark:text-gray-300">Ficha Médica</legend>
+                    <legend className="font-bold px-2 text-gray-700 dark:text-gray-300">{t('Ficha Médica', 'Medical Form')}</legend>
                     <div className="flex flex-col gap-6">
                         
                         {/* LEFT COLUMN */}
@@ -780,7 +766,7 @@ const PacienteCreateView: React.FC = () => {
                             </div>
 
                             <div className="flex flex-col gap-1 items-start">
-                                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 shrink-0">Observaciones :</label>
+                                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 shrink-0">{t('Observaciones', 'Observations')}:</label>
                                 <div className="relative flex-1 w-full">
                                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
                                         <Activity className="h-4 w-4" />
@@ -790,7 +776,7 @@ const PacienteCreateView: React.FC = () => {
                             </div>
 
                             <div className="flex flex-col gap-1 items-start">
-                                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 shrink-0">Nombre del Médico de Cabecera :</label>
+                                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 shrink-0">{t('Nombre del Médico de Cabecera', 'Primary Care Physician Name')}:</label>
                                 <div className="relative flex-1 w-full">
                                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
                                         <User className="h-4 w-4" />
@@ -800,7 +786,7 @@ const PacienteCreateView: React.FC = () => {
                             </div>
 
                             <div className="flex flex-col gap-1">
-                                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Indique si sufre actualmente de alguna enfermedad :</label>
+                                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('Indique si sufre actualmente de alguna enfermedad', 'Indicate if you currently suffer from any disease')}:</label>
                                 <div className="relative flex-1 w-full">
                                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
                                         <Activity className="h-4 w-4" />
@@ -965,51 +951,24 @@ const PacienteCreateView: React.FC = () => {
                     />
                 </div>
 
-                <div className="mt-4 flex justify-end">
-                    <button
-                        type="button"
-                        onClick={handleSaveAndSign}
-                        className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-8 text-lg rounded-lg flex items-center gap-2 transform hover:-translate-y-0.5 transition-all shadow-md"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                        </svg>
-                        {isEditing ? 'Firmar Ficha' : 'Guardar y Firmar Ficha'}
-                    </button>
-                </div>
+                
 
 
                 {/* Footer Buttons */}
-                <div className="flex justify-start gap-3 mt-8 p-5 border-t border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 rounded-b-xl -mx-6 -mb-6">
+                <div className="flex justify-center mt-8 p-5 border-t border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 rounded-b-xl -mx-6 -mb-6">
                     <button
                         type="submit"
-                        className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg flex items-center gap-2 transform hover:-translate-y-0.5 transition-all shadow-md"
+                        className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-12 text-xl rounded-lg flex items-center gap-3 transform hover:-translate-y-0.5 transition-all shadow-lg w-full md:w-auto justify-center"
                     >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
                             <polyline points="17 21 17 13 7 13 7 21"></polyline>
                             <polyline points="7 3 7 8 15 8"></polyline>
                         </svg>
-                        {isEditing ? 'Actualizar' : 'Guardar'}
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => navigate('/pacientes')}
-                        className="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition-all transform hover:-translate-y-0.5 flex items-center gap-2"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                        </svg>
-                        Cancelar
+                        {t('Guardar', 'Save')}
                     </button>
                 </div>
             </form>
-            <ManualModal
-                isOpen={showManual}
-                onClose={() => setShowManual(false)}
-                title="Manual - Pacientes"
-                sections={manualSections}
-            />
 
             {/* Signature Modal */}
             {showSignatureModal && id && (
@@ -1025,7 +984,8 @@ const PacienteCreateView: React.FC = () => {
                 />
             )}
         </div>
+        </div>
     );
 };
 
-export default PacienteCreateView;
+export default RegistroPacienteView;
