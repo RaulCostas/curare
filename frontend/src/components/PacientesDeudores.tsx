@@ -5,7 +5,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import Pagination from './Pagination';
 import ManualModal, { type ManualSection } from './ManualModal';
-import { DollarSign, X, ArrowRightLeft, AlertTriangle, Edit3, Undo2 } from 'lucide-react';
+import { DollarSign, X, ArrowRightLeft, AlertTriangle, Edit3, Undo2, Check } from 'lucide-react';
 
 interface Deudor {
     proformaId: number;
@@ -846,12 +846,6 @@ const PacientesDeudores: React.FC = () => {
                                     Paciente: <strong className="text-gray-800 dark:text-gray-200">{selectedDeudor.paciente}</strong> | Presupuesto: <strong>#{selectedDeudor.numeroPresupuesto}</strong>
                                 </p>
                             </div>
-                            <button
-                                onClick={() => { setSelectedDeudor(null); setActionType(null); }}
-                                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                            >
-                                <X size={20} />
-                            </button>
                         </div>
 
                         {(actionType === 'traspasar' || actionType === 'observar') ? (
@@ -877,22 +871,28 @@ const PacientesDeudores: React.FC = () => {
                             <button
                                 type="button"
                                 onClick={() => { setSelectedDeudor(null); setActionType(null); }}
-                                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 rounded-xl text-xs font-bold transition-all"
+                                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 rounded-xl text-xs font-bold transition-all transform hover:-translate-y-0.5 active:scale-95 flex items-center gap-2"
                                 disabled={savingAction}
                             >
+                                <X size={16} />
                                 Cancelar
                             </button>
                             <button
                                 type="button"
                                 onClick={handleSaveAction}
-                                className={`px-4 py-2 text-white rounded-xl text-xs font-bold shadow transition-all ${
+                                className={`px-4 py-2 text-white rounded-xl text-xs font-bold shadow transition-all transform hover:-translate-y-0.5 active:scale-95 flex items-center gap-2 ${
                                     actionType === 'traspasar' ? 'bg-orange-600 hover:bg-orange-700' :
                                     actionType === 'observar' ? 'bg-amber-600 hover:bg-amber-700' :
                                     'bg-blue-600 hover:bg-blue-700'
                                 }`}
                                 disabled={savingAction}
                             >
-                                {savingAction ? 'Guardando...' : 'Confirmar'}
+                                {savingAction ? 'Guardando...' : (
+                                    <>
+                                        <Check size={16} />
+                                        Confirmar
+                                    </>
+                                )}
                             </button>
                         </div>
                     </div>

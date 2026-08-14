@@ -49,7 +49,7 @@ const SeguimientoClinicoModal: React.FC<SeguimientoClinicoModalProps> = ({
                         <ClipboardList className="text-blue-500 flex-shrink-0" size={26} />
                         <div>
                             <h3 className="text-xl font-bold text-gray-800 dark:text-white">
-                                Seguimiento Clínico e Historial Completo
+                                Historia Clínica Completa
                             </h3>
                             {/* 4. Paterno Materno Nombre */}
                             <p className="text-base font-extrabold text-blue-600 dark:text-blue-400 mt-0.5">
@@ -168,7 +168,7 @@ const SeguimientoClinicoModal: React.FC<SeguimientoClinicoModalProps> = ({
                                                             </div>
                                                             {item.observaciones && (
                                                                 <div className="mt-2 text-xs text-gray-700 dark:text-gray-300 leading-relaxed bg-blue-50/50 dark:bg-blue-900/10 p-3 rounded-lg border border-blue-100/50 dark:border-blue-800/30">
-                                                                    <span className="font-bold text-gray-500 dark:text-gray-400 block text-[10px] uppercase mb-0.5">Observaciones:</span>
+                                                                    <span className="font-bold text-gray-500 dark:text-gray-400 block text-[10px] uppercase mb-0.5">Descripción del Tratamiento Realizado:</span>
                                                                     {item.observaciones}
                                                                 </div>
                                                             )}

@@ -33,9 +33,17 @@ interface ChatProviderProps {
     children: ReactNode;
 }
 
-// Hardcoded for now, or use an env variable
-// Hardcoded for now, or use an env variable
-const SOCKET_URL = 'http://localhost:3000';
+const getSocketUrl = () => {
+    if (import.meta.env.VITE_API_URL) {
+        return import.meta.env.VITE_API_URL.replace(/\/api$/, '');
+    }
+    if (typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
+        return window.location.origin;
+    }
+    return 'http://localhost:3000';
+};
+
+const SOCKET_URL = getSocketUrl();
 
 export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     const [socket, setSocket] = useState<Socket | null>(null);
