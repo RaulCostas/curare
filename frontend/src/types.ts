@@ -286,6 +286,7 @@ export interface HistoriaClinica {
     proforma?: Proforma;
     resaltar: boolean;
     casoClinico: boolean;
+    control?: boolean;
     pagado: string;
     precio?: number;
     createdAt: string;
@@ -535,6 +536,7 @@ export interface HistoriaClinica {
     proforma?: Proforma;
     resaltar: boolean;
     casoClinico: boolean;
+    control?: boolean;
     pagado: string;
     precio?: number;
     createdAt: string;
