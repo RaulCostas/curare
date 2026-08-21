@@ -3,6 +3,7 @@ import { ArancelService } from './arancel.service';
 import { CreateArancelDto } from './dto/create-arancel.dto';
 import { UpdateArancelDto } from './dto/update-arancel.dto';
 import { UpdatePricesDto } from './dto/update-prices.dto';
+import { UpdateTcDto } from './dto/update-tc.dto';
 
 @Controller('arancel')
 export class ArancelController {
@@ -21,6 +22,11 @@ export class ArancelController {
     @Post('update-prices')
     updatePrices(@Body() updatePricesDto: UpdatePricesDto) {
         return this.arancelService.updatePrices(updatePricesDto);
+    }
+
+    @Post('update-tc')
+    updateTc(@Body() updateTcDto: UpdateTcDto) {
+        return this.arancelService.updateTc(updateTcDto);
     }
 
     @Get()

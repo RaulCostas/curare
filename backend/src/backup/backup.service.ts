@@ -40,11 +40,24 @@ export class BackupService {
         this.dbPassword = process.env.DB_PASSWORD || 'postgrespg';
 
         // PostgreSQL binary paths
-        const defaultPgPath = 'C:\\Program Files\\PostgreSQL\\14\\bin';
+        let defaultPgPath = isWindows ? 'C:\\Program Files\\PostgreSQL\\17\\bin' : '/usr/bin';
+        
+        if (isWindows) {
+            const versions = ['17', '16', '15', '14', '13', '12'];
+            for (const v of versions) {
+                const testPath = `C:\\Program Files\\PostgreSQL\\${v}\\bin`;
+                if (fs.existsSync(path.join(testPath, 'pg_dump.exe'))) {
+                    defaultPgPath = testPath;
+                    break;
+                }
+            }
+        }
+        
         const pgBinPath = process.env.PG_BIN_PATH || defaultPgPath;
 
-        this.pgDumpPath = process.env.PG_DUMP_PATH || path.join(pgBinPath, 'pg_dump.exe');
-        this.psqlPath = process.env.PSQL_PATH || path.join(pgBinPath, 'psql.exe');
+        // If in Linux and PG_DUMP_PATH is not set, we default to just 'pg_dump' expecting it to be in PATH, or the full path if provided.
+        this.pgDumpPath = process.env.PG_DUMP_PATH || (isWindows ? path.join(pgBinPath, 'pg_dump.exe') : 'pg_dump');
+        this.psqlPath = process.env.PSQL_PATH || (isWindows ? path.join(pgBinPath, 'psql.exe') : 'psql');
 
         // Ensure backup directory exists
         if (!fs.existsSync(this.backupDir)) {

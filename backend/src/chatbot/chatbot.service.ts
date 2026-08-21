@@ -18,6 +18,7 @@ import { ChatbotIntentosService } from './chatbot-intentos.service';
 import { ChatbotIntento } from './entities/chatbot-intento.entity';
 import { WhatsappSession } from './entities/whatsapp-session.entity';
 import { ChatbotPdfService } from './chatbot-pdf.service';
+import { deduplicateHistoria } from '../utils/historia-utils';
 import { InventarioService } from '../inventario/inventario.service';
 import { DatosCentroDentalService } from '../datos_centro_dental/datos_centro_dental.service';
 import pino from 'pino';
@@ -622,9 +623,10 @@ export class ChatbotService implements OnModuleInit, OnModuleDestroy {
             const h = historia.filter((hist: any) => hist.proformaId === p.id);
             const pg = pagos.filter((pago: any) => pago.proformaId === p.id);
             
-            const totalEjecutado = h
-                .filter((hist: any) => hist.estadoTratamiento === 'terminado')
-                .reduce((acc, curr) => acc + Number(curr.precio || 0), 0);
+            const rawFilteredH = h.filter((hist: any) => hist.estadoTratamiento === 'terminado');
+            const deduplicatedH = deduplicateHistoria(rawFilteredH);
+            
+            const totalEjecutado = deduplicatedH.reduce((acc, curr) => acc + Number(curr.precio || 0), 0);
             
             const totalPagado = pg.reduce((acc, curr) => acc + Number(curr.monto || 0), 0);
             const diff = totalEjecutado - totalPagado;
@@ -632,7 +634,7 @@ export class ChatbotService implements OnModuleInit, OnModuleDestroy {
 
             return {
                 proforma: p,
-                historias: h,
+                historias: deduplicateHistoria(h),
                 pagos: pg,
                 totalEjecutado,
                 totalPagado,

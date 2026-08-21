@@ -288,7 +288,7 @@ const AgendaForm: React.FC<AgendaFormProps> = ({
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (!formData.doctorId || formData.doctorId <= 0) {
+        if (!isNonPatientEvent && (!formData.doctorId || formData.doctorId <= 0)) {
             Swal.fire({
                 icon: 'warning',
                 title: 'Campo Requerido',
@@ -324,6 +324,7 @@ const AgendaForm: React.FC<AgendaFormProps> = ({
         const payload: any = {
             ...formData,
             pacienteId: formData.pacienteId > 0 ? formData.pacienteId : null,
+            doctorId: formData.doctorId > 0 ? formData.doctorId : null,
             proformaId: formData.proformaId > 0 ? formData.proformaId : null,
             asistenteId: formData.asistenteId > 0 ? formData.asistenteId : null,
             tratamiento: formData.tratamiento || (isNonPatientEvent ? 'Bloqueo / Evento' : '')
@@ -606,7 +607,7 @@ const AgendaForm: React.FC<AgendaFormProps> = ({
                                     name="doctorId"
                                     value={formData.doctorId}
                                     onChange={handleChange}
-                                    required
+                                    required={!isNonPatientEvent}
                                     className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all appearance-none font-medium cursor-pointer"
                                 >
                                     <option value={0}>-- Seleccione Doctor --</option>

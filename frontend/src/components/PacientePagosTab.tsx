@@ -3,7 +3,7 @@ import api from '../services/api';
 import Swal from 'sweetalert2';
 import type { Pago, Proforma, HistoriaClinica, Paciente } from '../types';
 import { formatDate } from '../utils/dateUtils';
-import { formatCurrency, formatDateUTC } from '../utils/formatters';
+import { formatCurrency, formatDateUTC, deduplicateHistoria } from '../utils/formatters';
 import PagosForm from './PagosForm';
 import Pagination from './Pagination';
 import ManualModal, { type ManualSection } from './ManualModal';
@@ -174,9 +174,11 @@ const PacientePagosTab: React.FC<PacientePagosTabProps> = ({ pacienteId }) => {
             doc.text(planText, 65, boxY + 13);
 
             // Filter historia clinica & payments for selected plan if selectedProformaId > 0
-            const filteredHistoria = selectedProformaId > 0
+            const rawFilteredHistoria = selectedProformaId > 0
                 ? historia.filter(h => h.proformaId === selectedProformaId && h.estadoTratamiento === 'terminado')
                 : historia.filter(h => h.estadoTratamiento === 'terminado');
+            
+            const filteredHistoria = deduplicateHistoria(rawFilteredHistoria);
 
             const filteredPagos = selectedProformaId > 0
                 ? pagos.filter(p => p.proformaId === selectedProformaId)
@@ -189,26 +191,54 @@ const PacientePagosTab: React.FC<PacientePagosTabProps> = ({ pacienteId }) => {
             doc.setTextColor(44, 62, 80);
             doc.text('TRATAMIENTOS EJECUTADOS (HISTORIA CLÍNICA)', 15, currentY);
 
-            const hcTableColumn = ["Fecha", "Pieza", "Tratamiento / Procedimiento", "Monto (Bs.)"];
-            const hcTableRows = filteredHistoria.length > 0 ? filteredHistoria.map(curr => {
+            const rowsData = filteredHistoria.map(curr => {
                 let itemPrice = Number(curr.precio || 0);
+                let discountAmt = 0;
+                let discountPct = 0;
                 if (selectedProforma && selectedProforma.detalles) {
                     const matchDetalle = selectedProforma.detalles.find(d =>
                         (curr.proformaDetalleId && d.id === curr.proformaDetalleId) ||
                         (d.arancel && d.arancel.detalle === curr.tratamiento)
                     );
-                    if (matchDetalle && Number(matchDetalle.total || 0) > 0 && Number(matchDetalle.cantidad || 1) > 0) {
-                        const unitNetPrice = Number(matchDetalle.total) / Number(matchDetalle.cantidad || 1);
-                        itemPrice = unitNetPrice * Number(curr.cantidad || 1);
+                    if (matchDetalle) {
+                        if (Number(matchDetalle.total || 0) > 0 && Number(matchDetalle.cantidad || 1) > 0) {
+                            const unitNetPrice = Number(matchDetalle.total) / Number(matchDetalle.cantidad || 1);
+                            itemPrice = unitNetPrice * Number(curr.cantidad || 1);
+                        }
+                        if (Number(matchDetalle.descuento || 0) > 0 && Number(matchDetalle.cantidad || 1) > 0) {
+                            discountAmt = (Number(matchDetalle.descuento) / Number(matchDetalle.cantidad || 1)) * Number(curr.cantidad || 1);
+                            const totalOriginal = Number(matchDetalle.total) + Number(matchDetalle.descuento);
+                            if (totalOriginal > 0) {
+                                discountPct = Math.round((Number(matchDetalle.descuento) / totalOriginal) * 100);
+                            }
+                        }
                     }
                 }
-                return [
-                    formatDate(curr.fecha),
-                    curr.pieza || '-',
-                    curr.tratamiento || '-',
-                    `Bs. ${formatCurrency(itemPrice)}`
+                return { curr, itemPrice, discountAmt, discountPct };
+            });
+
+            const hasDiscount = rowsData.some(r => r.discountAmt > 0);
+
+            const hcTableColumn = ["Fecha", "Pieza", "Tratamiento / Procedimiento"];
+            if (hasDiscount) hcTableColumn.push("Descuento");
+            hcTableColumn.push("Monto (Bs.)");
+
+            const hcTableRows = filteredHistoria.length > 0 ? rowsData.map(r => {
+                const row = [
+                    formatDate(r.curr.fecha),
+                    r.curr.pieza || '-',
+                    r.curr.tratamiento || '-'
                 ];
-            }) : [["-", "-", "No hay tratamientos ejecutados registrados", "Bs. 0,00"]];
+                if (hasDiscount) {
+                    if (r.discountAmt > 0) {
+                        row.push(`${r.discountPct}% (Bs. ${formatCurrency(r.discountAmt)})`);
+                    } else {
+                        row.push('-');
+                    }
+                }
+                row.push(`Bs. ${formatCurrency(r.itemPrice)}`);
+                return row;
+            }) : [["-", "-", "No hay tratamientos ejecutados registrados", ...(hasDiscount ? ["-"] : []), "Bs. 0,00"]];
 
             autoTable(doc, {
                 head: [hcTableColumn],
@@ -227,7 +257,13 @@ const PacientePagosTab: React.FC<PacientePagosTabProps> = ({ pacienteId }) => {
                     lineWidth: 0.1,
                     lineColor: [203, 213, 225]
                 },
-                columnStyles: {
+                columnStyles: hasDiscount ? {
+                    0: { cellWidth: 25 },
+                    1: { cellWidth: 25 },
+                    2: { cellWidth: 'auto' },
+                    3: { cellWidth: 25, halign: 'right' },
+                    4: { cellWidth: 25, halign: 'right' }
+                } : {
                     0: { cellWidth: 25 },
                     1: { cellWidth: 25 },
                     2: { cellWidth: 'auto' },
@@ -889,7 +925,8 @@ const PacientePagosTab: React.FC<PacientePagosTabProps> = ({ pacienteId }) => {
                         const selectedProforma = proformas.find(p => p.id === selectedProformaId);
                         const totalPresupuesto = selectedProforma ? Number(selectedProforma.total || 0) : 0;
 
-                        const filteredHistoria = historia.filter(h => h.proformaId === selectedProformaId && h.estadoTratamiento === 'terminado');
+                        const rawFilteredHistoria = historia.filter(h => h.proformaId === selectedProformaId && h.estadoTratamiento === 'terminado');
+                        const filteredHistoria = deduplicateHistoria(rawFilteredHistoria);
 
                         const totalEjecutado = filteredHistoria.reduce((acc, curr) => {
                             if (selectedProforma && selectedProforma.detalles && selectedProforma.detalles.length > 0) {

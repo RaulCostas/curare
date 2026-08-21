@@ -381,18 +381,7 @@ const HistoriaClinicaForm: React.FC<HistoriaClinicaFormProps> = ({
 
                 // Trigger Material Utilizado workflow for new records
                 if (onMaterialUtilizadoRequired && savedHistoria?.id) {
-                    const result = await Swal.fire({
-                        icon: 'info',
-                        title: 'Material Utilizado',
-                        text: 'Debe registrar el MATERIAL UTILIZADO',
-                        confirmButtonText: 'OK',
-                        background: document.documentElement.classList.contains('dark') ? '#1f2937' : '#fff',
-                        color: document.documentElement.classList.contains('dark') ? '#f3f4f6' : '#000',
-                    });
-
-                    if (result.isConfirmed) {
-                        onMaterialUtilizadoRequired(savedHistoria.id);
-                    }
+                    onMaterialUtilizadoRequired(savedHistoria.id);
                 }
             }
             onSuccess();

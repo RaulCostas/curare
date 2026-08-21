@@ -164,6 +164,17 @@ export class HistoriaClinicaService {
 
     async remove(id: number): Promise<void> {
         const historia = await this.findOne(id);
+        
+        // Eliminar registros hijos para evitar errores de llave foránea
+        await this.historiaClinicaRepository.query(
+            `DELETE FROM material_utilizado_detalle WHERE "materialUtilizadoId" IN (SELECT id FROM material_utilizado WHERE "historiaClinicaId" = $1)`,
+            [id]
+        );
+        await this.historiaClinicaRepository.query(
+            `DELETE FROM material_utilizado WHERE "historiaClinicaId" = $1`,
+            [id]
+        );
+
         await this.historiaClinicaRepository.remove(historia);
     }
 }

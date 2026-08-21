@@ -9,6 +9,7 @@ import AgendaForm from './AgendaForm';
 import Swal from 'sweetalert2';
 import ManualModal, { type ManualSection } from './ManualModal';
 import QuienAgendoModal from './QuienAgendoModal';
+import CumpleanerosModal from './CumpleanerosModal';
 import Pagination from './Pagination';
 
 import { getLocalDateString, formatDate } from '../utils/dateUtils';
@@ -17,7 +18,7 @@ import { formatFullName, formatPaternoMaternoNombre } from '../utils/formatters'
 type ValuePiece = Date | null;
 type Value = ValuePiece | [ValuePiece, ValuePiece];
 
-import { Calendar as CalendarIcon, X as CloseIcon, UserCheck, Bell, Contact } from 'lucide-react';
+import { Calendar as CalendarIcon, X as CloseIcon, UserCheck, Bell, Contact, Gift } from 'lucide-react';
 
 const getStatusColor = (estado?: string) => {
     if (!estado) return '#3498db';
@@ -118,6 +119,7 @@ const AgendaView: React.FC<AgendaViewProps> = ({ defaultPacienteId, isEmbedded =
 
     const [showManual, setShowManual] = useState(false);
     const [showQuienAgendoModal, setShowQuienAgendoModal] = useState(false);
+    const [showCumpleanerosModal, setShowCumpleanerosModal] = useState(false);
     const [showMobileCalendar, setShowMobileCalendar] = useState(false);
     const [isCompact, setIsCompact] = useState(true);
 
@@ -189,7 +191,34 @@ const AgendaView: React.FC<AgendaViewProps> = ({ defaultPacienteId, isEmbedded =
         const searchPatients = async () => {
             try {
                 const response = await api.get(`/pacientes?search=${debouncedSearchTerm}&limit=10`);
-                setFilteredPacientes(response.data.data || []);
+                let results = response.data.data || [];
+
+                const searchTrimmed = debouncedSearchTerm.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+                if (searchTrimmed) {
+                    const getScore = (p: Paciente) => {
+                        const label = formatPaternoMaternoNombre(p).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                        const searchStr = [p.nombre, p.paterno, p.materno].filter(Boolean).join(' ').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                        
+                        if (label.startsWith(searchTrimmed)) return 100;
+                        if (searchStr.startsWith(searchTrimmed)) return 90;
+                        
+                        const wordsLabel = label.split(' ');
+                        const wordsSearch = searchStr.split(' ');
+                        
+                        if (wordsLabel.some(w => w.startsWith(searchTrimmed))) return 50;
+                        if (wordsSearch.some(w => w.startsWith(searchTrimmed))) return 40;
+                        
+                        if (label.includes(searchTrimmed)) return 10;
+                        if (searchStr.includes(searchTrimmed)) return 5;
+                        
+                        return 0;
+                    };
+                    
+                    results.sort((a: Paciente, b: Paciente) => getScore(b) - getScore(a));
+                }
+
+                setFilteredPacientes(results);
                 setShowPatientResults(true);
             } catch (error) {
                 console.error('Error searching patients:', error);
@@ -575,6 +604,16 @@ const AgendaView: React.FC<AgendaViewProps> = ({ defaultPacienteId, isEmbedded =
                         >
                             <UserCheck size={16} />
                             <span>Quién Agendó</span>
+                        </button>
+
+                        {/* Cumpleañeros */}
+                        <button
+                            onClick={() => setShowCumpleanerosModal(true)}
+                            className="px-3 py-1.5 bg-pink-500 hover:bg-pink-600 active:bg-pink-700 text-white rounded-lg font-bold text-xs sm:text-sm shadow-md flex items-center justify-center gap-2 transition-all duration-200 transform hover:scale-105 active:scale-95 hover:-translate-y-0.5 cursor-pointer"
+                            title="Ver cumpleañeros del mes"
+                        >
+                            <Gift size={16} />
+                            <span className="hidden sm:inline">Cumpleañeros</span>
                         </button>
 
                         {/* 3. Recordatorios & 4. Contactos */}
@@ -1044,6 +1083,11 @@ const AgendaView: React.FC<AgendaViewProps> = ({ defaultPacienteId, isEmbedded =
             <QuienAgendoModal
                 isOpen={showQuienAgendoModal}
                 onClose={() => setShowQuienAgendoModal(false)}
+            />
+
+            <CumpleanerosModal
+                isOpen={showCumpleanerosModal}
+                onClose={() => setShowCumpleanerosModal(false)}
             />
 
             {/* Mobile Calendar Modal */}

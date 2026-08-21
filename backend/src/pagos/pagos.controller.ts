@@ -6,6 +6,7 @@ import { TransferSaldoDto } from './dto/transfer-saldo.dto';
 import { ChatbotService } from '../chatbot/chatbot.service';
 import { PagosPdfService } from './pagos-pdf.service';
 import { HistoriaClinicaService } from '../historia_clinica/historia_clinica.service';
+import { deduplicateHistoria } from '../utils/historia-utils';
 
 @Controller('pagos')
 export class PagosController {
@@ -35,9 +36,10 @@ export class PagosController {
             const historia = await this.historiaClinicaService.findAllByPaciente(pacienteId);
 
             // Calculate Summary
-            const totalEjecutado = historia
-                .filter(h => h.estadoTratamiento === 'terminado' && (!proformaId || h.proformaId === proformaId))
-                .reduce((acc, curr) => acc + Number(curr.precio || 0), 0);
+            const rawFilteredHistoria = historia.filter(h => h.estadoTratamiento === 'terminado' && (!proformaId || h.proformaId === proformaId));
+            const deduplicatedHistoria = deduplicateHistoria(rawFilteredHistoria);
+
+            const totalEjecutado = deduplicatedHistoria.reduce((acc, curr) => acc + Number(curr.precio || 0), 0);
 
             const totalPagado = filteredPagos.reduce((acc, curr) => acc + Number(curr.monto || 0), 0);
             const diff = totalEjecutado - totalPagado;
@@ -57,8 +59,7 @@ export class PagosController {
                 : null;
 
             // 2. Generate PDF
-            const filteredHistoria = historia.filter(h => h.estadoTratamiento === 'terminado' && (!proformaId || h.proformaId === proformaId));
-            const pdfBuffer = await this.pagosPdfService.generatePagosPdf(patientEntity, proformaEntity, filteredPagos, resumen, filteredHistoria);
+            const pdfBuffer = await this.pagosPdfService.generatePagosPdf(patientEntity, proformaEntity, filteredPagos, resumen, deduplicatedHistoria);
 
             // 3. Send via Chatbot
             const phoneNumber = patientEntity.celular;

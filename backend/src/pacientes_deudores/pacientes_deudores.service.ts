@@ -56,6 +56,23 @@ export class PacientesDeudoresService {
                 WHERE pd."proformaId" IS NOT NULL
                 ORDER BY pd."proformaId", LOWER(SPLIT_PART(TRIM(COALESCE(a.detalle, '')), ' ', 1)), pd.id
             ),
+            dedup_historia AS (
+                SELECT DISTINCT ON (
+                    hc."proformaId",
+                    COALESCE(hc."proformaDetalleId"::text, hc.tratamiento), 
+                    COALESCE(hc.pieza, 'sin_pieza'), 
+                    COALESCE(hc.cantidad, 1)
+                ) 
+                    hc.*
+                FROM historia_clinica hc
+                WHERE hc."estadoTratamiento" = 'terminado' AND hc."proformaId" IS NOT NULL
+                ORDER BY 
+                    hc."proformaId",
+                    COALESCE(hc."proformaDetalleId"::text, hc.tratamiento), 
+                    COALESCE(hc.pieza, 'sin_pieza'), 
+                    COALESCE(hc.cantidad, 1),
+                    hc.id ASC
+            ),
             realized_sum AS (
                 SELECT 
                     hc."proformaId",
@@ -69,18 +86,16 @@ export class PacientesDeudoresService {
                             WHEN pdm.id IS NOT NULL AND CAST(pdm.cantidad AS NUMERIC) > 0
                             THEN (CAST(pdm.total AS NUMERIC) / CAST(pdm.cantidad AS NUMERIC)) * CAST(COALESCE(hc.cantidad, 1) AS NUMERIC)
 
-                            -- Fallback to gross hc.precio
-                            ELSE CAST(COALESCE(hc.precio, 0) AS NUMERIC)
+                    ELSE CAST(COALESCE(hc.precio, 0) AS NUMERIC)
                         END
                     ), 0) AS realized_cost
-                FROM historia_clinica hc
+                FROM dedup_historia hc
                 LEFT JOIN proforma_detalle pd ON pd.id = hc."proformaDetalleId"
                 LEFT JOIN pd_match_by_name pdm ON (
                     hc."proformaDetalleId" IS NULL 
                     AND pdm."proformaId" = hc."proformaId" 
                     AND pdm.first_word = LOWER(SPLIT_PART(TRIM(COALESCE(hc.tratamiento, '')), ' ', 1))
                 )
-                WHERE hc."estadoTratamiento" = 'terminado' AND hc."proformaId" IS NOT NULL
                 GROUP BY hc."proformaId"
             ),
             latest_historia AS (

@@ -25,9 +25,9 @@ export class CreateProximaCitaDto {
     @IsString()
     observaciones?: string;
 
-    @IsNotEmpty()
+    @IsOptional()
     @IsNumber()
-    doctorId: number;
+    doctorId?: number;
 
     @IsOptional()
     @IsString()

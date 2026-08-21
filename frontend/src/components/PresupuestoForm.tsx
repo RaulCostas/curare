@@ -270,7 +270,7 @@ const PresupuestoForm: React.FC = () => {
     };
 
     const calculateTotal = () => {
-        return detalles.reduce((sum, item) => sum + item.total, 0);
+        return detalles.reduce((sum, item) => sum + (item.posible ? 0 : item.total), 0);
     };
 
     const handleSubmit = async () => {
@@ -752,8 +752,15 @@ const PresupuestoForm: React.FC = () => {
                                     <tr key={index} className={`transition-colors duration-150 ${editingIndex === index ? 'bg-blue-50 dark:bg-blue-900/40 border-l-4 border-blue-500' : (item.posible ? 'bg-amber-50 dark:bg-amber-900/20' : 'hover:bg-gray-50 dark:hover:bg-gray-700/50')}`}>
                                         <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200 text-center font-medium">{index + 1}</td>
                                         <td className={`px-4 py-3 whitespace-nowrap text-sm font-medium ${isCompleted ? 'text-green-600 dark:text-green-400' : 'text-gray-900 dark:text-gray-200'}`}>
-                                            {item.tratamiento}
-                                            {isCompleted && <span className="ml-2 text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 px-2 py-0.5 rounded-full no-underline">COMPLETADO</span>}
+                                            <div>
+                                                {item.tratamiento}
+                                                {isCompleted && <span className="ml-2 text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 px-2 py-0.5 rounded-full no-underline">COMPLETADO</span>}
+                                            </div>
+                                            {item.posible && (
+                                                <div className="text-xs text-orange-500 dark:text-orange-400 mt-0.5 font-normal uppercase">
+                                                    Posible tratamiento
+                                                </div>
+                                            )}
                                         </td>
                                         <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-200">{renderPiezasWithCompletion()}</td>
                                         <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200 text-right">{formatCurrency(item.precioUnitario)}</td>

@@ -67,6 +67,41 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
             return labelNorm.includes(normalizedSearch) ||
                    subLabelNorm.includes(normalizedSearch) ||
                    searchStrNorm.includes(normalizedSearch);
+        }).sort((a, b) => {
+            if (!normalizedSearch) return 0;
+            const searchTrimmed = normalizedSearch.trim();
+            if (!searchTrimmed) return 0;
+            
+            const getScore = (opt: Option) => {
+                const label = opt.label.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+                const searchStr = opt.searchString ? opt.searchString.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim() : "";
+                
+                // 1. Exact start match on label or searchString (e.g. Last Name matches)
+                if (label.startsWith(searchTrimmed)) return 100;
+                if (searchStr.startsWith(searchTrimmed)) return 90;
+                
+                // 2. Starts with word in the middle (e.g. First Name matches)
+                const wordsLabel = label.split(' ');
+                const wordsSearch = searchStr.split(' ');
+                
+                if (wordsLabel.some(w => w.startsWith(searchTrimmed))) return 50;
+                if (wordsSearch.some(w => w.startsWith(searchTrimmed))) return 40;
+                
+                // 3. Contains somewhere
+                if (label.includes(searchTrimmed)) return 10;
+                if (searchStr.includes(searchTrimmed)) return 5;
+                
+                return 0;
+            };
+
+            const scoreA = getScore(a);
+            const scoreB = getScore(b);
+            
+            if (scoreA !== scoreB) {
+                return scoreB - scoreA;
+            }
+
+            return 0;
         });
 
     const handleSelect = (id: number | string) => {

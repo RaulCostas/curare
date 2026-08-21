@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import api from '../services/api';
+import Swal from 'sweetalert2';
 import type { SecuenciaTratamiento, Paciente } from '../types';
 import { formatDateUTC } from '../utils/formatters';
 import ManualModal, { type ManualSection } from './ManualModal';
@@ -110,13 +111,37 @@ const SecuenciaTratamientoManager: React.FC<Props> = ({ pacienteId, paciente, se
     };
 
     const handleDelete = async (id: number) => {
-        if (!window.confirm('¿Está seguro de eliminar este registro?')) return;
+        const result = await Swal.fire({
+            title: '¿Está seguro?',
+            text: "No podrá revertir esta acción",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar'
+        });
+
+        if (!result.isConfirmed) return;
+
         try {
             await api.delete(`/secuencia-tratamiento/${id}`);
             fetchSecuencia();
             if (editingId === id) resetForm();
+            Swal.fire({
+                icon: 'success',
+                title: '¡Eliminado!',
+                text: 'El registro ha sido eliminado.',
+                showConfirmButton: false,
+                timer: 1500
+            });
         } catch (error) {
             console.error('Error deleting secuencia:', error);
+            Swal.fire(
+                'Error',
+                'Hubo un problema al eliminar el registro.',
+                'error'
+            );
         }
     };
 

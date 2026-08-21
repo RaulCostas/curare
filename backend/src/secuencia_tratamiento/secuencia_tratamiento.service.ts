@@ -19,7 +19,7 @@ export class SecuenciaTratamientoService {
     async findByProformaId(proformaId: number): Promise<SecuenciaTratamiento[]> {
         return this.repository.find({
             where: { proformaId },
-            order: { fecha: 'DESC', id: 'DESC' }
+            order: { fecha: 'ASC', id: 'ASC' }
         });
     }
 

@@ -5,7 +5,7 @@ import type { Pago, Proforma, HistoriaClinica } from '../types';
 import Pagination from './Pagination';
 import jsPDF from 'jspdf';
 import { formatDate } from '../utils/dateUtils';
-import { formatCurrency, formatDateUTC } from '../utils/formatters';
+import { formatCurrency, formatDateUTC, deduplicateHistoria } from '../utils/formatters';
 import ManualModal, { type ManualSection } from './ManualModal';
 import PagosForm from './PagosForm';
 
@@ -555,7 +555,8 @@ const PagosList: React.FC = () => {
                         const selectedProforma = proformas.find(p => p.id === selectedProformaId);
                         const totalPresupuesto = selectedProforma ? Number(selectedProforma.total || 0) : 0;
 
-                        const filteredHistoria = historia.filter(h => h.proformaId === selectedProformaId && h.estadoTratamiento === 'terminado');
+                        const rawFilteredHistoria = historia.filter(h => h.proformaId === selectedProformaId && h.estadoTratamiento === 'terminado');
+                        const filteredHistoria = deduplicateHistoria(rawFilteredHistoria);
 
                         const totalEjecutado = filteredHistoria.reduce((acc, curr) => {
                             let itemPrice = Number(curr.precio || 0);

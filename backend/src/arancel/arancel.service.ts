@@ -4,6 +4,7 @@ import { Repository, ILike } from 'typeorm';
 import { CreateArancelDto } from './dto/create-arancel.dto';
 import { UpdateArancelDto } from './dto/update-arancel.dto';
 import { UpdatePricesDto } from './dto/update-prices.dto';
+import { UpdateTcDto } from './dto/update-tc.dto';
 import { Especialidad } from '../especialidad/entities/especialidad.entity';
 import { Arancel } from './entities/arancel.entity';
 
@@ -74,6 +75,22 @@ export class ArancelService {
             if (dto.tipoPrecio === 'precio2' || dto.tipoPrecio === 'ambos') {
                 arancel.precio2 = Number((Number(arancel.precio2) * factor).toFixed(2));
             }
+        }
+
+        return this.arancelRepository.save(aranceles);
+    }
+
+    async updateTc(dto: UpdateTcDto) {
+        const query = this.arancelRepository.createQueryBuilder('arancel');
+
+        if (dto.especialidadId && Number(dto.especialidadId) > 0) {
+            query.where('arancel.idEspecialidad = :especialidadId', { especialidadId: dto.especialidadId });
+        }
+
+        const aranceles = await query.getMany();
+
+        for (const arancel of aranceles) {
+            arancel.tc = Number(dto.tc);
         }
 
         return this.arancelRepository.save(aranceles);

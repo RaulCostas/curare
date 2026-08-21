@@ -42,21 +42,68 @@ export class PagosPdfService {
         // Build historia clinica table rows
         const filteredHistoria = (historia || []).filter((h: any) => h.estadoTratamiento === 'terminado');
 
+        const rowsData = filteredHistoria.map((h: any) => {
+            let itemPrice = Number(h.precio || 0);
+            let discountAmt = 0;
+            let discountPct = 0;
+            if (proforma && proforma.detalles) {
+                const matchDetalle = proforma.detalles.find((d: any) =>
+                    (h.proformaDetalleId && d.id === h.proformaDetalleId) ||
+                    (d.arancel && d.arancel.detalle === h.tratamiento)
+                );
+                if (matchDetalle) {
+                    if (Number(matchDetalle.total || 0) > 0 && Number(matchDetalle.cantidad || 1) > 0) {
+                        const unitNetPrice = Number(matchDetalle.total) / Number(matchDetalle.cantidad || 1);
+                        itemPrice = unitNetPrice * Number(h.cantidad || 1);
+                    }
+                    if (Number(matchDetalle.descuento || 0) > 0 && Number(matchDetalle.cantidad || 1) > 0) {
+                        discountAmt = (Number(matchDetalle.descuento) / Number(matchDetalle.cantidad || 1)) * Number(h.cantidad || 1);
+                        const totalOriginal = Number(matchDetalle.total) + Number(matchDetalle.descuento);
+                        if (totalOriginal > 0) {
+                            discountPct = Math.round((Number(matchDetalle.descuento) / totalOriginal) * 100);
+                        }
+                    }
+                }
+            }
+            return { h, itemPrice, discountAmt, discountPct };
+        });
+
+        const hasDiscount = rowsData.some((r: any) => r.discountAmt > 0);
+
+        const headerRow: any[] = [
+            { text: 'Fecha', style: 'tableHeader' },
+            { text: 'Pieza', style: 'tableHeader' },
+            { text: 'Tratamiento / Procedimiento', style: 'tableHeader' }
+        ];
+        if (hasDiscount) headerRow.push({ text: 'Descuento', style: 'tableHeader' });
+        headerRow.push({ text: 'Monto', style: 'tableHeader' });
+
         const historiaTableBody = [
-            [
-                { text: 'Fecha', style: 'tableHeader' },
-                { text: 'Pieza', style: 'tableHeader' },
-                { text: 'Tratamiento / Procedimiento', style: 'tableHeader' },
-                { text: 'Monto', style: 'tableHeader' }
-            ],
+            headerRow,
             ...(filteredHistoria.length > 0
-                ? filteredHistoria.map((h: any) => [
-                    formatDate(h.fecha),
-                    h.pieza || '-',
-                    h.tratamiento || '-',
-                    formatMoney(h.precio || 0)
-                ])
-                : [[{ text: '-' }, { text: '-' }, { text: 'No hay tratamientos ejecutados registrados' }, { text: 'Bs. 0.00' }]])
+                ? rowsData.map((r: any) => {
+                    const row: any[] = [
+                        formatDate(r.h.fecha),
+                        r.h.pieza || '-',
+                        r.h.tratamiento || '-'
+                    ];
+                    if (hasDiscount) {
+                        if (r.discountAmt > 0) {
+                            row.push(`${r.discountPct}% (${formatMoney(r.discountAmt)})`);
+                        } else {
+                            row.push('-');
+                        }
+                    }
+                    row.push(formatMoney(r.itemPrice));
+                    return row;
+                })
+                : [[
+                    { text: '-' }, 
+                    { text: '-' }, 
+                    { text: 'No hay tratamientos ejecutados registrados' }, 
+                    ...(hasDiscount ? [{ text: '-' }] : []), 
+                    { text: 'Bs. 0.00' }
+                ]])
         ];
 
         // Build payments table rows
@@ -164,7 +211,7 @@ export class PagosPdfService {
                 {
                     table: {
                         headerRows: 1,
-                        widths: [70, 60, '*', 90],
+                        widths: hasDiscount ? [55, 45, '*', 60, 70] : [70, 60, '*', 90],
                         body: historiaTableBody
                     },
                     layout: {

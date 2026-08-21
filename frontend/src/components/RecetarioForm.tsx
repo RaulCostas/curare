@@ -307,7 +307,7 @@ const RecetarioForm: React.FC<RecetarioFormProps> = ({ isOpen, onClose, id, paci
                     <div className="space-y-6">
                         
                         {/* Cargar Receta Prediseñada */}
-                        {predisenadas.length > 0 && !isEditing && (
+                        {!isEditing && (
                             <div className="bg-teal-50/70 dark:bg-teal-900/30 p-4 rounded-xl border border-teal-200 dark:border-teal-800">
                                 <label className="block mb-1.5 font-bold text-xs text-teal-800 dark:text-teal-300 uppercase tracking-wider flex items-center gap-1.5">
                                     <BookmarkCheck size={16} /> Cargar Receta Prediseñada (Opcional):
@@ -315,9 +315,14 @@ const RecetarioForm: React.FC<RecetarioFormProps> = ({ isOpen, onClose, id, paci
                                 <select
                                     value={selectedPredisenadaId}
                                     onChange={e => handleApplyPredisenada(e.target.value ? Number(e.target.value) : '')}
-                                    className="w-full px-4 py-2.5 rounded-xl border border-teal-300 dark:border-teal-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-medium focus:ring-2 focus:ring-teal-500 outline-none transition-all text-sm"
+                                    disabled={predisenadas.length === 0}
+                                    className="w-full px-4 py-2.5 rounded-xl border border-teal-300 dark:border-teal-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-medium focus:ring-2 focus:ring-teal-500 outline-none transition-all text-sm disabled:opacity-60 disabled:cursor-not-allowed"
                                 >
-                                    <option value="">-- Seleccionar Receta Prediseñada para Autocompletar --</option>
+                                    <option value="">
+                                        {predisenadas.length > 0 
+                                            ? "-- Seleccionar Receta Prediseñada para Autocompletar --" 
+                                            : "-- No hay recetas prediseñadas disponibles --"}
+                                    </option>
                                     {predisenadas.map(p => (
                                         <option key={p.id} value={p.id}>
                                             {p.titulo || (p as any).nombre} {p.diagnostico ? `(${p.diagnostico})` : ''}

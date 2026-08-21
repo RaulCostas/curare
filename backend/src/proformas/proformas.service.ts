@@ -63,7 +63,7 @@ export class ProformasService {
         : null;
 
       // Calculate total from details
-      const total = createProformaDto.detalles.reduce((sum, item) => sum + item.total, 0);
+      const total = createProformaDto.detalles.reduce((sum, item) => sum + (item.posible ? 0 : item.total), 0);
       proforma.total = total;
 
       const savedProforma = await queryRunner.manager.save(proforma);
@@ -216,7 +216,7 @@ export class ProformasService {
         }
 
         // Update proforma total
-        proforma.total = savedDetalles.reduce((sum, item) => sum + item.total, 0);
+        proforma.total = savedDetalles.reduce((sum, item) => sum + (item.posible ? 0 : item.total), 0);
 
         // Update reference for return
         proforma.detalles = savedDetalles;

@@ -17,7 +17,7 @@ const PlanTratamientoModal: React.FC<PlanTratamientoModalProps> = ({ isOpen, onC
             const itemTot = item.total !== undefined && item.total !== null
                 ? Number(item.total)
                 : (Number(item.cantidad || 1) * Number(item.precioUnitario || 0));
-            return acc + (isNaN(itemTot) ? 0 : itemTot);
+            return acc + (item.posible ? 0 : (isNaN(itemTot) ? 0 : itemTot));
         }, 0)
         : Number(proforma.total) || 0;
 
@@ -169,7 +169,12 @@ const PlanTratamientoModal: React.FC<PlanTratamientoModalProps> = ({ isOpen, onC
                                     return (
                                         <tr key={detalle.id} className={isCompleted ? 'bg-green-50/60 dark:bg-green-950/20' : ''}>
                                             <td className="px-4 py-3 font-semibold text-gray-900 dark:text-white">
-                                                {detalle.arancel?.detalle || 'Tratamiento'}
+                                                <div>{detalle.arancel?.detalle || 'Tratamiento'}</div>
+                                                {detalle.posible && (
+                                                    <div className="text-xs text-orange-500 dark:text-orange-400 mt-0.5 font-normal uppercase">
+                                                        Posible tratamiento
+                                                    </div>
+                                                )}
                                             </td>
                                             <td className="px-4 py-3 text-gray-600 dark:text-gray-300">
                                                 {detalle.piezas ? (
@@ -201,7 +206,7 @@ const PlanTratamientoModal: React.FC<PlanTratamientoModalProps> = ({ isOpen, onC
                                                 {desc > 0 ? `${desc}%` : '0%'}
                                             </td>
                                             <td className="px-4 py-3 text-right font-bold text-gray-900 dark:text-white">
-                                                {formatCurrency(tot)}
+                                                {formatCurrency(detalle.posible ? 0 : tot)}
                                             </td>
                                             <td className="px-4 py-3 text-center">
                                                 {isCompleted ? (

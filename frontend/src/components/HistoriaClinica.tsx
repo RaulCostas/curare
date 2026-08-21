@@ -10,13 +10,15 @@ import HistoriaClinicaList from './HistoriaClinicaList';
 import ProximaCitaManager from './ProximaCitaManager';
 import SecuenciaTratamientoManager from './SecuenciaTratamientoManager';
 import MaterialUtilizadoModal from './MaterialUtilizadoModal';
+import ProximaCitaModal from './ProximaCitaModal';
+import SecuenciaTratamientoModal from './SecuenciaTratamientoModal';
 import PlanTratamientoModal from './PlanTratamientoModal';
 import RecordatorioTratamientoModal from './RecordatorioTratamientoModal';
 import RecordatorioPlanModal from './RecordatorioPlanModal';
 import SeguimientoClinicoModal from './SeguimientoClinicoModal';
 import { Activity } from 'lucide-react';
-import { formatCurrency } from '../utils/formatters';
-import { formatDateUTC } from '../utils/formatters';
+import { deduplicateHistoria, formatCurrency, formatDateUTC } from '../utils/formatters';
+import PagosForm from './PagosForm';
 
 const HistoriaClinica: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -40,6 +42,8 @@ const HistoriaClinica: React.FC = () => {
 
     // Material Utilizado workflow state
     const [showMaterialModal, setShowMaterialModal] = useState(false);
+    const [showProximaCitaModal, setShowProximaCitaModal] = useState(false);
+    const [showSecuenciaModal, setShowSecuenciaModal] = useState(false);
     const [currentHistoriaId, setCurrentHistoriaId] = useState<number | null>(null);
 
     // Format phone number as (+code) number
@@ -187,65 +191,37 @@ const HistoriaClinica: React.FC = () => {
     };
 
     const handleMaterialUtilizadoSuccess = async () => {
-        // After Material Utilizado is saved, prompt to register Próxima Cita
-        const result = await Swal.fire({
-            icon: 'info',
-            title: 'Próxima Cita',
-            text: 'Siguiente paso, registrar PRÓXIMA CITA',
-            confirmButtonText: 'OK',
-            background: document.documentElement.classList.contains('dark') ? '#1f2937' : '#fff',
-            color: document.documentElement.classList.contains('dark') ? '#f3f4f6' : '#000',
-        });
+        setShowMaterialModal(false);
+        setShowProximaCitaModal(true);
+    };
 
-        if (result.isConfirmed) {
-            setActiveTab('cita');
-        }
+    const handleMaterialUtilizadoOmitir = () => {
+        setShowMaterialModal(false);
+        setShowProximaCitaModal(true);
+    };
+
+    const handleProximaCitaSuccess = () => {
+        setShowProximaCitaModal(false);
+        setShowSecuenciaModal(true);
+    };
+
+    const handleProximaCitaOmitir = () => {
+        setShowProximaCitaModal(false);
+        setShowSecuenciaModal(true);
+    };
+
+    const handleSecuenciaSuccess = () => {
+        setShowSecuenciaModal(false);
+        setCurrentHistoriaId(null);
+    };
+
+    const handleSecuenciaOmitir = () => {
+        setShowSecuenciaModal(false);
+        setCurrentHistoriaId(null);
     };
 
     const handleProximaCitaSaved = async () => {
-        // Check if Secuencia de Tratamiento exists for this patient/proforma
-        if (!selectedProformaId || !id) {
-            setActiveTab('historia');
-            return;
-        }
-
-        try {
-            const response = await api.get(`/secuencia-tratamiento/exists/${id}/${selectedProformaId}`);
-            const exists = response.data?.exists || false;
-
-            if (exists) {
-                // Secuencia already exists
-                const result = await Swal.fire({
-                    icon: 'info',
-                    title: 'Secuencia de Tratamiento',
-                    text: 'El Paciente ya tiene guardada una Secuencia de Tratamiento',
-                    confirmButtonText: 'OK',
-                    background: document.documentElement.classList.contains('dark') ? '#1f2937' : '#fff',
-                    color: document.documentElement.classList.contains('dark') ? '#f3f4f6' : '#000',
-                });
-
-                if (result.isConfirmed) {
-                    setActiveTab('historia');
-                }
-            } else {
-                // Secuencia doesn't exist, prompt to create it
-                const result = await Swal.fire({
-                    icon: 'info',
-                    title: 'Secuencia de Tratamiento',
-                    text: 'Siguiente paso, registrar SECUENCIA DE TRATAMIENTO',
-                    confirmButtonText: 'OK',
-                    background: document.documentElement.classList.contains('dark') ? '#1f2937' : '#fff',
-                    color: document.documentElement.classList.contains('dark') ? '#f3f4f6' : '#000',
-                });
-
-                if (result.isConfirmed) {
-                    setActiveTab('secuencia');
-                }
-            }
-        } catch (error) {
-            console.error('Error checking secuencia tratamiento:', error);
-            setActiveTab('historia');
-        }
+        // Not used anymore for auto-switching tabs since we use modals now
     };
 
 
@@ -552,9 +528,10 @@ const HistoriaClinica: React.FC = () => {
                                         const selectedProforma = proformas.find(p => p.id === selectedProformaId);
                                         const totalPresupuesto = selectedProforma ? Number(selectedProforma.total || 0) : 0;
 
-                                        const filteredHistoria = historia.filter(h => h.proformaId === selectedProformaId && h.estadoTratamiento === 'terminado');
+                                        const rawFilteredHistoria = historia.filter(h => h.proformaId === selectedProformaId && h.estadoTratamiento === 'terminado');
+                                        const filteredHistoriaEjecutado = deduplicateHistoria(rawFilteredHistoria);
 
-                                        const totalEjecutado = filteredHistoria.reduce((acc, curr) => {
+                                        const totalEjecutado = filteredHistoriaEjecutado.reduce((acc, curr) => {
                                             if (curr.proformaDetalle && Number(curr.proformaDetalle.total) > 0 && Number(curr.proformaDetalle.cantidad) > 0) {
                                                 const netUnitPrice = Number(curr.proformaDetalle.total) / Number(curr.proformaDetalle.cantidad);
                                                 return acc + (netUnitPrice * Number(curr.cantidad || 1));
@@ -653,6 +630,29 @@ const HistoriaClinica: React.FC = () => {
                 onClose={() => setShowMaterialModal(false)}
                 historiaClinicaId={currentHistoriaId || 0}
                 onSuccess={handleMaterialUtilizadoSuccess}
+                onOmitir={handleMaterialUtilizadoOmitir}
+            />
+
+            {/* Proxima Cita Modal */}
+            <ProximaCitaModal
+                isOpen={showProximaCitaModal}
+                onClose={() => setShowProximaCitaModal(false)}
+                pacienteId={Number(id)}
+                selectedProformaId={selectedProformaId}
+                proformas={proformas}
+                historia={historia}
+                onSuccess={handleProximaCitaSuccess}
+                onOmitir={handleProximaCitaOmitir}
+            />
+
+            {/* Secuencia Tratamiento Modal */}
+            <SecuenciaTratamientoModal
+                isOpen={showSecuenciaModal}
+                onClose={() => setShowSecuenciaModal(false)}
+                pacienteId={Number(id)}
+                selectedProformaId={selectedProformaId}
+                onSuccess={handleSecuenciaSuccess}
+                onOmitir={handleSecuenciaOmitir}
             />
 
             {/* Plan Tratamiento Modal */}

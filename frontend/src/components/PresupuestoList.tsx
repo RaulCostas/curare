@@ -406,18 +406,20 @@ const PresupuestoList: React.FC = () => {
         const tableRows: any[] = [];
 
         proforma.detalles.forEach(item => {
+            const detalleArancel = item.arancel?.detalle || 'Tratamiento';
+            const description = item.posible ? `${detalleArancel}\n(Posible tratamiento)` : detalleArancel;
             const row = [
-                item.arancel.detalle,
+                description,
                 item.piezas,
                 item.cantidad,
-                Number(item.precioUnitario).toFixed(2),
-                Number(item.subTotal).toFixed(2)
+                formatCurrency(item.precioUnitario),
+                item.posible ? '0,00' : formatCurrency(item.subTotal)
             ];
 
             if (hasDiscount) {
                 row.push(
-                    item.descuento,
-                    Number(item.total).toFixed(2)
+                    item.posible ? '0' : item.descuento,
+                    item.posible ? '0,00' : formatCurrency(item.total)
                 );
             }
 
@@ -495,14 +497,15 @@ const PresupuestoList: React.FC = () => {
         doc.rect(lastColX, finalY, lastColWidth, 7);
 
         doc.text('TOTAL Bs.', penultColX + penultColWidth - 2, finalY + 5, { align: 'right' });
-        doc.text(Number(proforma.total).toFixed(2), lastColX + lastColWidth - 2, finalY + 5, { align: 'right' });
+        const printTotal = proforma.detalles.reduce((sum, item) => sum + (item.posible ? 0 : Number(item.total)), 0);
+        doc.text(formatCurrency(printTotal), lastColX + lastColWidth - 2, finalY + 5, { align: 'right' });
 
         finalY += 15;
 
         // 5. Amount in Words
         doc.setFont('helvetica', 'normal');
-        const decimalPart = (Number(proforma.total) % 1).toFixed(2).substring(2);
-        const words = numberToWords(Number(proforma.total));
+        const decimalPart = (printTotal % 1).toFixed(2).substring(2);
+        const words = numberToWords(printTotal);
         doc.text(`SON: ${words} ${decimalPart}/100 BOLIVIANOS`, 14, finalY);
 
         finalY += 10;
