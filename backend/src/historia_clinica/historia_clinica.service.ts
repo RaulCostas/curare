@@ -53,6 +53,7 @@ export class HistoriaClinicaService {
             where: {
                 doctorId,
                 pagado: 'NO',
+                estadoTratamiento: 'terminado'
             },
             relations: ['paciente', 'doctor', 'especialidad', 'proforma', 'proformaDetalle'],
             order: { fecha: 'ASC' }

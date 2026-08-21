@@ -740,11 +740,25 @@ const PacientePagosTab: React.FC<PacientePagosTabProps> = ({ pacienteId }) => {
                         className="p-1.5 px-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none text-sm cursor-pointer min-w-[220px]"
                     >
                         <option value={0}>-- Seleccione un Plan de Tratamiento --</option>
-                        {proformas.map(p => (
-                            <option key={p.id} value={p.id}>
-                                Plan #{p.numero || p.id} - {formatDateUTC(p.fecha)}
-                            </option>
-                        ))}
+                        {proformas.map(p => {
+                            const isCompleted = historia.some(h =>
+                                h.proformaId === p.id && h.estadoPresupuesto === 'terminado'
+                            );
+
+                            return (
+                                <option
+                                    key={p.id}
+                                    value={p.id}
+                                    style={isCompleted ? {
+                                        textDecoration: 'line-through',
+                                        color: '#16a34a',
+                                        fontWeight: 'bold'
+                                    } : undefined}
+                                >
+                                    Plan #{p.numero || p.id} - {formatDateUTC(p.fecha)}
+                                </option>
+                            );
+                        })}
                     </select>
                 </div>
 

@@ -97,6 +97,8 @@ export class HistoriaClinica {
     @Column({ default: false, name: 'Caso_Clinico' })
     casoClinico: boolean;
 
+    @Column({ default: false })
+    control: boolean;
 
     @Column({ default: 'NO' })
     pagado: string; // 'SI' | 'NO'

@@ -735,11 +735,15 @@ export class ChatbotService implements OnModuleInit, OnModuleDestroy {
             celular = `591${celular}`;
         }
         const jid = `${celular}@s.whatsapp.net`;
-        const clinicaText = 'CURARE';
         const nombreCompleto = [paciente.nombre, paciente.paterno, paciente.materno].filter(Boolean).join(' ');
-        const text = `¡Hola ${nombreCompleto}! 🎉 En nombre de todo el equipo de ${clinicaText}, te deseamos un muy feliz cumpleaños. ¡Que tengas un excelente día! 🎂🎈\n\n📌 Por favor guarda nuestro número para recibir tus felicitaciones y recordatorios.`;
+        const text = `¡Feliz cumpleaños ${nombreCompleto}!\n\nTodo el equipo de Curare Centro Dental le enviamos nuestros mejores deseos, que tenga un día hermoso.\nGracias por confiar en nosotros para cuidar su sonrisa.\nQue este nuevo año de vida esté lleno de salud, alegría y razones para seguir sonriendo.`;
 
-        await this.sendMessage(jid, text);
+        try {
+            await this.sendMedia(jid, 'cumpleanos.jpg', text);
+        } catch (error) {
+            console.error(`[Chatbot] Error enviando imagen de cumpleaños:`, error);
+            await this.sendMessage(jid, text);
+        }
         return { success: true };
     }
 

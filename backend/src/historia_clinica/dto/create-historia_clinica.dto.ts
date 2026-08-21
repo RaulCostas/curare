@@ -63,6 +63,8 @@ export class CreateHistoriaClinicaDto {
     @IsOptional()
     casoClinico?: boolean;
 
+    @IsOptional()
+    control?: boolean;
 
     @IsOptional()
     @IsString()

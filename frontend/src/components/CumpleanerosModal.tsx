@@ -33,18 +33,17 @@ const CumpleanerosModal: React.FC<CumpleanerosModalProps> = ({ isOpen, onClose }
 
     useEffect(() => {
         if (isOpen) {
-            setSelectedMonth(new Date().getMonth() + 1);
-            fetchData();
+            fetchData(selectedMonth);
         }
-    }, [isOpen]);
+    }, [isOpen, selectedMonth]);
 
-    const fetchData = async () => {
+    const fetchData = async (mes: number) => {
         setLoading(true);
         try {
-            // Fetch both Pacientes and Personal
+            // Fetch both Pacientes and Personal filtered by month
             const [pacientesRes, usersRes] = await Promise.all([
-                api.get('/pacientes?estado=activo&limit=3000'),
-                api.get('/users?estado=activo&limit=1000')
+                api.get(`/pacientes?estado=activo&limit=3000&mesCumpleanos=${mes}`),
+                api.get(`/users?estado=activo&limit=1000&mesCumpleanos=${mes}`)
             ]);
             
             const pacientesData = Array.isArray(pacientesRes.data.data) ? pacientesRes.data.data : pacientesRes.data;
@@ -106,12 +105,10 @@ const CumpleanerosModal: React.FC<CumpleanerosModalProps> = ({ isOpen, onClose }
         return '';
     };
 
-    const filteredPacientes = pacientes
-        .filter(p => getBirthMonth(p.fecha_nacimiento) === selectedMonth)
+    const filteredPacientes = [...pacientes]
         .sort((a, b) => getBirthDay(a.fecha_nacimiento) - getBirthDay(b.fecha_nacimiento));
 
-    const filteredPersonal = personal
-        .filter(u => getBirthMonth((u as any).fechaNacimiento || (u as any).fecha_nacimiento) === selectedMonth)
+    const filteredPersonal = [...personal]
         .sort((a, b) => getBirthDay((a as any).fechaNacimiento || (a as any).fecha_nacimiento) - getBirthDay((b as any).fechaNacimiento || (b as any).fecha_nacimiento));
 
     if (!isOpen) return null;

@@ -39,7 +39,7 @@ export class PacientesService {
         return await this.pacientesRepository.save(paciente);
     }
 
-    async findAll(page: number = 1, limit: number = 10, search: string = ''): Promise<{ data: Paciente[], total: number, page: number, limit: number, totalPages: number }> {
+    async findAll(page: number = 1, limit: number = 10, search: string = '', mesCumpleanos?: number): Promise<{ data: Paciente[], total: number, page: number, limit: number, totalPages: number }> {
         const skip = (page - 1) * limit;
 
         const queryBuilder = this.pacientesRepository.createQueryBuilder('paciente');
@@ -55,6 +55,11 @@ export class PacientesService {
                 { search: searchTerm }
             );
         }
+
+        if (mesCumpleanos) {
+            queryBuilder.andWhere("EXTRACT(MONTH FROM paciente.fecha_nacimiento) = :mesCumpleanos", { mesCumpleanos });
+        }
+
 
         queryBuilder
             .orderBy('paciente.paterno', 'ASC')

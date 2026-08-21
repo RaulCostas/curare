@@ -115,12 +115,16 @@ export class ProformasService {
       order: { numero: 'ASC' }
     });
 
-    for (const proforma of proformas) {
+    if (proformas.length > 0) {
+      const proformaIds = proformas.map(p => p.id);
       const firmas = await this.proformaRepository.manager.query(
-        `SELECT id FROM firmas_digitales WHERE "tipoDocumento" = 'presupuesto' AND "documentoId" = $1 LIMIT 1`,
-        [proforma.id]
+        `SELECT DISTINCT "documentoId" FROM firmas_digitales WHERE "tipoDocumento" = 'presupuesto' AND "documentoId" = ANY($1)`,
+        [proformaIds]
       );
-      (proforma as any).tieneFirma = firmas.length > 0;
+      const firmasSet = new Set(firmas.map((f: any) => f.documentoId));
+      for (const proforma of proformas) {
+        (proforma as any).tieneFirma = firmasSet.has(proforma.id);
+      }
     }
 
     return proformas;

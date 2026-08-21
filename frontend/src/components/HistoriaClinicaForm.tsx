@@ -41,6 +41,7 @@ const HistoriaClinicaForm: React.FC<HistoriaClinicaFormProps> = ({
         proformaDetalleId: 0,
         resaltar: false,
         casoClinico: false,
+        control: false,
         pagado: 'NO',
         precio: 0,
         hoja: 0
@@ -69,7 +70,7 @@ const HistoriaClinicaForm: React.FC<HistoriaClinicaFormProps> = ({
         },
         {
             title: 'Opciones Especiales',
-            content: 'Resaltar: Marca este tratamiento para destacarlo en reportes.\nCaso Clínico: Marque si este tratamiento es parte de un caso clínico para enseñanza o presentación.'
+            content: 'Resaltar: Marca este tratamiento para destacarlo en reportes.\nCaso Clínico: Marque si este tratamiento es parte de un caso clínico para enseñanza o presentación.\nControl: Marque si el tratamiento es una cita de control.'
         }
     ];
 
@@ -147,7 +148,8 @@ const HistoriaClinicaForm: React.FC<HistoriaClinicaFormProps> = ({
                 proformaId: historiaToEdit.proformaId || 0,
                 proformaDetalleId: initialProformaDetalleId,
                 resaltar: historiaToEdit.resaltar,
-                casoClinico: historiaToEdit.casoClinico,
+                casoClinico: historiaToEdit.casoClinico || false,
+                control: historiaToEdit.control || false,
                 pagado: historiaToEdit.pagado,
                 precio: initialPrice,
                 hoja: historiaToEdit.hoja || 0
@@ -308,6 +310,12 @@ const HistoriaClinicaForm: React.FC<HistoriaClinicaFormProps> = ({
                 tratamiento: '',
                 precio: 0
             }));
+        } else if (name === 'control') {
+            setFormData(prev => ({
+                ...prev,
+                control: checked,
+                ...(checked ? { estadoTratamiento: 'no terminado' } : {})
+            }));
         } else {
             setFormData(prev => ({
                 ...prev,
@@ -332,6 +340,7 @@ const HistoriaClinicaForm: React.FC<HistoriaClinicaFormProps> = ({
             proformaDetalleId: 0,
             resaltar: false,
             casoClinico: false,
+            control: false,
             pagado: 'NO',
             precio: 0,
             hoja: 0
@@ -695,12 +704,12 @@ const HistoriaClinicaForm: React.FC<HistoriaClinicaFormProps> = ({
                             <div>
                                 <span className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2">Tratamiento</span>
                                 <div className="flex flex-col gap-2">
-                                    <label className="inline-flex items-center cursor-pointer">
-                                        <input type="radio" name="estadoTratamiento" value="terminado" checked={formData.estadoTratamiento === 'terminado'} onChange={handleChange} className="form-radio text-green-600 focus:ring-green-500 h-4 w-4" />
+                                    <label className={`inline-flex items-center ${formData.control ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}>
+                                        <input type="radio" name="estadoTratamiento" value="terminado" checked={formData.estadoTratamiento === 'terminado'} onChange={handleChange} disabled={formData.control} className="form-radio text-green-600 focus:ring-green-500 h-4 w-4 disabled:opacity-50" />
                                         <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">Terminado</span>
                                     </label>
-                                    <label className="inline-flex items-center cursor-pointer">
-                                        <input type="radio" name="estadoTratamiento" value="no terminado" checked={formData.estadoTratamiento === 'no terminado'} onChange={handleChange} className="form-radio text-red-600 focus:ring-red-500 h-4 w-4" />
+                                    <label className={`inline-flex items-center ${formData.control ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}>
+                                        <input type="radio" name="estadoTratamiento" value="no terminado" checked={formData.estadoTratamiento === 'no terminado'} onChange={handleChange} disabled={formData.control} className="form-radio text-red-600 focus:ring-red-500 h-4 w-4 disabled:opacity-50" />
                                         <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">No Terminado</span>
                                     </label>
                                 </div>
@@ -743,6 +752,16 @@ const HistoriaClinicaForm: React.FC<HistoriaClinicaFormProps> = ({
                                     className="form-checkbox h-5 w-5 text-blue-600 rounded border-gray-300 dark:border-gray-600 focus:ring-blue-500 dark:bg-gray-700"
                                 />
                                 <span className="ml-2 text-gray-700 dark:text-gray-300">Caso Clínico</span>
+                            </label>
+                            <label className="inline-flex items-center cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    name="control"
+                                    checked={formData.control}
+                                    onChange={handleChange}
+                                    className="form-checkbox h-5 w-5 text-blue-600 rounded border-gray-300 dark:border-gray-600 focus:ring-blue-500 dark:bg-gray-700"
+                                />
+                                <span className="ml-2 text-gray-700 dark:text-gray-300">Control</span>
                             </label>
                         </div>
                     </div>

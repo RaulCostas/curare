@@ -47,8 +47,9 @@ export class PacientesController {
         @Query('page') page: number = 1,
         @Query('limit') limit: number = 10,
         @Query('search') search: string = '',
+        @Query('mesCumpleanos') mesCumpleanos?: string,
     ) {
-        return this.pacientesService.findAll(Number(page), Number(limit), search);
+        return this.pacientesService.findAll(Number(page), Number(limit), search, mesCumpleanos ? Number(mesCumpleanos) : undefined);
     }
 
     @Get(':id')

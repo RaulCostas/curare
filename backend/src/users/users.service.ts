@@ -37,10 +37,16 @@ export class UsersService {
     return this.usersRepository.save(user);
   }
 
-  findAll(): Promise<User[]> {
-    return this.usersRepository.find({
-      order: { name: 'ASC' }
-    });
+  async findAll(mesCumpleanos?: number): Promise<User[]> {
+    const queryBuilder = this.usersRepository.createQueryBuilder('user');
+    
+    if (mesCumpleanos) {
+        queryBuilder.andWhere("EXTRACT(MONTH FROM user.fechaNacimiento) = :mesCumpleanos", { mesCumpleanos });
+    }
+    
+    queryBuilder.orderBy('user.name', 'ASC');
+    
+    return queryBuilder.getMany();
   }
 
   async findOne(id: number): Promise<User> {
