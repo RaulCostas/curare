@@ -6,6 +6,8 @@ import ManualModal, { type ManualSection } from './ManualModal';
 import { getLocalDateString } from '../utils/dateUtils';
 
 interface HistoriaClinicaFormProps {
+    isOpen?: boolean;
+    onClose?: () => void;
     pacienteId: number;
     onSuccess: () => void;
     historiaToEdit: HistoriaClinica | null;
@@ -17,6 +19,8 @@ interface HistoriaClinicaFormProps {
 }
 
 const HistoriaClinicaForm: React.FC<HistoriaClinicaFormProps> = ({
+    isOpen = true,
+    onClose,
     pacienteId,
     onSuccess,
     historiaToEdit,
@@ -106,6 +110,8 @@ const HistoriaClinicaForm: React.FC<HistoriaClinicaFormProps> = ({
     }, [selectedProformaId, historiaToEdit]);
 
     useEffect(() => {
+        if (!isOpen) return;
+
         if (historiaToEdit) {
             let initialPrice = historiaToEdit.precio || 0;
             let initialProformaDetalleId = historiaToEdit.proformaDetalleId || 0;
@@ -157,7 +163,7 @@ const HistoriaClinicaForm: React.FC<HistoriaClinicaFormProps> = ({
         } else {
             resetForm();
         }
-    }, [historiaToEdit, proformas]);
+    }, [historiaToEdit, proformas, isOpen]);
 
     const fetchDoctors = async () => {
         try {
@@ -408,29 +414,46 @@ const HistoriaClinicaForm: React.FC<HistoriaClinicaFormProps> = ({
         }
     };
 
+    if (!isOpen) return null;
 
     return (
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md border border-gray-100 dark:border-gray-700 transition-colors duration-300">
-            <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
-                <h3 className="text-xl font-bold text-gray-800 dark:text-white flex items-center gap-2">
-                    <span className={`p-2 rounded-lg ${historiaToEdit ? 'bg-orange-100 dark:bg-orange-900 text-orange-600 dark:text-orange-300' : 'bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-300'}`}>
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                        </svg>
-                    </span>
-                    {historiaToEdit ? 'Editar Historia Clínica' : 'Nueva Historia Clínica'}
-                </h3>
-                <button
-                    type="button"
-                    onClick={() => setShowManual(true)}
-                    className="bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 p-1.5 rounded-full flex items-center justify-center w-[30px] h-[30px] text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-                    title="Ayuda / Manual"
-                >
-                    ?
-                </button>
-            </div>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[1050] p-3 sm:p-4 animate-fade-in">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-4xl w-full max-h-[95vh] overflow-y-auto border border-gray-100 dark:border-gray-700 relative">
+                <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-white dark:bg-gray-800 sticky top-0 z-10">
+                    <h3 className="text-xl font-bold text-gray-800 dark:text-white flex items-center gap-2">
+                        <span className={`p-2 rounded-lg ${historiaToEdit ? 'bg-orange-100 dark:bg-orange-900 text-orange-600 dark:text-orange-300' : 'bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-300'}`}>
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                        </span>
+                        {historiaToEdit ? 'Editar Historia Clínica' : 'Nueva Historia Clínica'}
+                    </h3>
+                    <div className="flex items-center gap-2">
+                        <button
+                            type="button"
+                            onClick={() => setShowManual(true)}
+                            className="bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 p-1.5 rounded-full flex items-center justify-center w-[30px] h-[30px] text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                            title="Ayuda / Manual"
+                        >
+                            ?
+                        </button>
+                        {onClose && (
+                            <button
+                                type="button"
+                                onClick={onClose}
+                                className="text-gray-400 bg-transparent hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 p-2 rounded-full transition-all"
+                                title="Cerrar"
+                            >
+                                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        )}
+                    </div>
+                </div>
 
-            <form onSubmit={handleSubmit} className="p-6">
+                <div className="p-6">
+                    <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-6">
 
                     {/* Fecha */}
@@ -475,7 +498,7 @@ const HistoriaClinicaForm: React.FC<HistoriaClinicaFormProps> = ({
                             >
                                 <option value="" hidden>-- Seleccione Tratamiento --</option>
                                 {formData.proformaId ? (
-                                    currentProformaDetails.map(t => {
+                                    currentProformaDetails.filter(t => !t.posible).map(t => {
                                         let isCompleted = false;
 
                                         if (t.piezas) {
@@ -783,18 +806,21 @@ const HistoriaClinicaForm: React.FC<HistoriaClinicaFormProps> = ({
                     <button
                         type="button"
                         onClick={() => {
-                            onCancelEdit();
+                            if (historiaToEdit) onCancelEdit();
+                            else if (onClose) onClose();
                             resetForm();
                         }}
-                        className="px-5 py-2.5 bg-gray-500 hover:bg-gray-600 active:scale-95 text-white font-bold rounded-xl shadow-md transition-all transform hover:-translate-y-0.5 flex items-center gap-2 cursor-pointer"
+                        className="px-6 py-2.5 bg-gray-500 hover:bg-gray-600 active:scale-95 text-white font-bold rounded-xl shadow-md transition-all transform hover:-translate-y-0.5 flex items-center gap-2 cursor-pointer"
                     >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
                         </svg>
-                        {historiaToEdit ? 'Cancelar Edición' : 'Cancelar'}
+                        Cancelar
                     </button>
                 </div>
-            </form >
+            </form>
+            </div>
 
             <ManualModal
                 isOpen={showManual}
@@ -802,7 +828,8 @@ const HistoriaClinicaForm: React.FC<HistoriaClinicaFormProps> = ({
                 title="Manual de Usuario - Historia Clínica"
                 sections={manualSections}
             />
-        </div >
+        </div>
+        </div>
     );
 };
 

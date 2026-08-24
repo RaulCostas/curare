@@ -514,7 +514,7 @@ const ProximaCitaManager: React.FC<ProximaCitaManagerProps> = ({
                                     className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 dark:border-gray-500 bg-white dark:bg-gray-600 text-gray-800 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
                                 >
                                     <option value={0}>-- Seleccione Tratamiento --</option>
-                                    {currentProformaDetails.map(d => {
+                                    {currentProformaDetails.filter(d => !d.posible).map(d => {
                                         let isCompleted = false;
 
                                         if (d.piezas) {

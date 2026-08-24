@@ -43,19 +43,31 @@ const SeguimientoClinicoModal: React.FC<SeguimientoClinicoModalProps> = ({
         <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden border border-gray-100 dark:border-gray-700 flex flex-col transform transition-all scale-100">
                 
-                {/* Header (No X button as requested) */}
+                {/* Header */}
                 <div className="p-5 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/80">
-                    <div className="flex items-center gap-3">
-                        <ClipboardList className="text-blue-500 flex-shrink-0" size={26} />
-                        <div>
-                            <h3 className="text-xl font-bold text-gray-800 dark:text-white">
-                                Historia Clínica Completa
-                            </h3>
-                            {/* 4. Paterno Materno Nombre */}
-                            <p className="text-base font-extrabold text-blue-600 dark:text-blue-400 mt-0.5">
-                                {pacienteNombreCompleto}
-                            </p>
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <ClipboardList className="text-blue-500 flex-shrink-0" size={26} />
+                            <div>
+                                <h3 className="text-xl font-bold text-gray-800 dark:text-white">
+                                    Historia Clínica Completa
+                                </h3>
+                                {/* 4. Paterno Materno Nombre */}
+                                <p className="text-base font-extrabold text-blue-600 dark:text-blue-400 mt-0.5">
+                                    {pacienteNombreCompleto}
+                                </p>
+                            </div>
                         </div>
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="text-gray-400 bg-transparent hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 p-2 rounded-full transition-all flex-shrink-0"
+                            title="Cerrar"
+                        >
+                            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
                     </div>
 
                     {/* 5 & 7. PLAN ASOCIADO y ESTADO PRESUPUESTO colocadas arriba una sola vez */}
@@ -184,16 +196,7 @@ const SeguimientoClinicoModal: React.FC<SeguimientoClinicoModalProps> = ({
                     )}
                 </div>
 
-                {/* Footer (2. Con icono X en el botón Cerrar) */}
-                <div className="p-4 border-t border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex justify-end">
-                    <button
-                        onClick={onClose}
-                        className="bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-6 rounded-lg shadow-md transition-all transform hover:-translate-y-0.5 active:scale-95 flex items-center gap-2 text-sm cursor-pointer"
-                    >
-                        <X size={18} />
-                        <span>Cerrar</span>
-                    </button>
-                </div>
+
             </div>
         </div>
     );

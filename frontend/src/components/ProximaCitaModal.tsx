@@ -91,7 +91,7 @@ const ProximaCitaModal: React.FC<ProximaCitaModalProps> = ({
         const targetPlanId = formData.proformaId || selectedProformaId;
         if (!targetPlanId) return [];
         const proforma = localProformas.find(p => p.id === targetPlanId);
-        return proforma ? (proforma.detalles || []) : [];
+        return proforma ? proforma.detalles.filter((d: any) => !d.posible) : [];
     }, [formData.proformaId, selectedProformaId, localProformas]);
 
     const handleTreatmentChange = (e: React.ChangeEvent<HTMLSelectElement>) => {

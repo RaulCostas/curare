@@ -487,32 +487,34 @@ const HistoriaClinica: React.FC = () => {
                     <>
                         {selectedProformaId > 0 ? (
                             <>
-                                {(showForm || historiaToEdit) && (
-                                    <div className="mb-6">
-                                        <HistoriaClinicaForm
-                                            pacienteId={Number(id)}
-                                            onSuccess={() => {
-                                                fetchHistoria();
-                                                setShowForm(false);
-                                            }}
-                                            historiaToEdit={historiaToEdit}
-                                            onCancelEdit={handleCancelEdit}
-                                            selectedProformaId={selectedProformaId}
-                                            proformas={proformas}
-                                            onMaterialUtilizadoRequired={(historiaId) => {
-                                                setCurrentHistoriaId(historiaId);
-                                                setShowMaterialModal(true);
-                                            }}
-                                        />
-                                    </div>
-                                )}
+                                <HistoriaClinicaForm
+                                    isOpen={showForm || !!historiaToEdit}
+                                    onClose={() => {
+                                        setShowForm(false);
+                                        setHistoriaToEdit(null);
+                                    }}
+                                    pacienteId={Number(id)}
+                                    onSuccess={() => {
+                                        fetchHistoria();
+                                        setShowForm(false);
+                                        setHistoriaToEdit(null);
+                                    }}
+                                    historiaToEdit={historiaToEdit}
+                                    onCancelEdit={handleCancelEdit}
+                                    selectedProformaId={selectedProformaId}
+                                    proformas={proformas}
+                                    onMaterialUtilizadoRequired={(historiaId) => {
+                                        setCurrentHistoriaId(historiaId);
+                                        setShowMaterialModal(true);
+                                    }}
+                                />
 
                                 <HistoriaClinicaList
                                     historia={filteredHistoria}
                                     allHistoria={historia}
                                     onDelete={handleDelete}
                                     onEdit={handleEdit}
-                                    onNewHistoria={!showForm && !historiaToEdit ? () => setShowForm(true) : undefined}
+                                    onNewHistoria={() => setShowForm(true)}
                                     onPrint={handlePrintHistory}
                                     onViewPlan={() => setShowPlanModal(true)}
                                     onViewHistorial={() => setShowSeguimientoModal(true)}
@@ -522,83 +524,6 @@ const HistoriaClinica: React.FC = () => {
                                         setShowReminderModal(true);
                                     }}
                                 />
-
-                                <div className="mt-6 flex justify-end">
-                                    {(() => {
-                                        const selectedProforma = proformas.find(p => p.id === selectedProformaId);
-                                        const totalPresupuesto = selectedProforma ? Number(selectedProforma.total || 0) : 0;
-
-                                        const rawFilteredHistoria = historia.filter(h => h.proformaId === selectedProformaId && h.estadoTratamiento === 'terminado');
-                                        const filteredHistoriaEjecutado = deduplicateHistoria(rawFilteredHistoria);
-
-                                        const totalEjecutado = filteredHistoriaEjecutado.reduce((acc, curr) => {
-                                            if (curr.proformaDetalle && Number(curr.proformaDetalle.total) > 0 && Number(curr.proformaDetalle.cantidad) > 0) {
-                                                const netUnitPrice = Number(curr.proformaDetalle.total) / Number(curr.proformaDetalle.cantidad);
-                                                return acc + (netUnitPrice * Number(curr.cantidad || 1));
-                                            }
-                                            if (selectedProforma && selectedProforma.detalles) {
-                                                const currTratNorm = (curr.tratamiento || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, ' ').trim();
-                                                const pdMatch = selectedProforma.detalles.find((d: any) => {
-                                                    if (curr.proformaDetalleId && Number(d.id) === Number(curr.proformaDetalleId)) return true;
-                                                    const dTratNorm = (d.arancel?.detalle || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, ' ').trim();
-                                                    return dTratNorm && currTratNorm && (dTratNorm.includes(currTratNorm) || currTratNorm.includes(dTratNorm) || dTratNorm.split(' ')[0] === currTratNorm.split(' ')[0]);
-                                                });
-                                                if (pdMatch && Number(pdMatch.total) > 0 && Number(pdMatch.cantidad) > 0) {
-                                                    const netUnitPrice = Number(pdMatch.total) / Number(pdMatch.cantidad);
-                                                    return acc + (netUnitPrice * Number(curr.cantidad || 1));
-                                                }
-                                            }
-                                            return acc + Number(curr.precio || 0);
-                                        }, 0);
-
-                                        const filteredPagos = pagos.filter(p => p.proformaId === selectedProformaId);
-                                        const totalPagado = filteredPagos.reduce((acc, curr) => {
-                                            const val = curr.moneda === 'Dólares'
-                                                ? Number(curr.monto || 0) * (Number(curr.tc) || 6.96)
-                                                : Number(curr.monto || 0);
-                                            return acc + val;
-                                        }, 0);
-
-                                        const saldo = totalPagado - totalEjecutado;
-                                        const saldoFavor = saldo > 0 ? saldo : 0;
-                                        const saldoContra = saldo < 0 ? Math.abs(saldo) : 0;
-
-                                        return (
-                                            <div className="bg-[#1f2937] dark:bg-gray-800 p-5 rounded-xl border border-gray-700/80 shadow-md inline-flex flex-wrap justify-end gap-8">
-                                                <div className="text-right">
-                                                    <div className="text-xs text-gray-400">Total Presupuesto</div>
-                                                    <div className="text-lg font-bold text-blue-400">Bs. {formatCurrency(totalPresupuesto)}</div>
-                                                </div>
-                                                <div className="text-right">
-                                                    <div className="text-xs text-gray-400">Total Ejecutado</div>
-                                                    <div className="text-lg font-bold text-white">Bs. {formatCurrency(totalEjecutado)}</div>
-                                                </div>
-                                                <div className="text-right">
-                                                    <div className="text-xs text-gray-400">Total Pagado</div>
-                                                    <div className="text-lg font-bold text-white">Bs. {formatCurrency(totalPagado)}</div>
-                                                </div>
-                                                {saldoFavor > 0 && (
-                                                    <div className="text-right text-green-400">
-                                                        <div className="text-xs text-green-400">Saldo a Favor</div>
-                                                        <div className="text-lg font-bold">Bs. {formatCurrency(saldoFavor)}</div>
-                                                    </div>
-                                                )}
-                                                {saldoContra > 0 && (
-                                                    <div className="text-right text-red-400">
-                                                        <div className="text-xs text-red-400">Saldo en Contra</div>
-                                                        <div className="text-lg font-bold">Bs. {formatCurrency(saldoContra)}</div>
-                                                    </div>
-                                                )}
-                                                {saldo === 0 && (
-                                                    <div className="text-right text-gray-400">
-                                                        <div className="text-xs text-gray-400">Saldo</div>
-                                                        <div className="text-lg font-bold">Bs. 0,00</div>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        );
-                                    })()}
-                                </div>
                             </>
                         ) : null}
                     </>

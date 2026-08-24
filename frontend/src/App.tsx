@@ -44,7 +44,7 @@ import { CorreosProvider } from './context/CorreosContext';
 import DeudasLaboratorios from './components/DeudasLaboratorios';
 import DeudasPedidos from './components/DeudasPedidos';
 import PagosDoctoresList from './components/PagosDoctoresList';
-import PropuestasForm from './components/PropuestasForm';
+
 import ProtectedRoute from './components/ProtectedRoute';
 import HojaDiaria from './components/HojaDiaria';
 import Utilidades from './components/Utilidades';
@@ -154,12 +154,6 @@ function App() {
 
                                     {/* Presupuestos & Propuestas sub-routes */}
                                     <Route element={<ProtectedRoute moduleId="presupuestos" />}>
-                                        <Route path="/pacientes/:id/presupuestos/create" element={<PresupuestoForm />} />
-                                        <Route path="/pacientes/:id/presupuestos/edit/:proformaId" element={<PresupuestoForm />} />
-                                        <Route path="/pacientes/:id/presupuestos/view/:proformaId" element={<PresupuestoForm />} />
-                                        <Route path="/pacientes/:id/propuestas/create" element={<PropuestasForm />} />
-                                        <Route path="/pacientes/:id/propuestas/edit/:propuestaId" element={<PropuestasForm />} />
-                                        <Route path="/pacientes/:id/propuestas/view/:propuestaId" element={<PropuestasForm />} />
                                     </Route>
                                 </Route>
 

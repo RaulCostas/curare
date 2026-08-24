@@ -1,17 +1,22 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import api from '../services/api';
 import Swal from 'sweetalert2';
 import type { Paciente, Propuesta } from '../types';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { formatDateSpanish, numberToWords } from '../utils/formatters';
+import { formatDateSpanish, numberToWords, formatCurrency, formatDateUTC } from '../utils/formatters';
 import ManualModal, { type ManualSection } from './ManualModal';
 import { ClipboardList, Plus } from 'lucide-react';
+import PropuestasForm from './PropuestasForm';
 
 const PropuestasList: React.FC = () => {
     const { id } = useParams<{ id: string }>();
-    const navigate = useNavigate();
+    
+    // Modal states
+    const [showForm, setShowForm] = useState(false);
+    const [editingPropuestaId, setEditingPropuestaId] = useState<number | null>(null);
+    const [viewOnly, setViewOnly] = useState(false);
     const [paciente, setPaciente] = useState<Paciente | null>(null);
     const [propuestas, setPropuestas] = useState<Propuesta[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
@@ -147,14 +152,14 @@ const PropuestasList: React.FC = () => {
                 item.arancel?.detalle || '',
                 item.piezas,
                 item.cantidad,
-                Number(item.precioUnitario).toFixed(2),
-                Number(item.subTotal).toFixed(2)
+                formatCurrency(item.precioUnitario),
+                formatCurrency(item.subTotal)
             ];
 
             if (hasDiscount) {
                 row.push(
                     item.descuento,
-                    Number(item.total).toFixed(2)
+                    formatCurrency(item.total)
                 );
             }
 
@@ -236,7 +241,7 @@ const PropuestasList: React.FC = () => {
             : Number(propuesta.total);
 
         doc.text('TOTAL Bs.', penultColX + penultColWidth - 2, finalY + 5, { align: 'right' });
-        doc.text(totalAmount.toFixed(2), lastColX + lastColWidth - 2, finalY + 5, { align: 'right' });
+        doc.text(formatCurrency(totalAmount), lastColX + lastColWidth - 2, finalY + 5, { align: 'right' });
 
         finalY += 15;
 
@@ -373,13 +378,17 @@ const PropuestasList: React.FC = () => {
                     >
                         ?
                     </button>
-                    <Link
-                        to={`/pacientes/${id}/propuestas/create`}
+                    <button
+                        onClick={() => {
+                            setEditingPropuestaId(null);
+                            setViewOnly(false);
+                            setShowForm(true);
+                        }}
                         className="px-4 py-2 bg-green-600 hover:bg-green-700 active:scale-95 text-white hover:text-white no-underline hover:no-underline rounded-xl font-bold shadow-md transition-all transform hover:-translate-y-0.5 flex items-center gap-2 text-sm cursor-pointer"
                     >
                         <Plus size={18} />
                         <span>Nueva Propuesta</span>
-                    </Link>
+                    </button>
                 </div>
             </div>
 
@@ -423,7 +432,7 @@ const PropuestasList: React.FC = () => {
                             return (
                                 <tr key={propuesta.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                                     <td className="px-5 py-4 whitespace-nowrap text-sm font-medium">{propuesta.numero}</td>
-                                    <td className="px-5 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{propuesta.fecha.split('T')[0]}</td>
+                                    <td className="px-5 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{formatDateUTC(propuesta.fecha)}</td>
                                     <td className="px-5 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{propuesta.usuario?.name || 'Sistema'}</td>
                                     {['A', 'B', 'C', 'D', 'E', 'F'].map(letra => {
                                         const total = calculateTotalByLetra(letra);
@@ -431,7 +440,7 @@ const PropuestasList: React.FC = () => {
                                             <td key={letra} className="px-5 py-4 whitespace-nowrap text-sm text-center">
                                                 {total > 0 ? (
                                                     <div className="flex flex-col items-center gap-1">
-                                                        <span className="font-bold text-gray-800 dark:text-gray-200">{total.toFixed(2)}</span>
+                                                        <span className="font-bold text-gray-800 dark:text-gray-200">{formatCurrency(total)}</span>
                                                         <button
                                                             onClick={() => generatePDF(propuesta, 'print', letra)}
                                                             className="p-1 bg-slate-600 hover:bg-slate-700 active:scale-95 text-white rounded-lg shadow-md transition-all transform hover:-translate-y-0.5 cursor-pointer"
@@ -451,7 +460,11 @@ const PropuestasList: React.FC = () => {
                                     <td className="px-5 py-4 whitespace-nowrap text-center no-print">
                                         <div className="flex gap-2 justify-center">
                                             <button
-                                                onClick={() => navigate(`/pacientes/${id}/propuestas/view/${propuesta.id}`)}
+                                                onClick={() => {
+                                                    setEditingPropuestaId(propuesta.id);
+                                                    setViewOnly(true);
+                                                    setShowForm(true);
+                                                }}
                                                 className="p-2 bg-orange-400 text-white rounded-lg hover:bg-orange-500 shadow-md transition-all transform hover:-translate-y-0.5"
                                                 title="Ver"
                                             >
@@ -460,15 +473,19 @@ const PropuestasList: React.FC = () => {
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                                 </svg>
                                             </button>
-                                            <Link
-                                                to={`/pacientes/${id}/propuestas/edit/${propuesta.id}`}
+                                            <button
+                                                onClick={() => {
+                                                    setEditingPropuestaId(propuesta.id);
+                                                    setViewOnly(false);
+                                                    setShowForm(true);
+                                                }}
                                                 className="p-2 bg-yellow-400 text-white rounded-lg hover:bg-yellow-500 shadow-md transition-all transform hover:-translate-y-0.5 inline-flex items-center justify-center"
                                                 title="Editar"
                                             >
                                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                                                     <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
                                                 </svg>
-                                            </Link>
+                                            </button>
                                             <button
                                                 onClick={() => deletePropuesta(propuesta.id)}
                                                 className="p-2 bg-red-500 text-white rounded-lg hover:bg-red-600 shadow-md transition-all transform hover:-translate-y-0.5"
@@ -503,6 +520,19 @@ const PropuestasList: React.FC = () => {
                 onClose={() => setShowManual(false)}
                 title="Manual de Usuario - Propuestas"
                 sections={manualSections}
+            />
+            <PropuestasForm 
+                isOpen={showForm}
+                onClose={() => setShowForm(false)}
+                onSuccess={() => {
+                    setShowForm(false);
+                    if (id) {
+                        fetchPropuestas(Number(id));
+                    }
+                }}
+                pacienteId={Number(id)}
+                propuestaId={editingPropuestaId || undefined}
+                readOnly={viewOnly}
             />
         </div>
     );

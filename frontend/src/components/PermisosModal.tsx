@@ -59,6 +59,7 @@ const PermisosModal: React.FC<PermisosModalProps> = ({ user, isOpen, onClose, on
                 { id: 'agenda', label: 'Agenda' },
                 { id: 'pacientes', label: 'Pacientes (Módulo)' },
                 { id: 'pacientes-registro', label: ' - Registro de Pacientes' },
+                { id: 'pacientes-pagos', label: ' - Pagos de Pacientes' },
                 { id: 'pacientes-deudores', label: ' - Pacientes Deudores' },
                 { id: 'pacientes-pendientes', label: ' - Pacientes Pendientes' },
 
@@ -146,6 +147,16 @@ const PermisosModal: React.FC<PermisosModalProps> = ({ user, isOpen, onClose, on
                         </span>
                         Restricciones de Acceso: <span className="text-blue-600 dark:text-blue-400">{user.name}</span>
                     </h3>
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="text-gray-400 bg-transparent hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 p-2 rounded-full transition-all"
+                        title="Cerrar"
+                    >
+                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
                 </div>
 
                 <div className="bg-yellow-50 dark:bg-yellow-900/30 border-l-4 border-yellow-400 dark:border-yellow-500 p-3 sm:p-4 mb-4 sm:mb-6 rounded-r-xl">

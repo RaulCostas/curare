@@ -426,7 +426,8 @@ const AgendaForm: React.FC<AgendaFormProps> = ({
     return (
         <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-[1000] p-4">
             <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl w-[540px] max-w-[95%] max-h-[90vh] overflow-y-auto shadow-2xl text-gray-800 dark:text-gray-100 border border-gray-100 dark:border-gray-700">
-                <h2 className="mt-0 text-xl font-bold mb-5 flex items-center gap-3 border-b border-gray-100 dark:border-gray-700 pb-3">
+                <div className="flex items-center justify-between mb-5 border-b border-gray-100 dark:border-gray-700 pb-3">
+                <h2 className="mt-0 text-xl font-bold flex items-center gap-3">
                     <span className="p-2.5 bg-blue-100 dark:bg-blue-900/60 rounded-xl text-blue-600 dark:text-blue-300 shadow-sm">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -434,6 +435,17 @@ const AgendaForm: React.FC<AgendaFormProps> = ({
                     </span>
                     {initialData ? 'Editar Cita' : 'Nueva Cita'}
                 </h2>
+                                        <button
+                        type="button"
+                        onClick={onClose}
+                        className="text-gray-400 bg-transparent hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 p-2 rounded-full transition-all"
+                        title="Cerrar"
+                    >
+                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
                 <form onSubmit={handleSubmit}>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 

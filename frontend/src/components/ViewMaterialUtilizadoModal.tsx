@@ -53,9 +53,14 @@ const ViewMaterialUtilizadoModal: React.FC<ViewMaterialUtilizadoModalProps> = ({
                         Material Utilizado
                     </h3>
                     <button
+                        type="button"
                         onClick={onClose}
-                        className="bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 font-semibold py-2 px-3 sm:px-4 rounded transition-colors text-sm sm:text-base">
-                        Cerrar
+                        className="text-gray-400 bg-transparent hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 p-2 rounded-full transition-all"
+                        title="Cerrar"
+                    >
+                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
                     </button>
                 </div>
 

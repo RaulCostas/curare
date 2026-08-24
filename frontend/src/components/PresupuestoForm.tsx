@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import api from '../services/api';
 import Swal from 'sweetalert2';
 import type { Paciente, Arancel } from '../types';
@@ -22,11 +21,23 @@ interface DetalleItem {
     posible: boolean;
 }
 
-const PresupuestoForm: React.FC = () => {
-    const { id, proformaId } = useParams<{ id: string; proformaId?: string }>();
-    const navigate = useNavigate();
-    const location = useLocation();
-    const isReadOnly = location.pathname.includes('/view/');
+interface PresupuestoFormProps {
+    isOpen: boolean;
+    onClose: () => void;
+    onSuccess: () => void;
+    id: string; // pacienteId
+    proformaId?: string | number;
+    isReadOnly?: boolean;
+}
+
+const PresupuestoForm: React.FC<PresupuestoFormProps> = ({
+    isOpen,
+    onClose,
+    onSuccess,
+    id,
+    proformaId,
+    isReadOnly = false
+}) => {
 
     const [paciente, setPaciente] = useState<Paciente | null>(null);
     const [aranceles, setAranceles] = useState<Arancel[]>([]);
@@ -70,15 +81,31 @@ const PresupuestoForm: React.FC = () => {
     ];
 
     useEffect(() => {
-        if (id) {
-            fetchPaciente(Number(id));
-            fetchAranceles();
-            fetchHistoriaClinica(Number(id));
+        if (isOpen) {
+            setDetalles([]);
+            setNota('');
+            const today = new Date();
+            setFecha(`${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`);
+            setAprobado(false);
+            setNumero(null);
+            setSelectedArancelId(0);
+            setCustomPrecioUnitario('');
+            setPiezas('');
+            setCantidad(1);
+            setDescuento(0);
+            setPosible(false);
+            setEditingIndex(null);
+            
+            if (id) {
+                fetchPaciente(Number(id));
+                fetchAranceles();
+                fetchHistoriaClinica(Number(id));
+            }
+            if (proformaId) {
+                fetchProforma(Number(proformaId));
+            }
         }
-        if (proformaId) {
-            fetchProforma(Number(proformaId));
-        }
-    }, [id, proformaId]);
+    }, [isOpen, id, proformaId]);
 
     const fetchHistoriaClinica = async (pacienteId: number) => {
         try {
@@ -393,7 +420,8 @@ const PresupuestoForm: React.FC = () => {
                 });
             }
             setTimeout(() => {
-                navigate(`/pacientes/${id}/presupuestos`);
+                onSuccess();
+                onClose();
             }, 1500);
         } catch (error: any) {
             console.error('Error saving proforma:', error);
@@ -408,25 +436,42 @@ const PresupuestoForm: React.FC = () => {
         }
     };
 
+    if (!isOpen) return null;
+
     return (
-        <div className="content-card max-w-[1400px] mx-auto text-gray-800 dark:text-white bg-white dark:bg-gray-800">
-            <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-gray-800 dark:text-white flex items-center gap-3">
-                    <span className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg text-blue-600 dark:text-blue-300">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                    </span>
-                    {proformaId ? (isReadOnly ? `Ver Presupuesto #${numero}` : `Editar Presupuesto #${numero}`) : 'Nuevo Presupuesto'}
-                </h2>
-                <button
-                    onClick={() => setShowManual(true)}
-                    className="bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 p-1.5 rounded-full flex items-center justify-center w-[30px] h-[30px] text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-                    title="Ayuda / Manual"
-                >
-                    ?
-                </button>
-            </div>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[1100] p-3 sm:p-4 animate-fade-in">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-7xl w-full max-h-[95vh] overflow-y-auto border border-gray-100 dark:border-gray-700 relative">
+                <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-white dark:bg-gray-800 sticky top-0 z-10">
+                    <h3 className="text-xl font-bold text-gray-800 dark:text-white flex items-center gap-2 flex-grow">
+                        <span className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                        </span>
+                        {proformaId ? (isReadOnly ? `Ver Presupuesto #${numero}` : `Editar Presupuesto #${numero}`) : 'Registrar Presupuesto'}
+                    </h3>
+                    <div className="flex items-center gap-2">
+                        <button
+                            type="button"
+                            onClick={() => setShowManual(true)}
+                            className="bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 p-1.5 rounded-full flex items-center justify-center w-[30px] h-[30px] text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                            title="Ayuda / Manual"
+                        >
+                            ?
+                        </button>
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="text-gray-400 bg-transparent hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 p-2 rounded-full transition-all"
+                            title="Cerrar"
+                        >
+                            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <div className="p-6">
 
             {/* Header: Patient Info */}
             <div className="bg-gray-50 dark:bg-gray-700 p-6 rounded-xl mb-6 shadow-inner border border-gray-100 dark:border-gray-600">
@@ -534,7 +579,7 @@ const PresupuestoForm: React.FC = () => {
                             </div>
                         </div>
 
-                        <div>
+                        <div className="hidden">
                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Costo Uni. (Bs.)</label>
                             <div className="relative">
                                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -552,73 +597,82 @@ const PresupuestoForm: React.FC = () => {
                             </div>
                         </div>
 
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nº Pieza(s)</label>
-                            <div className="relative">
-                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
-                                        <path d="M11 17a1 1 0 001.447.894l4-2A1 1 0 0017 15V9.236a1 1 0 00-1.447-.894l-4 2a1 1 0 00-.553.894V17zM15.211 6.276a1 1 0 00-1.219-1.343L8.88 4.5c-.832-.086-1.55.534-1.611 1.343l-.128 1.7a1 1 0 001.218 1.343l5.109-.432c.831-.087 1.55-.534 1.611-1.343l.132-1.7z" />
-                                    </svg>
-                                </div>
-                                <input
-                                    type="text"
-                                    value={piezas}
-                                    onChange={(e) => setPiezas(e.target.value)}
-                                    className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 transition-colors"
-                                />
-                            </div>
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Cantidad</label>
-                            <div className="relative">
-                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <span className="text-gray-400 font-bold">#</span>
-                                </div>
-                                <input
-                                    type="number"
-                                    min="1"
-                                    value={cantidad}
-                                    onChange={(e) => setCantidad(Number(e.target.value))}
-                                    className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 transition-colors"
-                                />
-                            </div>
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Desc. (%)</label>
-                            <div className="relative">
-                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
-                                        <path fillRule="evenodd" d="M5 5a3 3 0 015-2.236A3 3 0 0114.83 6H16a2 2 0 110 4h-5V9a1 1 0 10-2 0v1H4a2 2 0 110-4h1.17C5.06 5.687 5 5.35 5 5zm4 1V5a1 1 0 10-1 1h1zm3 0a1 1 0 10-1-1v1h1z" clipRule="evenodd" />
-                                        <path d="M9 11H3v5a2 2 0 002 2h4v-7zM11 18h4a2 2 0 002-2v-5h-6v7z" />
-                                    </svg>
-                                </div>
-                                <input
-                                    type="text"
-                                    inputMode="decimal"
-                                    value={descuento}
-                                    onChange={(e) => setDescuento(e.target.value as any)}
-                                    placeholder="0"
-                                    className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 transition-colors"
-                                />
-                            </div>
-                        </div>
-
-                        <div className="flex items-center mt-6 md:col-span-3">
-                            <label className="flex items-center cursor-pointer text-gray-700 dark:text-gray-300 hover:text-blue-600 transition-colors">
+                        {/* Fila única: Pieza | Cantidad | Descuento | Posible */}
+                        <div className="md:col-span-3 flex flex-wrap md:flex-nowrap items-end gap-3">
+                            {/* Nº Pieza(s) */}
+                            <div className="w-96">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nº Pieza(s)</label>
                                 <div className="relative">
+                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                                            <path d="M11 17a1 1 0 001.447.894l4-2A1 1 0 0017 15V9.236a1 1 0 00-1.447-.894l-4 2a1 1 0 00-.553.894V17zM15.211 6.276a1 1 0 00-1.219-1.343L8.88 4.5c-.832-.086-1.55.534-1.611 1.343l-.128 1.7a1 1 0 001.218 1.343l5.109-.432c.831-.087 1.55-.534 1.611-1.343l.132-1.7z" />
+                                        </svg>
+                                    </div>
                                     <input
-                                        type="checkbox"
-                                        checked={posible}
-                                        onChange={(e) => setPosible(e.target.checked)}
-                                        className="sr-only"
+                                        type="text"
+                                        value={piezas}
+                                        onChange={(e) => setPiezas(e.target.value)}
+                                        placeholder="Ej. 11, 12, 13..."
+                                        className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 transition-colors"
                                     />
-                                    <div className={`w-10 h-5 bg-gray-300 rounded-full shadow-inner transition-colors ${posible ? 'bg-orange-400' : ''}`}></div>
-                                    <div className={`dot absolute w-5 h-5 bg-white rounded-full shadow -left-1 -top-0 transition-transform ${posible ? 'transform translate-x-full bg-blue-500' : ''}`}></div>
                                 </div>
-                                <span className="ml-3 font-semibold select-none">POSIBLE TRATAMIENTO</span>
-                            </label>
+                            </div>
+
+                            {/* Cantidad */}
+                            <div className="w-28">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Cantidad</label>
+                                <div className="relative">
+                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <span className="text-gray-400 font-bold">#</span>
+                                    </div>
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        value={cantidad}
+                                        onChange={(e) => setCantidad(Number(e.target.value))}
+                                        placeholder="1"
+                                        className="w-full pl-8 pr-2 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 transition-colors"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Descuento */}
+                            <div className="w-28">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Desc. (%)</label>
+                                <div className="relative">
+                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                                            <path fillRule="evenodd" d="M5 5a3 3 0 015-2.236A3 3 0 0114.83 6H16a2 2 0 110 4h-5V9a1 1 0 10-2 0v1H4a2 2 0 110-4h1.17C5.06 5.687 5 5.35 5 5zm4 1V5a1 1 0 10-1 1h1zm3 0a1 1 0 10-1-1v1h1z" clipRule="evenodd" />
+                                            <path d="M9 11H3v5a2 2 0 002 2h4v-7zM11 18h4a2 2 0 002-2v-5h-6v7z" />
+                                        </svg>
+                                    </div>
+                                    <input
+                                        type="text"
+                                        inputMode="decimal"
+                                        value={descuento}
+                                        onChange={(e) => setDescuento(e.target.value as any)}
+                                        placeholder="0"
+                                        className="w-full pl-10 pr-2 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 transition-colors"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Posible Tratamiento */}
+                            <div className="flex items-center pb-1">
+                                <label className="flex items-center cursor-pointer text-gray-700 dark:text-gray-300 hover:text-blue-600 transition-colors gap-3 whitespace-nowrap">
+                                    <div className="relative flex-shrink-0">
+                                        <input
+                                            type="checkbox"
+                                            checked={posible}
+                                            onChange={(e) => setPosible(e.target.checked)}
+                                            className="sr-only"
+                                        />
+                                        <div className={`w-10 h-5 bg-gray-300 rounded-full shadow-inner transition-colors ${posible ? 'bg-orange-400' : ''}`}></div>
+                                        <div className={`dot absolute w-5 h-5 bg-white rounded-full shadow -left-1 -top-0 transition-transform ${posible ? 'transform translate-x-full bg-blue-500' : ''}`}></div>
+                                    </div>
+                                    <span className="font-semibold select-none text-sm">POSIBLE TRATAMIENTO</span>
+                                </label>
+                            </div>
                         </div>
                     </div>
 
@@ -662,7 +716,7 @@ const PresupuestoForm: React.FC = () => {
                                 <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Nº</th>
                                 <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Tratamiento</th>
                                 <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Pieza(s)</th>
-                                <th scope="col" className="px-4 py-3 text-right text-xs font-bold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Costo Uni.</th>
+                                <th scope="col" className="px-4 py-3 text-right text-xs font-bold text-gray-500 dark:text-gray-300 uppercase tracking-wider hidden">Costo Uni.</th>
                                 <th scope="col" className="px-4 py-3 text-center text-xs font-bold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Cant.</th>
                                 <th scope="col" className="px-4 py-3 text-right text-xs font-bold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Total Bs.</th>
                                 <th scope="col" className="px-4 py-3 text-center text-xs font-bold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Desc %</th>
@@ -763,7 +817,7 @@ const PresupuestoForm: React.FC = () => {
                                             )}
                                         </td>
                                         <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-200">{renderPiezasWithCompletion()}</td>
-                                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200 text-right">{formatCurrency(item.precioUnitario)}</td>
+                                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200 text-right hidden">{formatCurrency(item.precioUnitario)}</td>
                                         <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200 text-center">{item.cantidad}</td>
                                         <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200 text-right">{formatCurrency(item.subTotal)}</td>
                                         <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200 text-center">{item.descuento}%</td>
@@ -812,15 +866,22 @@ const PresupuestoForm: React.FC = () => {
             {/* Footer: Total and Note */}
             <div className="flex flex-col lg:flex-row justify-between items-start bg-gray-50 dark:bg-gray-700/50 p-6 rounded-xl border border-gray-100 dark:border-gray-600">
                 <div className="flex-1 w-full lg:w-auto lg:mr-8 mb-6 lg:mb-0">
-                    <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wide">Nota / Observaciones</label>
-                    <textarea
-                        value={nota}
-                        onChange={(e) => setNota(e.target.value)}
-                        disabled={isReadOnly}
-                        required
-                        placeholder="Ingrese notas adicionales de este presupuesto..."
-                        className="w-full h-32 p-4 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 dark:disabled:bg-gray-900 disabled:cursor-not-allowed resize-none transition-colors shadow-inner"
-                    />
+                    <label className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wide flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                        Nota / Observaciones
+                    </label>
+                    <div className="relative">
+                        <textarea
+                            value={nota}
+                            onChange={(e) => setNota(e.target.value)}
+                            disabled={isReadOnly}
+                            required
+                            placeholder="Ingrese notas adicionales de este presupuesto... (Ej: El paciente requiere radiografía previa)"
+                            className="w-full h-32 p-4 pt-3 pl-4 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 dark:disabled:bg-gray-900 disabled:cursor-not-allowed resize-none transition-colors shadow-inner"
+                        />
+                    </div>
                 </div>
                 <div className="w-full lg:w-1/3 min-w-[300px]">
                     <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow border border-gray-200 dark:border-gray-700">
@@ -830,8 +891,7 @@ const PresupuestoForm: React.FC = () => {
                         <div className="text-4xl font-extrabold text-gray-900 dark:text-white tracking-tight">
                             Bs. {formatCurrency(calculateTotal())}
                         </div>
-
-                        <div className="mt-8 flex flex-col gap-3">
+                        <div className="mt-8 flex justify-start gap-4 border-t border-gray-200 dark:border-gray-700 pt-6">
                             {!isReadOnly && (
                                 <button
                                     onClick={handleSubmit}
@@ -846,7 +906,7 @@ const PresupuestoForm: React.FC = () => {
                                 </button>
                             )}
                             <button
-                                onClick={() => navigate(`/pacientes/${id}/presupuestos`)}
+                                onClick={onClose}
                                 className="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition-all transform hover:-translate-y-0.5 flex items-center justify-center gap-2"
                             >
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -858,13 +918,15 @@ const PresupuestoForm: React.FC = () => {
                     </div>
                 </div>
             </div>
+            </div>
+            </div>
             <ManualModal
                 isOpen={showManual}
                 onClose={() => setShowManual(false)}
                 title="Manual - Presupuestos"
                 sections={manualSections}
             />
-        </div >
+        </div>
     );
 };
-export default PresupuestoForm;
+export default PresupuestoForm; PresupuestoForm;

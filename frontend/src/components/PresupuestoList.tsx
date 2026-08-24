@@ -9,9 +9,9 @@ import autoTable from 'jspdf-autotable';
 import { formatDateSpanish, formatDateUTC, formatCurrency, numberToWords, formatFullName } from '../utils/formatters';
 import ManualModal, { type ManualSection } from './ManualModal';
 import PlanTratamientoModal from './PlanTratamientoModal';
-import { FileText, Plus, X } from 'lucide-react';
+import { CheckCircle, FileText, Plus, X } from 'lucide-react';
+import PresupuestoForm from './PresupuestoForm';
 import SignatureModal from './SignatureModal';
-import { CheckCircle } from 'lucide-react';
 
 interface Proforma {
     id: number;
@@ -35,6 +35,8 @@ const PresupuestoList: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [showManual, setShowManual] = useState(false);
     const [viewProforma, setViewProforma] = useState<Proforma | null>(null);
+    const [isPresupuestoModalOpen, setIsPresupuestoModalOpen] = useState(false);
+    const [editingProformaId, setEditingProformaId] = useState<number | undefined>();
     const [budgetsWithRelations, setBudgetsWithRelations] = useState<Set<number>>(new Set());
     const [completedBudgets, setCompletedBudgets] = useState<Set<number>>(new Set());
     const [historiaList, setHistoriaList] = useState<any[]>([]);
@@ -664,13 +666,16 @@ const PresupuestoList: React.FC = () => {
                     >
                         ?
                     </button>
-                    <Link
-                        to={`/pacientes/${id}/presupuestos/create`}
+                    <button
+                        onClick={() => {
+                            setEditingProformaId(undefined);
+                            setIsPresupuestoModalOpen(true);
+                        }}
                         className="px-4 py-2 bg-green-600 hover:bg-green-700 active:scale-95 text-white hover:text-white no-underline hover:no-underline rounded-xl font-bold shadow-md transition-all transform hover:-translate-y-0.5 flex items-center gap-2 text-sm cursor-pointer"
                     >
                         <Plus size={18} />
                         <span>Nuevo Presupuesto</span>
-                    </Link>
+                    </button>
                 </div>
             </div>
 
@@ -863,15 +868,18 @@ const PresupuestoList: React.FC = () => {
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                                 </svg>
                                             </button>
-                                            <Link
-                                                to={`/pacientes/${id}/presupuestos/edit/${proforma.id}`}
+                                            <button
+                                                onClick={() => {
+                                                    setEditingProformaId(proforma.id);
+                                                    setIsPresupuestoModalOpen(true);
+                                                }}
                                                 className="p-2 bg-yellow-400 text-white rounded-lg hover:bg-yellow-500 shadow-md transition-all transform hover:-translate-y-0.5 inline-flex items-center justify-center"
                                                 title="Editar"
                                             >
                                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                                                     <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
                                                 </svg>
-                                            </Link>
+                                            </button>
                                             {!proforma.aprobado && (
                                                 <button
                                                     onClick={() => handleApprove(proforma.id)}
@@ -951,6 +959,16 @@ const PresupuestoList: React.FC = () => {
                 onClose={() => setViewProforma(null)}
                 proforma={viewProforma as any}
                 historia={historiaList}
+            />
+            {/* Presupuesto Form Modal */}
+            <PresupuestoForm
+                isOpen={isPresupuestoModalOpen}
+                onClose={() => setIsPresupuestoModalOpen(false)}
+                onSuccess={() => {
+                    fetchProformas(Number(id));
+                }}
+                id={id || ''}
+                proformaId={editingProformaId}
             />
         </div>
     );

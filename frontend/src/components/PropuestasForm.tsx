@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import api from '../services/api';
 import Swal from 'sweetalert2';
 import type { Paciente, Arancel } from '../types';
@@ -23,11 +22,24 @@ interface DetalleItem {
     posible: boolean;
 }
 
-const PropuestasForm: React.FC = () => {
-    const { id, propuestaId } = useParams<{ id: string; propuestaId?: string }>();
-    const navigate = useNavigate();
-    const location = useLocation();
-    const isReadOnly = location.pathname.includes('/view/');
+interface PropuestasFormProps {
+    isOpen: boolean;
+    onClose: () => void;
+    onSuccess: () => void;
+    pacienteId: number;
+    propuestaId?: number;
+    readOnly?: boolean;
+}
+
+const PropuestasForm: React.FC<PropuestasFormProps> = ({
+    isOpen,
+    onClose,
+    onSuccess,
+    pacienteId,
+    propuestaId,
+    readOnly = false
+}) => {
+    const isReadOnly = readOnly;
 
     const [paciente, setPaciente] = useState<Paciente | null>(null);
     const [aranceles, setAranceles] = useState<Arancel[]>([]);
@@ -75,14 +87,27 @@ const PropuestasForm: React.FC = () => {
     const tabs = ['A', 'B', 'C', 'D', 'E', 'F'];
 
     useEffect(() => {
-        if (id) {
-            fetchPaciente(Number(id));
+        if (!isOpen) return;
+
+        if (pacienteId) {
+            fetchPaciente(pacienteId);
             fetchAranceles();
         }
         if (propuestaId) {
-            fetchPropuesta(Number(propuestaId));
+            fetchPropuesta(propuestaId);
+        } else {
+            setNota('');
+            setLetraHeader('');
+            setNumero(null);
+            setDetalles([]);
+            setActiveTab('A');
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
+            setFecha(`${year}-${month}-${day}`);
         }
-    }, [id, propuestaId]);
+    }, [isOpen, pacienteId, propuestaId]);
 
     const fetchPropuesta = async (propuestaId: number) => {
         try {
@@ -285,7 +310,7 @@ const PropuestasForm: React.FC = () => {
             const usuarioId = currentUser?.id || 1;
 
             const payload = {
-                pacienteId: Number(id),
+                pacienteId: pacienteId,
                 usuarioId: usuarioId,
                 nota,
                 letra: letraHeader || activeTab,
@@ -329,7 +354,7 @@ const PropuestasForm: React.FC = () => {
             }
 
             setTimeout(() => {
-                navigate(`/pacientes/${id}/propuestas`);
+                onSuccess();
             }, 1500);
         } catch (error: any) {
             console.error('Error saving propuesta:', error);
@@ -384,8 +409,9 @@ const PropuestasForm: React.FC = () => {
                     color: document.documentElement.classList.contains('dark') ? '#f3f4f6' : '#000',
                 });
 
-                // Redirect back to the proposals list for this patient
-                navigate(`/pacientes/${id}/propuestas`);
+                // Close and refresh the list
+                onSuccess();
+                onClose();
             } catch (error: any) {
                 console.error('Error converting propuesta to budget:', error);
                 Swal.fire({
@@ -399,9 +425,13 @@ const PropuestasForm: React.FC = () => {
         }
     };
 
+    if (!isOpen) return null;
+
     return (
-        <div className="content-card max-w-[1400px] mx-auto text-gray-800 dark:text-white bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700">
-            {/* Header Title & Ayuda */}
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-sm overflow-y-auto">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-7xl w-full max-h-[95vh] overflow-y-auto border border-gray-100 dark:border-gray-700 relative">
+                <div className="p-6">
+                    {/* Header Title & Ayuda */}
             <div className="flex items-center justify-between mb-6">
                 <h2 className="text-2xl font-bold text-gray-800 dark:text-white flex items-center gap-3">
                     <span className="p-2 bg-purple-100 dark:bg-purple-900/50 rounded-xl text-purple-600 dark:text-purple-300">
@@ -411,15 +441,28 @@ const PropuestasForm: React.FC = () => {
                     </span>
                     {propuestaId ? (isReadOnly ? `Ver Propuesta #${numero}` : `Editar Propuesta #${numero}`) : 'Nueva Propuesta'}
                 </h2>
-                <button
-                    type="button"
-                    onClick={() => setShowManual(true)}
-                    className="bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 p-1.5 rounded-full flex items-center justify-center w-[34px] h-[34px] text-sm font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors shadow-sm cursor-pointer"
-                    title="Ayuda / Manual"
-                >
-                    ?
-                </button>
+                <div className="flex items-center gap-2">
+                    <button
+                        type="button"
+                        onClick={() => setShowManual(true)}
+                        className="bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 p-1.5 rounded-full flex items-center justify-center w-[34px] h-[34px] text-sm font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors shadow-sm cursor-pointer"
+                        title="Ayuda / Manual"
+                    >
+                        ?
+                    </button>
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="text-gray-400 bg-transparent hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 p-2 rounded-full transition-all"
+                        title="Cerrar"
+                    >
+                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
             </div>
+
 
             {/* Header Card: Patient Info & Date matching PresupuestoForm */}
             <div className="bg-gray-50 dark:bg-gray-700/50 p-6 rounded-2xl mb-6 shadow-inner border border-gray-100 dark:border-gray-600">
@@ -556,8 +599,8 @@ const PropuestasForm: React.FC = () => {
                             </div>
                         </div>
 
-                        {/* Costo Unitario Editable */}
-                        <div>
+                        {/* Costo Unitario Editable - Oculto como en presupuestos */}
+                        <div className="hidden">
                             <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Costo Uni. (Bs.)</label>
                             <div className="relative">
                                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -574,78 +617,81 @@ const PropuestasForm: React.FC = () => {
                             </div>
                         </div>
 
-                        {/* Nº Pieza(s) */}
-                        <div>
-                            <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Nº Pieza(s)</label>
-                            <div className="relative">
-                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
-                                        <path d="M11 17a1 1 0 001.447.894l4-2A1 1 0 0017 15V9.236a1 1 0 00-1.447-.894l-4 2a1 1 0 00-.553.894V17zM15.211 6.276a1 1 0 00-1.219-1.343L8.88 4.5c-.832-.086-1.55.534-1.611 1.343l-.128 1.7a1 1 0 001.218 1.343l5.109-.432c.831-.087 1.55-.534 1.611-1.343l.132-1.7z" />
-                                    </svg>
-                                </div>
-                                <input
-                                    type="text"
-                                    value={piezas}
-                                    onChange={(e) => setPiezas(e.target.value)}
-                                    placeholder="Ej: 18, 24"
-                                    className="w-full pl-10 pr-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-800 dark:text-white font-medium transition-all shadow-sm"
-                                />
-                            </div>
-                        </div>
-
-                        {/* Cantidad */}
-                        <div>
-                            <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Cantidad</label>
-                            <div className="relative">
-                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <span className="text-gray-400 font-bold">#</span>
-                                </div>
-                                <input
-                                    type="number"
-                                    min="1"
-                                    value={cantidad}
-                                    onChange={(e) => setCantidad(Number(e.target.value))}
-                                    className="w-full pl-10 pr-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-800 dark:text-white font-medium transition-all shadow-sm"
-                                />
-                            </div>
-                        </div>
-
-                        {/* Descuento (%) */}
-                        <div>
-                            <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Desc. (%)</label>
-                            <div className="relative">
-                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
-                                        <path fillRule="evenodd" d="M5 5a3 3 0 015-2.236A3 3 0 0114.83 6H16a2 2 0 110 4h-5V9a1 1 0 10-2 0v1H4a2 2 0 110-4h1.17C5.06 5.687 5 5.35 5 5zm4 1V5a1 1 0 10-1 1h1zm3 0a1 1 0 10-1-1v1h1z" clipRule="evenodd" />
-                                        <path d="M9 11H3v5a2 2 0 002 2h4v-7zM11 18h4a2 2 0 002-2v-5h-6v7z" />
-                                    </svg>
-                                </div>
-                                <input
-                                    type="text"
-                                    inputMode="decimal"
-                                    value={descuento}
-                                    onChange={(e) => setDescuento(e.target.value as any)}
-                                    placeholder="0"
-                                    className="w-full pl-10 pr-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-800 dark:text-white font-medium transition-all shadow-sm"
-                                />
-                            </div>
-                        </div>
-
-                        {/* Posible Tratamiento Toggle Checkbox */}
-                        <div className="flex items-center mt-2 md:col-span-2">
-                            <label className="flex items-center cursor-pointer text-gray-700 dark:text-gray-300 hover:text-purple-600 transition-colors">
+                        {/* Fila única: Pieza | Cantidad | Descuento | Posible */}
+                        <div className="md:col-span-3 flex flex-wrap md:flex-nowrap items-end gap-3">
+                            {/* Nº Pieza(s) */}
+                            <div className="w-96">
+                                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Nº Pieza(s)</label>
                                 <div className="relative">
+                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                                            <path d="M11 17a1 1 0 001.447.894l4-2A1 1 0 0017 15V9.236a1 1 0 00-1.447-.894l-4 2a1 1 0 00-.553.894V17zM15.211 6.276a1 1 0 00-1.219-1.343L8.88 4.5c-.832-.086-1.55.534-1.611 1.343l-.128 1.7a1 1 0 001.218 1.343l5.109-.432c.831-.087 1.55-.534 1.611-1.343l.132-1.7z" />
+                                        </svg>
+                                    </div>
                                     <input
-                                        type="checkbox"
-                                        checked={posible}
-                                        onChange={(e) => setPosible(e.target.checked)}
-                                        className="sr-only"
+                                        type="text"
+                                        value={piezas}
+                                        onChange={(e) => setPiezas(e.target.value)}
+                                        placeholder="Ej: 18, 24"
+                                        className="w-full pl-10 pr-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-800 dark:text-white font-medium transition-all shadow-sm"
                                     />
-                                    <div className={`w-10 h-5 bg-gray-300 dark:bg-gray-600 rounded-full shadow-inner transition-colors ${posible ? 'bg-orange-400' : ''}`}></div>
-                                    <div className={`dot absolute w-5 h-5 bg-white rounded-full shadow -left-1 -top-0 transition-transform ${posible ? 'transform translate-x-full bg-blue-500' : ''}`}></div>
                                 </div>
-                                <span className="ml-3 text-xs font-bold uppercase tracking-wider select-none">POSIBLE TRATAMIENTO</span>
-                            </label>
+                            </div>
+
+                            {/* Cantidad */}
+                            <div className="w-28">
+                                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Cantidad</label>
+                                <div className="relative">
+                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <span className="text-gray-400 font-bold">#</span>
+                                    </div>
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        value={cantidad}
+                                        onChange={(e) => setCantidad(Number(e.target.value))}
+                                        className="w-full pl-8 pr-2 py-2.5 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-800 dark:text-white font-medium transition-all shadow-sm"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Descuento (%) */}
+                            <div className="w-28">
+                                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Desc. (%)</label>
+                                <div className="relative">
+                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                                            <path fillRule="evenodd" d="M5 5a3 3 0 015-2.236A3 3 0 0114.83 6H16a2 2 0 110 4h-5V9a1 1 0 10-2 0v1H4a2 2 0 110-4h1.17C5.06 5.687 5 5.35 5 5zm4 1V5a1 1 0 10-1 1h1zm3 0a1 1 0 10-1-1v1h1z" clipRule="evenodd" />
+                                            <path d="M9 11H3v5a2 2 0 002 2h4v-7zM11 18h4a2 2 0 002-2v-5h-6v7z" />
+                                        </svg>
+                                    </div>
+                                    <input
+                                        type="text"
+                                        inputMode="decimal"
+                                        value={descuento}
+                                        onChange={(e) => setDescuento(e.target.value as any)}
+                                        placeholder="0"
+                                        className="w-full pl-10 pr-2 py-2.5 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-800 dark:text-white font-medium transition-all shadow-sm"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Posible Tratamiento Toggle Checkbox */}
+                            <div className="flex items-center pb-2.5">
+                                <label className="flex items-center cursor-pointer text-gray-700 dark:text-gray-300 hover:text-purple-600 transition-colors gap-3 whitespace-nowrap">
+                                    <div className="relative flex-shrink-0">
+                                        <input
+                                            type="checkbox"
+                                            checked={posible}
+                                            onChange={(e) => setPosible(e.target.checked)}
+                                            className="sr-only"
+                                        />
+                                        <div className={`w-10 h-5 bg-gray-300 dark:bg-gray-600 rounded-full shadow-inner transition-colors ${posible ? 'bg-orange-400' : ''}`}></div>
+                                        <div className={`dot absolute w-5 h-5 bg-white rounded-full shadow -left-1 -top-0 transition-transform ${posible ? 'transform translate-x-full bg-blue-500' : ''}`}></div>
+                                    </div>
+                                    <span className="text-xs font-bold uppercase tracking-wider select-none">POSIBLE TRATAMIENTO</span>
+                                </label>
+                            </div>
                         </div>
                     </div>
 
@@ -828,7 +874,7 @@ const PropuestasForm: React.FC = () => {
 
                             <button
                                 type="button"
-                                onClick={() => navigate(`/pacientes/${id}/propuestas`)}
+                                onClick={onClose}
                                 className="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2.5 px-6 rounded-xl flex items-center justify-center gap-2 transform hover:-translate-y-0.5 transition-all shadow-md cursor-pointer active:scale-95"
                             >
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -847,6 +893,8 @@ const PropuestasForm: React.FC = () => {
                 title="Manual - Propuestas"
                 sections={manualSections}
             />
+                </div>
+            </div>
         </div>
     );
 };

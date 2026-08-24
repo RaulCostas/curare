@@ -200,6 +200,16 @@ const MusicaList: React.FC = () => {
                         <h3 className="text-2xl font-extrabold text-gray-800 dark:text-white tracking-tight">
                             Gestión de Música
                         </h3>
+                        <button
+                            type="button"
+                            onClick={() => { setShowForm(false); setEditingId(null); }}
+                            className="text-gray-400 bg-transparent hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 p-2 rounded-full transition-all"
+                            title="Cerrar"
+                        >
+                            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
                         <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5 font-medium">
                             Preferencias de géneros musicales para el confort del paciente
                         </p>

@@ -151,12 +151,17 @@ const PacientePerfilView: React.FC = () => {
         navigate(`/pacientes/${id}/${tab}`);
     };
 
+    const userStr = localStorage.getItem('user');
+    const userObj = userStr ? JSON.parse(userStr) : null;
+    const permisosUsuario = userObj && Array.isArray(userObj.permisos) ? userObj.permisos : [];
+    const hasAccessTo = (moduleId: string) => !permisosUsuario.includes(moduleId);
+
     const tabs: { id: TabType; label: string; icon: React.ReactNode }[] = [
         { id: 'ficha-medica', label: 'FICHA MÉDICA', icon: <Heart size={15} /> },
         { id: 'citas', label: 'CITAS', icon: <Calendar size={15} /> },
         { id: 'presupuestos', label: 'PLANES DE TRATAMIENTO', icon: <CreditCard size={15} /> },
         { id: 'historia-clinica', label: 'HISTORIA CLÍNICA', icon: <Activity size={15} /> },
-        { id: 'pagos', label: 'PAGOS', icon: <FileText size={15} /> },
+        ...(hasAccessTo('pacientes-pagos') ? [{ id: 'pagos' as TabType, label: 'PAGOS', icon: <FileText size={15} /> }] : []),
         { id: 'imagenes', label: 'IMÁGENES', icon: <ImageIcon size={15} /> },
         { id: 'propuestas', label: 'PROPUESTAS', icon: <ClipboardList size={15} /> },
         { id: 'recetario', label: 'RECETAS', icon: <PlusSquare size={15} /> },
@@ -335,7 +340,7 @@ const PacientePerfilView: React.FC = () => {
                 {activeTab === 'historia-clinica' && (
                     <HistoriaClinica />
                 )}
-                {activeTab === 'pagos' && (
+                {activeTab === 'pagos' && hasAccessTo('pacientes-pagos') && (
                     <PacientePagosTab pacienteId={pacienteIdNum} />
                 )}
                 {activeTab === 'imagenes' && (
