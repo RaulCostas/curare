@@ -126,7 +126,7 @@ const Layout: React.FC = () => {
                 </div>
                 <nav className="sidebar-nav">
                     <ul className="nav-list">
-                        {hasAccess('agenda') && (
+                        {hasAccess('home') && (
                             <li className="nav-item">
                                 <Link
                                     to="/home"
@@ -643,20 +643,22 @@ const Layout: React.FC = () => {
 
 
                         {/* ARANCELES */}
-                        <li className="nav-item">
-                            <Link
-                                to="/arancel"
-                                className={`nav-link ${isActive('/arancel')}`}
-                                onClick={closeSidebar}
-                                title="Aranceles"
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '10px' }}>
-                                    <line x1="12" y1="1" x2="12" y2="23"></line>
-                                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
-                                </svg>
-                                <span className="nav-text">Aranceles</span>
-                            </Link>
-                        </li>
+                        {hasAccess('aranceles') && (
+                            <li className="nav-item">
+                                <Link
+                                    to="/arancel"
+                                    className={`nav-link ${isActive('/arancel')}`}
+                                    onClick={closeSidebar}
+                                    title="Aranceles"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '10px' }}>
+                                        <line x1="12" y1="1" x2="12" y2="23"></line>
+                                        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                                    </svg>
+                                    <span className="nav-text">Aranceles</span>
+                                </Link>
+                            </li>
+                        )}
 
                         {hasAccess('inventario') && (
                             <li className="nav-item">
@@ -676,19 +678,21 @@ const Layout: React.FC = () => {
                         )}
 
                         {/* EGRESOS */}
-                        <li className="nav-item">
-                            <Link
-                                to="/egresos"
-                                className={`nav-link ${isActive('/egresos')}`}
-                                onClick={closeSidebar}
-                                title="Egresos Diarios"
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '10px' }}>
-                                    <path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
-                                </svg>
-                                <span className="nav-text">Egresos Diarios</span>
-                            </Link>
-                        </li>
+                        {hasAccess('egresos') && (
+                            <li className="nav-item">
+                                <Link
+                                    to="/egresos"
+                                    className={`nav-link ${isActive('/egresos')}`}
+                                    onClick={closeSidebar}
+                                    title="Egresos Diarios"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '10px' }}>
+                                        <path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                                    </svg>
+                                    <span className="nav-text">Egresos Diarios</span>
+                                </Link>
+                            </li>
+                        )}
 
                         {hasAccess('gastos') && (
                             <li className="nav-item">

@@ -81,33 +81,70 @@ function App() {
                             <Route path="/registro-paciente" element={<RegistroPacienteView />} />
                             <Route path="/" element={<Layout />}>
                                 <Route index element={<Navigate to="/home" replace />} />
-                                <Route path="/home" element={<Home />} />
+                                <Route element={<ProtectedRoute moduleId="home" />}>
+                                    <Route path="/home" element={<Home />} />
+                                </Route>
 
                                 {/* Agenda */}
                                 <Route element={<ProtectedRoute moduleId="agenda" />}>
                                     <Route path="/agenda" element={<AgendaView />} />
                                 </Route>
 
-                                {/* Usuarios & Configuration */}
-                                <Route element={<ProtectedRoute moduleId="usuarios" />}>
-                                    <Route path="/users" element={<UserList />} />
+                                {/* Configuración General */}
+                                <Route element={<ProtectedRoute moduleId="configuracion" />}>
                                     <Route path="/configuration" element={<Configuration />} />
-                                    <Route path="/configuration/chatbot" element={<ChatbotConfig />} />
-                                    <Route path="/backup" element={<BackupManager />} />
-                                    <Route path="/correos" element={<CorreosList />} />
-                                    <Route path="/casos-clinicos" element={<CasosClinicosList />} />
-                                    <Route path="/datos-centro" element={<DatosCentroDentalList />} />
-                                    <Route path="/recetas-predisenadas" element={<RecetasPredisenadasList />} />
-                                    <Route path="/consentimientos-plantillas" element={<ConsentimientosPlantillasList />} />
                                 </Route>
 
-                                {/* Doctores & Especialidades */}
-                                <Route path="/doctors" element={<DoctorList />} />
-                                <Route path="/especialidad" element={<EspecialidadList />} />
-                                <Route path="/pagos-doctores" element={<PagosDoctoresList />} />
+                                {/* Submódulos de Configuración y Seguridad */}
+                                <Route element={<ProtectedRoute moduleId="usuarios" />}>
+                                    <Route path="/users" element={<UserList />} />
+                                </Route>
+                                <Route element={<ProtectedRoute moduleId="config-chatbot" />}>
+                                    <Route path="/configuration/chatbot" element={<ChatbotConfig />} />
+                                </Route>
+                                <Route element={<ProtectedRoute moduleId="backup" />}>
+                                    <Route path="/backup" element={<BackupManager />} />
+                                </Route>
+                                <Route element={<ProtectedRoute moduleId="casos-clinicos" />}>
+                                    <Route path="/casos-clinicos" element={<CasosClinicosList />} />
+                                </Route>
+                                <Route element={<ProtectedRoute moduleId="datos-centro" />}>
+                                    <Route path="/datos-centro" element={<DatosCentroDentalList />} />
+                                </Route>
+                                <Route element={<ProtectedRoute moduleId="recetas-predisenadas" />}>
+                                    <Route path="/recetas-predisenadas" element={<RecetasPredisenadasList />} />
+                                </Route>
+                                <Route element={<ProtectedRoute moduleId="consentimientos-plantillas" />}>
+                                    <Route path="/consentimientos-plantillas" element={<ConsentimientosPlantillasList />} />
+                                </Route>
+                                <Route element={<ProtectedRoute moduleId="personal_tipo" />}>
+                                    <Route path="/personal-tipo" element={<PersonalTipoList />} />
+                                </Route>
+                                <Route element={<ProtectedRoute moduleId="config-categorias" />}>
+                                    <Route path="/categoria-paciente" element={<CategoriaPacienteList />} />
+                                </Route>
+                                <Route element={<ProtectedRoute moduleId="config-comision" />}>
+                                    <Route path="/comision-tarjeta" element={<ComisionTarjetaList />} />
+                                </Route>
+                                <Route element={<ProtectedRoute moduleId="config-forma-pago" />}>
+                                    <Route path="/forma-pago" element={<FormaPagoList />} />
+                                </Route>
+                                <Route element={<ProtectedRoute moduleId="config-grupos" />}>
+                                    <Route path="/grupo-inventario" element={<GrupoInventarioList />} />
+                                </Route>
+                                <Route path="/correos" element={<CorreosList />} />
 
-                                {/* Providers / ADMs */}
-                                <Route element={<ProtectedRoute moduleId="adms" />}>
+                                {/* Doctores & Especialidades */}
+                                <Route element={<ProtectedRoute moduleId="doctores" />}>
+                                    <Route path="/doctors" element={<DoctorList />} />
+                                    <Route path="/pagos-doctores" element={<PagosDoctoresList />} />
+                                </Route>
+                                <Route element={<ProtectedRoute moduleId="config-especialidad" />}>
+                                    <Route path="/especialidad" element={<EspecialidadList />} />
+                                </Route>
+
+                                {/* Proveedores */}
+                                <Route element={<ProtectedRoute moduleId="proveedores" />}>
                                     <Route path="/proveedores" element={<ProveedorList />} />
                                 </Route>
 
@@ -119,11 +156,15 @@ function App() {
                                 </Route>
 
                                 {/* Arancel */}
-                                <Route path="/arancel" element={<ArancelList />} />
+                                <Route element={<ProtectedRoute moduleId="aranceles" />}>
+                                    <Route path="/arancel" element={<ArancelList />} />
+                                </Route>
 
                                 {/* Egresos & Gastos */}
-                                <Route element={<ProtectedRoute moduleId="gastos" />}>
+                                <Route element={<ProtectedRoute moduleId="egresos" />}>
                                     <Route path="/egresos" element={<EgresoList />} />
+                                </Route>
+                                <Route element={<ProtectedRoute moduleId="gastos" />}>
                                     <Route path="/gastos-fijos" element={<GastosFijosList />} />
                                 </Route>
 
@@ -145,29 +186,20 @@ function App() {
                                     <Route path="/pacientes/create" element={<PacienteCreateView />} />
                                     <Route path="/pacientes/edit/:id" element={<PacienteCreateView />} />
                                     <Route path="/pacientes-pendientes" element={<PacientesPendientes />} />
-                                    <Route path="/categoria-paciente" element={<CategoriaPacienteList />} />
-                                    <Route path="/personal-tipo" element={<PersonalTipoList />} />
                                     <Route path="/pacientes/:id" element={<PacientePerfilView />} />
                                     <Route path="/pacientes/:id/:tab" element={<PacientePerfilView />} />
                                     <Route path="/pacientes-deudores" element={<PacientesDeudores />} />
                                     <Route path="/recetario" element={<RecetarioList />} />
-
-                                    {/* Presupuestos & Propuestas sub-routes */}
-                                    <Route element={<ProtectedRoute moduleId="presupuestos" />}>
-                                    </Route>
                                 </Route>
 
                                 {/* Pagos */}
                                 <Route element={<ProtectedRoute moduleId="pagos" />}>
                                     <Route path="/pagos" element={<PagosList />} />
                                     <Route path="/pagos-pedidos" element={<PagosPedidosList />} />
-                                    <Route path="/comision-tarjeta" element={<ComisionTarjetaList />} />
-                                    <Route path="/forma-pago" element={<FormaPagoList />} />
                                 </Route>
 
                                 {/* Inventario */}
                                 <Route element={<ProtectedRoute moduleId="inventario" />}>
-                                    <Route path="/grupo-inventario" element={<GrupoInventarioList />} />
                                     <Route path="/inventario" element={<InventarioList />} />
                                     <Route path="/pedidos" element={<PedidosList />} />
                                     <Route path="/pedidos/deudas" element={<DeudasPedidos />} />
