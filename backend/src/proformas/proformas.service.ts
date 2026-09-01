@@ -183,8 +183,15 @@ export class ProformasService {
         const detailsToRemove = proforma.detalles.filter(d => !incomingIds.includes(d.id));
 
         if (detailsToRemove.length > 0) {
-          // We attempt to remove. If this fails due to FK (item used in History), it will throw, 
-          // which is expected (cannot delete used item), but at least we don't delete *everything*.
+          const removeIds = detailsToRemove.map(d => d.id);
+          await queryRunner.manager.query(
+            `UPDATE proxima_cita SET proforma_detalle_id = NULL WHERE proforma_detalle_id = ANY($1::int[])`,
+            [removeIds]
+          );
+          await queryRunner.manager.query(
+            `UPDATE historia_clinica SET "proformaDetalleId" = NULL WHERE "proformaDetalleId" = ANY($1::int[])`,
+            [removeIds]
+          );
           await queryRunner.manager.remove(detailsToRemove);
         }
 

@@ -42,7 +42,7 @@ export class HistoriaClinica {
     @Column({ nullable: true })
     proformaDetalleId: number;
 
-    @ManyToOne(() => ProformaDetalle, { nullable: true })
+    @ManyToOne(() => ProformaDetalle, { nullable: true, onDelete: 'SET NULL' })
     @JoinColumn({ name: 'proformaDetalleId' })
     proformaDetalle: ProformaDetalle;
 

@@ -35,7 +35,7 @@ export class ProximaCita {
     @Column({ name: 'proforma_detalle_id', nullable: true })
     proformaDetalleId: number | null;
 
-    @ManyToOne(() => ProformaDetalle)
+    @ManyToOne(() => ProformaDetalle, { nullable: true, onDelete: 'SET NULL' })
     @JoinColumn({ name: 'proforma_detalle_id' })
     proformaDetalle: ProformaDetalle;
 
