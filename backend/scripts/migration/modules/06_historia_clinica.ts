@@ -248,8 +248,18 @@ export async function migrateHistoriaClinicaModule() {
     if (proformaId && proformaDetallesByProId.has(proformaId)) {
       const detalles = proformaDetallesByProId.get(proformaId)!;
 
-      // 1. Coincidencia por Código de Arancel
-      if (codigoTrat) {
+      // 1. Coincidencia por Código de Arancel Y Pieza
+      if (codigoTrat && pieza) {
+        const matchCodeAndPieza = detalles.find(d => d.arancel && d.arancel.codigo === codigoTrat && d.piezas && d.piezas.includes(pieza));
+        if (matchCodeAndPieza) {
+          proformaDetalleId = matchCodeAndPieza.id;
+          detalleTotal = Number(matchCodeAndPieza.total || 0);
+          detalleDescuento = Number(matchCodeAndPieza.descuento || 0);
+        }
+      }
+
+      // 2. Coincidencia por Código de Arancel si no hubo coincidencia con pieza
+      if (!proformaDetalleId && codigoTrat) {
         const matchCode = detalles.find(d => d.arancel && d.arancel.codigo === codigoTrat);
         if (matchCode) {
           proformaDetalleId = matchCode.id;
@@ -258,7 +268,7 @@ export async function migrateHistoriaClinicaModule() {
         }
       }
 
-      // 2. Coincidencia por Pieza si no coincidió por código
+      // 3. Coincidencia por Pieza si no coincidió por código
       if (!proformaDetalleId && pieza) {
         const matchPieza = detalles.find(d => d.piezas && d.piezas.includes(pieza));
         if (matchPieza) {
