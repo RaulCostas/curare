@@ -14,10 +14,8 @@ export class UsersController {
   }
 
   @Get()
-  findAll(
-    @Query('mesCumpleanos') mesCumpleanos?: string
-  ) {
-    return this.usersService.findAll(mesCumpleanos ? Number(mesCumpleanos) : undefined);
+  findAll() {
+    return this.usersService.findAll();
   }
 
   @Get('recepcionistas')
