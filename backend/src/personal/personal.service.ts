@@ -21,19 +21,30 @@ export class PersonalService {
         return this.personalRepository.save(personal);
     }
 
-    async findAll(search?: string, page: number = 1, limit: number = 5) {
+    async findAll(search?: string, page: number = 1, limit: number = 5, mesCumpleanos?: number) {
         const skip = (page - 1) * limit;
-        const where = search
-            ? { nombre: ILike(`%${search}%`) }
-            : {};
+        const queryBuilder = this.personalRepository.createQueryBuilder('personal')
+            .leftJoinAndSelect('personal.personalTipo', 'personalTipo');
 
-        const [data, total] = await this.personalRepository.findAndCount({
-            where,
-            skip,
-            take: limit,
-            order: { nombre: 'ASC', paterno: 'ASC', materno: 'ASC' },
-            relations: ['personalTipo'],
-        });
+        if (search) {
+            queryBuilder.where(
+                "(personal.nombre ILIKE :search OR personal.paterno ILIKE :search OR personal.materno ILIKE :search)",
+                { search: `%${search}%` }
+            );
+        }
+
+        if (mesCumpleanos) {
+            queryBuilder.andWhere("EXTRACT(MONTH FROM personal.fecha_nacimiento) = :mesCumpleanos", { mesCumpleanos });
+        }
+
+        queryBuilder
+            .orderBy('personal.paterno', 'ASC')
+            .addOrderBy('personal.materno', 'ASC')
+            .addOrderBy('personal.nombre', 'ASC')
+            .skip(skip)
+            .take(limit);
+
+        const [data, total] = await queryBuilder.getManyAndCount();
 
         return {
             data,

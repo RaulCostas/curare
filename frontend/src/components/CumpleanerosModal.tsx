@@ -41,16 +41,16 @@ const CumpleanerosModal: React.FC<CumpleanerosModalProps> = ({ isOpen, onClose }
         setLoading(true);
         try {
             // Fetch both Pacientes and Personal filtered by month
-            const [pacientesRes, usersRes] = await Promise.all([
+            const [pacientesRes, personalRes] = await Promise.all([
                 api.get(`/pacientes?estado=activo&limit=3000&mesCumpleanos=${mes}`),
-                api.get(`/users?estado=activo&limit=1000&mesCumpleanos=${mes}`)
+                api.get(`/personal?estado=activo&limit=1000&mesCumpleanos=${mes}`)
             ]);
             
             const pacientesData = Array.isArray(pacientesRes.data.data) ? pacientesRes.data.data : pacientesRes.data;
-            const usersData = Array.isArray(usersRes.data.data) ? usersRes.data.data : usersRes.data;
+            const personalData = Array.isArray(personalRes.data.data) ? personalRes.data.data : personalRes.data;
             
             setPacientes(pacientesData || []);
-            setPersonal(usersData || []);
+            setPersonal(personalData || []);
         } catch (error) {
             console.error('Error fetching data:', error);
         } finally {
@@ -239,14 +239,14 @@ const CumpleanerosModal: React.FC<CumpleanerosModalProps> = ({ isOpen, onClose }
                                                                     </div>
                                                                 </td>
                                                                 <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300 font-medium">
-                                                                    {u.name || (u as any).nombre}
+                                                                    {formatPaternoMaternoNombre(u as any)}
                                                                 </td>
                                                                 <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
                                                                     {(u as any).celular || (u as any).telefono || '-'}
                                                                 </td>
                                                                 <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
                                                                     <span className="px-2.5 py-1 rounded-full bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200 text-xs font-semibold capitalize">
-                                                                        {(u as any).rol || 'Personal'}
+                                                                        {(u as any).personalTipo?.tipo || (u as any).rol || 'Personal'}
                                                                     </span>
                                                                 </td>
                                                             </tr>

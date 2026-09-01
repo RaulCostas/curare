@@ -943,22 +943,25 @@ const PacientePagosTab: React.FC<PacientePagosTabProps> = ({ pacienteId }) => {
                         const filteredHistoria = deduplicateHistoria(rawFilteredHistoria);
 
                         const totalEjecutado = filteredHistoria.reduce((acc, curr) => {
+                            let itemPrice = Number(curr.precio || 0);
+
                             if (selectedProforma && selectedProforma.detalles && selectedProforma.detalles.length > 0) {
-                                const pdMatch = selectedProforma.detalles.find((d: any) => {
-                                    if (curr.pieza && d.piezas) {
-                                        const normPz = (str: string) => str.replace(/[^0-9]/g, ' ').trim().split(/\s+/).sort().join('-');
-                                        if (normPz(curr.pieza) === normPz(d.piezas)) return true;
-                                    }
-                                    const currTratNorm = (curr.tratamiento || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, ' ').trim();
-                                    const dTratNorm = (d.arancel?.detalle || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, ' ').trim();
-                                    return dTratNorm && currTratNorm && (dTratNorm.includes(currTratNorm) || currTratNorm.includes(dTratNorm) || dTratNorm.split(' ')[0] === currTratNorm.split(' ')[0]);
-                                });
-                                if (pdMatch && Number(pdMatch.total) >= 0 && Number(pdMatch.cantidad) > 0) {
-                                    const netUnitPrice = Number(pdMatch.total) / Number(pdMatch.cantidad);
-                                    return acc + (netUnitPrice * Number(curr.cantidad || 1));
+                                const currDetId = curr.proformaDetalleId || (curr as any).proformaDetalle?.id;
+                                const matchDetalle = selectedProforma.detalles.find((d: any) =>
+                                    (currDetId && Number(d.id) === Number(currDetId)) ||
+                                    (d.arancel && d.arancel.detalle === curr.tratamiento) ||
+                                    (d.arancel && curr.tratamiento && (
+                                        d.arancel.detalle.toLowerCase().trim() === curr.tratamiento.toLowerCase().trim()
+                                    ))
+                                );
+
+                                if (matchDetalle && Number(matchDetalle.total || 0) > 0 && Number(matchDetalle.cantidad || 1) > 0) {
+                                    const unitNetPrice = Number(matchDetalle.total) / Number(matchDetalle.cantidad || 1);
+                                    itemPrice = unitNetPrice * Number(curr.cantidad || 1);
                                 }
                             }
-                            return acc + Number(curr.precio || 0);
+
+                            return acc + itemPrice;
                         }, 0);
 
                         const totalPagado = proformaPagos.reduce((acc, curr) => {

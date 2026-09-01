@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import Swal from 'sweetalert2';
 import ManualModal, { type ManualSection } from './ManualModal';
 import { formatPaternoMaternoNombre } from '../utils/formatters';
-import { formatNumberBs } from '../utils/dateUtils';
+import { formatNumberBs, getLocalDateString } from '../utils/dateUtils';
 
 interface DetailItem {
     id: number;
@@ -35,8 +35,8 @@ const Utilidades: React.FC = () => {
     const [filterType, setFilterType] = useState<'date' | 'month' | 'year' | ''>('');
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
-    const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
-    const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
+    const [selectedMonth, setSelectedMonth] = useState(() => getLocalDateString().slice(0, 7)); // YYYY-MM
+    const [selectedYear, setSelectedYear] = useState(() => getLocalDateString().slice(0, 4));
     const [loading, setLoading] = useState(false);
 
     // DETAIL MODAL STATE

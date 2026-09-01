@@ -1,48 +1,59 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, OnModuleInit } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 
 @Injectable()
-export class PacientesDeudoresService {
+export class PacientesDeudoresService implements OnModuleInit {
     constructor(
         private dataSource: DataSource,
     ) { }
 
-    async findAll(tab: 'pasivos' | 'activos' | 'traspasados' | 'observados' | string) {
-        let whereClause = '';
+    async onModuleInit() {
+        try {
+            await this.dataSource.query(`
+                CREATE INDEX IF NOT EXISTS idx_proformas_traspasado ON proformas(traspasado) WHERE traspasado IS TRUE;
+                CREATE INDEX IF NOT EXISTS idx_proformas_deuda_observada ON proformas(deuda_observada) WHERE deuda_observada IS TRUE;
+            `);
+        } catch (e) {
+            console.error('Error creating deudores indexes:', e);
+        }
+    }
 
-        if (tab === 'pasivos' || tab === 'terminado') {
-            whereClause = `lh."estadoPresupuesto" = 'terminado'
-               AND (COALESCE(rs.realized_cost, 0) - COALESCE(ps.total_pagado, 0)) > 0
-               AND (p.traspasado IS NOT TRUE)
-               AND (p.deuda_observada IS NOT TRUE)`;
-        } else if (tab === 'activos' || tab === 'no terminado') {
-            whereClause = `lh."estadoPresupuesto" = 'no terminado'
-               AND (COALESCE(rs.realized_cost, 0) - COALESCE(ps.total_pagado, 0)) > 0
-               AND (p.traspasado IS NOT TRUE)
-               AND (p.deuda_observada IS NOT TRUE)`;
-        } else if (tab === 'traspasados') {
-            whereClause = `p.traspasado IS TRUE`;
+    async findAll(tab: 'pasivos' | 'activos' | 'traspasados' | 'observados' | string) {
+        let proformaFilter = '';
+        let outerWhere = '';
+
+        if (tab === 'traspasados') {
+            proformaFilter = `WHERE p.traspasado IS TRUE`;
         } else if (tab === 'observados') {
-            whereClause = `p.deuda_observada IS TRUE`;
-        } else {
-            whereClause = `1=1`;
+            proformaFilter = `WHERE p.deuda_observada IS TRUE`;
+        } else if (tab === 'activos' || tab === 'no terminado') {
+            proformaFilter = `WHERE (p.traspasado IS NOT TRUE) AND (p.deuda_observada IS NOT TRUE)`;
+            outerWhere = `WHERE lh."estadoPresupuesto" = 'no terminado' AND (COALESCE(rs.realized_cost, 0) - COALESCE(ps.total_pagado, 0)) > 0`;
+        } else if (tab === 'pasivos' || tab === 'terminado') {
+            proformaFilter = `WHERE (p.traspasado IS NOT TRUE) AND (p.deuda_observada IS NOT TRUE)`;
+            outerWhere = `WHERE lh."estadoPresupuesto" = 'terminado' AND (COALESCE(rs.realized_cost, 0) - COALESCE(ps.total_pagado, 0)) > 0`;
         }
 
         const query = `
-            WITH pagos_sum AS (
-                SELECT "proformaId", 
+            WITH target_proformas AS (
+                SELECT p.id, p.numero, p."pacienteId", p.total, p.traspasado, p.traspaso_observacion, p.deuda_observada, p.deuda_observada_observacion
+                FROM proformas p
+                ${proformaFilter}
+            ),
+            pagos_sum AS (
+                SELECT pay."proformaId", 
                        COALESCE(SUM(
                            CASE 
-                               WHEN LOWER(COALESCE(moneda::text, '')) LIKE '%dólar%' 
-                                 OR LOWER(COALESCE(moneda::text, '')) LIKE '%dolar%' 
-                                 OR LOWER(COALESCE(moneda::text, '')) LIKE '%usd%' 
-                               THEN CAST(monto AS NUMERIC) * COALESCE(tc, 6.96)
-                               ELSE CAST(monto AS NUMERIC)
+                               WHEN LOWER(COALESCE(pay.moneda::text, '')) LIKE '%dólar%' 
+                                 OR LOWER(COALESCE(pay.moneda::text, '')) LIKE '%dolar%' 
+                                 OR LOWER(COALESCE(pay.moneda::text, '')) LIKE '%usd%' 
+                               THEN CAST(pay.monto AS NUMERIC) * COALESCE(pay.tc, 6.96)
+                               ELSE CAST(pay.monto AS NUMERIC)
                            END
                        ), 0) AS total_pagado
-                FROM pagos
-                WHERE "proformaId" IS NOT NULL
-                GROUP BY "proformaId"
+                FROM pagos pay
+                INNER JOIN target_proformas tp ON tp.id = pay."proformaId"
+                GROUP BY pay."proformaId"
             ),
             pd_match_by_name AS (
                 SELECT DISTINCT ON (pd."proformaId", LOWER(SPLIT_PART(TRIM(COALESCE(a.detalle, '')), ' ', 1)))
@@ -52,8 +63,8 @@ export class PacientesDeudoresService {
                        pd.total,
                        pd.cantidad
                 FROM proforma_detalle pd
+                INNER JOIN target_proformas tp ON tp.id = pd."proformaId"
                 LEFT JOIN arancel a ON a.id = pd."arancelId"
-                WHERE pd."proformaId" IS NOT NULL
                 ORDER BY pd."proformaId", LOWER(SPLIT_PART(TRIM(COALESCE(a.detalle, '')), ' ', 1)), pd.id
             ),
             dedup_historia AS (
@@ -65,7 +76,8 @@ export class PacientesDeudoresService {
                 ) 
                     hc.*
                 FROM historia_clinica hc
-                WHERE hc."estadoTratamiento" = 'terminado' AND hc."proformaId" IS NOT NULL
+                INNER JOIN target_proformas tp ON tp.id = hc."proformaId"
+                WHERE hc."estadoTratamiento" = 'terminado'
                 ORDER BY 
                     hc."proformaId",
                     COALESCE(hc."proformaDetalleId"::text, hc.tratamiento), 
@@ -78,15 +90,13 @@ export class PacientesDeudoresService {
                     hc."proformaId",
                     COALESCE(SUM(
                         CASE 
-                            -- Direct pd match (including pd.total = 0 for 100% discount)
                             WHEN pd.id IS NOT NULL AND CAST(pd.cantidad AS NUMERIC) > 0 
                             THEN (CAST(pd.total AS NUMERIC) / CAST(pd.cantidad AS NUMERIC)) * CAST(COALESCE(hc.cantidad, 1) AS NUMERIC)
                             
-                            -- Match by proformaId + treatment first word if proformaDetalleId is null
                             WHEN pdm.id IS NOT NULL AND CAST(pdm.cantidad AS NUMERIC) > 0
                             THEN (CAST(pdm.total AS NUMERIC) / CAST(pdm.cantidad AS NUMERIC)) * CAST(COALESCE(hc.cantidad, 1) AS NUMERIC)
 
-                    ELSE CAST(COALESCE(hc.precio, 0) AS NUMERIC)
+                            ELSE CAST(COALESCE(hc.precio, 0) AS NUMERIC)
                         END
                     ), 0) AS realized_cost
                 FROM dedup_historia hc
@@ -110,7 +120,7 @@ export class PacientesDeudoresService {
                         ORDER BY hc.fecha DESC, hc.id DESC
                     ) AS rn
                 FROM historia_clinica hc
-                WHERE hc."proformaId" IS NOT NULL
+                INNER JOIN target_proformas tp ON tp.id = hc."proformaId"
             )
             SELECT 
                 p.id AS "proformaId",
@@ -128,13 +138,13 @@ export class PacientesDeudoresService {
                 p.traspaso_observacion AS "traspasoObservacion",
                 p.deuda_observada AS "deudaObservada",
                 p.deuda_observada_observacion AS "deudaObservadaObservacion"
-            FROM proformas p
+            FROM target_proformas p
             LEFT JOIN latest_historia lh ON lh."proformaId" = p.id AND lh.rn = 1
             LEFT JOIN pacientes pac ON pac.id = p."pacienteId"
             LEFT JOIN pagos_sum ps ON ps."proformaId" = p.id
             LEFT JOIN realized_sum rs ON rs."proformaId" = p.id
             LEFT JOIN especialidad e ON e.id = lh."especialidadId"
-            WHERE ${whereClause}
+            ${outerWhere}
             ORDER BY "saldo" DESC;
         `;
 

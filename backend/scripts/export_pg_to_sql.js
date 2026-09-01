@@ -40,13 +40,19 @@ async function exportFullDatabase() {
   // Desactivar restricciones de llaves foráneas temporalmente
   sqlOutput += `SET session_replication_role = 'replica';\n\n`;
 
+  // 1. TRUNCATE TODAS LAS TABLAS AL INICIO PARA EVITAR CASCADE ACCIDENTAL
+  sqlOutput += `-- 1. LIMPIEZA INICIAL DE TODAS LAS TABLAS\n`;
+  for (const table of tables) {
+    sqlOutput += `TRUNCATE TABLE "${table}" CASCADE;\n`;
+  }
+  sqlOutput += `\n`;
+
   for (const table of tables) {
     console.log(`📦 Exportando tabla: ${table}...`);
     const countRes = await client.query(`SELECT COUNT(*) FROM "${table}"`);
     const count = parseInt(countRes.rows[0].count, 10);
 
     sqlOutput += `-- Tabla: ${table} (${count} registros)\n`;
-    sqlOutput += `TRUNCATE TABLE "${table}" CASCADE;\n`;
 
     if (count > 0) {
       // Obtener columnas de la tabla

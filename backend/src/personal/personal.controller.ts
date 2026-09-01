@@ -22,11 +22,13 @@ export class PersonalController {
         @Query('search') search?: string,
         @Query('page') page?: string,
         @Query('limit') limit?: string,
+        @Query('mesCumpleanos') mesCumpleanos?: string,
     ) {
         return this.personalService.findAll(
             search,
             page ? +page : 1,
-            limit ? +limit : 5,
+            limit ? +limit : 10,
+            mesCumpleanos ? +mesCumpleanos : undefined,
         );
     }
 

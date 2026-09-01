@@ -27,7 +27,19 @@ async function restoreByTable() {
 
   // Dividir el script por bloques de tablas ("-- Tabla: ")
   const blocks = sqlContent.split(/-- Tabla:\s*/g);
-  console.log(`📦 Procesando ${blocks.length - 1} tablas del sistema...`);
+  // 1. Limpieza total previa de todas las tablas
+  console.log('🧹 Limpiando todas las tablas antes de la inyección...');
+  for (let i = 1; i < blocks.length; i++) {
+    const block = blocks[i];
+    const headerLine = block.substring(0, block.indexOf('\n')).trim();
+    const tableName = headerLine.split(' ')[0];
+    try {
+      await client.query(`TRUNCATE TABLE "${tableName}" CASCADE;`);
+    } catch (e) {
+      // Ignorar si no existe aún
+    }
+  }
+  console.log('✨ Base de datos limpia. Comenzando inyección de datos...');
 
   let success = 0;
   let skipped = 0;
