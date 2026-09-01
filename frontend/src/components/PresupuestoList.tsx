@@ -382,20 +382,20 @@ const PresupuestoList: React.FC = () => {
         const dateStr = formatDateSpanish(proforma.fecha);
         doc.text(dateStr, 200, 20, { align: 'right' });
 
-        // 2. Salutation
+        // 2. Salutation (Lowered to clear the pre-printed clinic letterhead header)
         doc.setFont('helvetica', 'normal');
-        doc.text('Señor(a):', 14, 35);
+        doc.text('Señor(a):', 14, 52);
 
         doc.setFont('helvetica', 'bold');
-        doc.text(patientName.toUpperCase(), 14, 40);
+        doc.text(patientName.toUpperCase(), 14, 57);
 
         doc.setFont('helvetica', 'normal');
-        doc.text('De mi consideración:', 14, 50);
-        doc.text('Según los estudios realizados le presentamos el siguiente presupuesto del tratamiento odontológico que Ud. requiere:', 14, 55);
+        doc.text('De mi consideración:', 14, 66);
+        doc.text('Según los estudios realizados le presentamos el siguiente presupuesto del tratamiento odontológico que Ud. requiere:', 14, 71);
 
         // 3. Proforma Number
         doc.setFont('helvetica', 'bold');
-        doc.text(`Pre. # ${proforma.numero.toString().padStart(2, '0')}`, 200, 65, { align: 'right' });
+        doc.text(`Pre. # ${proforma.numero.toString().padStart(2, '0')}`, 200, 79, { align: 'right' });
 
         // 4. Table
         const hasDiscount = proforma.detalles.some(item => item.descuento > 0);
@@ -449,7 +449,7 @@ const PresupuestoList: React.FC = () => {
         autoTable(doc, {
             head: [tableColumn],
             body: tableRows,
-            startY: 70,
+            startY: 83,
             theme: 'plain',
             styles: {
                 fontSize: 9,
@@ -608,7 +608,7 @@ const PresupuestoList: React.FC = () => {
         doc.text('En conformidad y aceptando el presente presupuesto, firmo.', 14, footerY + 17);
 
         // 10. Signatures
-        const sigY = footerY + 40;
+        const sigY = footerY + 28;
 
         // Left Signature
         doc.line(30, sigY, 80, sigY);

@@ -34,11 +34,13 @@ export class ArancelController {
         @Query('search') search?: string,
         @Query('page') page?: string,
         @Query('limit') limit?: string,
+        @Query('especialidadId') especialidadId?: string,
     ) {
         return this.arancelService.findAll(
             search,
             page ? +page : 1,
             limit ? +limit : 5,
+            especialidadId ? +especialidadId : undefined,
         );
     }
 

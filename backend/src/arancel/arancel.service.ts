@@ -20,11 +20,23 @@ export class ArancelService {
         return this.arancelRepository.save(arancel);
     }
 
-    async findAll(search?: string, page: number = 1, limit: number = 5) {
+    async findAll(search?: string, page: number = 1, limit: number = 5, especialidadId?: number) {
         const skip = (page - 1) * limit;
-        const where = search
-            ? { detalle: ILike(`%${search}%`) }
-            : {};
+        let where: any = {};
+
+        if (search && especialidadId && Number(especialidadId) > 0) {
+            where = [
+                { detalle: ILike(`%${search}%`), idEspecialidad: Number(especialidadId) },
+                { codigo: ILike(`%${search}%`), idEspecialidad: Number(especialidadId) },
+            ];
+        } else if (search) {
+            where = [
+                { detalle: ILike(`%${search}%`) },
+                { codigo: ILike(`%${search}%`) },
+            ];
+        } else if (especialidadId && Number(especialidadId) > 0) {
+            where = { idEspecialidad: Number(especialidadId) };
+        }
 
         const [data, total] = await this.arancelRepository.findAndCount({
             where,

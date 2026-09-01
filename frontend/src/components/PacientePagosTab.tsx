@@ -196,10 +196,15 @@ const PacientePagosTab: React.FC<PacientePagosTabProps> = ({ pacienteId }) => {
                 let discountAmt = 0;
                 let discountPct = 0;
                 if (selectedProforma && selectedProforma.detalles) {
-                    const matchDetalle = selectedProforma.detalles.find(d =>
-                        (curr.proformaDetalleId && d.id === curr.proformaDetalleId) ||
-                        (d.arancel && d.arancel.detalle === curr.tratamiento)
-                    );
+                    const currDetId = curr.proformaDetalleId || (curr as any).proformaDetalle?.id;
+                    const matchDetalle = currDetId
+                        ? selectedProforma.detalles.find(d => Number(d.id) === Number(currDetId))
+                        : selectedProforma.detalles.find(d =>
+                            (d.arancel && d.arancel.detalle === curr.tratamiento) ||
+                            (d.arancel && curr.tratamiento && (
+                                d.arancel.detalle.toLowerCase().trim() === curr.tratamiento.toLowerCase().trim()
+                            ))
+                        );
                     if (matchDetalle) {
                         if (Number(matchDetalle.total || 0) > 0 && Number(matchDetalle.cantidad || 1) > 0) {
                             const unitNetPrice = Number(matchDetalle.total) / Number(matchDetalle.cantidad || 1);
@@ -344,20 +349,37 @@ const PacientePagosTab: React.FC<PacientePagosTabProps> = ({ pacienteId }) => {
 
             // Calculate Financial Summary values
             const totalPresupuesto = selectedProforma ? Number(selectedProforma.total || 0) : 0;
-            const totalEjecutado = filteredHistoria.reduce((acc, curr) => {
+            const executedByDetalle = new Map<number, number>();
+            let rawTotalEjecutado = 0;
+
+            filteredHistoria.forEach(curr => {
                 let itemPrice = Number(curr.precio || 0);
                 if (selectedProforma && selectedProforma.detalles) {
-                    const matchDetalle = selectedProforma.detalles.find(d =>
-                        (curr.proformaDetalleId && d.id === curr.proformaDetalleId) ||
-                        (d.arancel && d.arancel.detalle === curr.tratamiento)
-                    );
-                    if (matchDetalle && Number(matchDetalle.total || 0) > 0 && Number(matchDetalle.cantidad || 1) > 0) {
+                    const currDetId = curr.proformaDetalleId || (curr as any).proformaDetalle?.id;
+                    const matchDetalle = currDetId
+                        ? selectedProforma.detalles.find(d => Number(d.id) === Number(currDetId))
+                        : selectedProforma.detalles.find(d =>
+                            (d.arancel && d.arancel.detalle === curr.tratamiento) ||
+                            (d.arancel && curr.tratamiento && (
+                                d.arancel.detalle.toLowerCase().trim() === curr.tratamiento.toLowerCase().trim()
+                            ))
+                        );
+                    if (matchDetalle && Number(matchDetalle.total || 0) >= 0 && Number(matchDetalle.cantidad || 1) > 0) {
                         const unitNetPrice = Number(matchDetalle.total) / Number(matchDetalle.cantidad || 1);
                         itemPrice = unitNetPrice * Number(curr.cantidad || 1);
+
+                        const prev = executedByDetalle.get(matchDetalle.id) || 0;
+                        const maxForThisDetalle = Number(matchDetalle.total || 0);
+                        const allowed = Math.max(0, Math.min(itemPrice, maxForThisDetalle - prev));
+                        executedByDetalle.set(matchDetalle.id, prev + allowed);
+                        rawTotalEjecutado += allowed;
+                        return;
                     }
                 }
-                return acc + itemPrice;
-            }, 0);
+                rawTotalEjecutado += itemPrice;
+            });
+
+            const totalEjecutado = totalPresupuesto > 0 ? Math.min(rawTotalEjecutado, totalPresupuesto) : rawTotalEjecutado;
 
             const totalPagado = filteredPagos.reduce((acc, curr) => {
                 const val = curr.moneda === 'Dólares'
@@ -942,27 +964,40 @@ const PacientePagosTab: React.FC<PacientePagosTabProps> = ({ pacienteId }) => {
                         const rawFilteredHistoria = historia.filter(h => h.proformaId === selectedProformaId && h.estadoTratamiento === 'terminado');
                         const filteredHistoria = deduplicateHistoria(rawFilteredHistoria);
 
-                        const totalEjecutado = filteredHistoria.reduce((acc, curr) => {
+                        const executedByDetalle = new Map<number, number>();
+                        let rawTotalEjecutado = 0;
+
+                        filteredHistoria.forEach(curr => {
                             let itemPrice = Number(curr.precio || 0);
 
                             if (selectedProforma && selectedProforma.detalles && selectedProforma.detalles.length > 0) {
                                 const currDetId = curr.proformaDetalleId || (curr as any).proformaDetalle?.id;
-                                const matchDetalle = selectedProforma.detalles.find((d: any) =>
-                                    (currDetId && Number(d.id) === Number(currDetId)) ||
-                                    (d.arancel && d.arancel.detalle === curr.tratamiento) ||
-                                    (d.arancel && curr.tratamiento && (
-                                        d.arancel.detalle.toLowerCase().trim() === curr.tratamiento.toLowerCase().trim()
-                                    ))
-                                );
+                                const matchDetalle = currDetId
+                                    ? selectedProforma.detalles.find((d: any) => Number(d.id) === Number(currDetId))
+                                    : selectedProforma.detalles.find((d: any) =>
+                                        (d.arancel && d.arancel.detalle === curr.tratamiento) ||
+                                        (d.arancel && curr.tratamiento && (
+                                            d.arancel.detalle.toLowerCase().trim() === curr.tratamiento.toLowerCase().trim()
+                                        ))
+                                    );
 
-                                if (matchDetalle && Number(matchDetalle.total || 0) > 0 && Number(matchDetalle.cantidad || 1) > 0) {
+                                if (matchDetalle && Number(matchDetalle.total || 0) >= 0 && Number(matchDetalle.cantidad || 1) > 0) {
                                     const unitNetPrice = Number(matchDetalle.total) / Number(matchDetalle.cantidad || 1);
                                     itemPrice = unitNetPrice * Number(curr.cantidad || 1);
+
+                                    const prev = executedByDetalle.get(matchDetalle.id) || 0;
+                                    const maxForThisDetalle = Number(matchDetalle.total || 0);
+                                    const allowed = Math.max(0, Math.min(itemPrice, maxForThisDetalle - prev));
+                                    executedByDetalle.set(matchDetalle.id, prev + allowed);
+                                    rawTotalEjecutado += allowed;
+                                    return;
                                 }
                             }
 
-                            return acc + itemPrice;
-                        }, 0);
+                            rawTotalEjecutado += itemPrice;
+                        });
+
+                        const totalEjecutado = totalPresupuesto > 0 ? Math.min(rawTotalEjecutado, totalPresupuesto) : rawTotalEjecutado;
 
                         const totalPagado = proformaPagos.reduce((acc, curr) => {
                             const val = curr.moneda === 'Dólares'

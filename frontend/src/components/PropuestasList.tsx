@@ -119,22 +119,22 @@ const PropuestasList: React.FC = () => {
         const dateStr = formatDateSpanish(propuesta.fecha);
         doc.text(dateStr, 200, 20, { align: 'right' });
 
-        // 2. Salutation
+        // 2. Salutation (Lowered to clear the pre-printed clinic letterhead header)
         doc.setFont('helvetica', 'normal');
-        doc.text('Señor(a):', 14, 35);
+        doc.text('Señor(a):', 14, 52);
 
         doc.setFont('helvetica', 'bold');
         const patientName = `${paciente?.paterno || ''} ${paciente?.materno || ''} ${paciente?.nombre || ''}`.trim().toUpperCase();
-        doc.text(patientName, 14, 40);
+        doc.text(patientName, 14, 57);
 
         doc.setFont('helvetica', 'normal');
-        doc.text('De mi consideración:', 14, 50);
-        doc.text('Según los estudios realizados le presentamos la siguiente propuesta del tratamiento odontológico que Ud. requiere:', 14, 55);
+        doc.text('De mi consideración:', 14, 66);
+        doc.text('Según los estudios realizados le presentamos la siguiente propuesta del tratamiento odontológico que Ud. requiere:', 14, 71);
 
         // 3. Propuesta Number
         doc.setFont('helvetica', 'bold');
         const propNumber = letra ? `Prop. # ${propuesta.numero.toString().padStart(2, '0')} - Opción ${letra}` : `Prop. # ${propuesta.numero.toString().padStart(2, '0')}`;
-        doc.text(propNumber, 200, 65, { align: 'right' });
+        doc.text(propNumber, 200, 79, { align: 'right' });
 
         // 4. Table - Filter by letra if provided
         const filteredDetalles = letra ? propuesta.detalles.filter(d => d.letra === letra) : propuesta.detalles;
@@ -187,7 +187,7 @@ const PropuestasList: React.FC = () => {
         autoTable(doc, {
             head: [tableColumn],
             body: tableRows,
-            startY: 70,
+            startY: 83,
             theme: 'plain',
             styles: {
                 fontSize: 9,
@@ -328,7 +328,7 @@ const PropuestasList: React.FC = () => {
         doc.text('En conformidad y aceptando el presente presupuesto, firmo.', 14, footerY + 17);
 
         // 10. Signatures
-        const sigY = footerY + 40;
+        const sigY = footerY + 28;
 
         // Left Signature
         doc.line(30, sigY, 80, sigY);

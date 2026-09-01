@@ -28,10 +28,10 @@ export class PacientesDeudoresService implements OnModuleInit {
             proformaFilter = `WHERE p.deuda_observada IS TRUE`;
         } else if (tab === 'activos' || tab === 'no terminado') {
             proformaFilter = `WHERE (p.traspasado IS NOT TRUE) AND (p.deuda_observada IS NOT TRUE)`;
-            outerWhere = `WHERE lh."estadoPresupuesto" = 'no terminado' AND (COALESCE(rs.realized_cost, 0) - COALESCE(ps.total_pagado, 0)) > 0`;
+            outerWhere = `WHERE lh."estadoPresupuesto" = 'no terminado' AND ((CASE WHEN CAST(p.total AS NUMERIC) > 0 THEN LEAST(COALESCE(rs.realized_cost, 0), CAST(p.total AS NUMERIC)) ELSE COALESCE(rs.realized_cost, 0) END) - COALESCE(ps.total_pagado, 0)) > 0`;
         } else if (tab === 'pasivos' || tab === 'terminado') {
             proformaFilter = `WHERE (p.traspasado IS NOT TRUE) AND (p.deuda_observada IS NOT TRUE)`;
-            outerWhere = `WHERE lh."estadoPresupuesto" = 'terminado' AND (COALESCE(rs.realized_cost, 0) - COALESCE(ps.total_pagado, 0)) > 0`;
+            outerWhere = `WHERE lh."estadoPresupuesto" = 'terminado' AND ((CASE WHEN CAST(p.total AS NUMERIC) > 0 THEN LEAST(COALESCE(rs.realized_cost, 0), CAST(p.total AS NUMERIC)) ELSE COALESCE(rs.realized_cost, 0) END) - COALESCE(ps.total_pagado, 0)) > 0`;
         }
 
         const query = `
@@ -128,7 +128,7 @@ export class PacientesDeudoresService implements OnModuleInit {
                 p."pacienteId",
                 CAST(p.total AS NUMERIC) AS "totalPresupuesto",
                 CAST(COALESCE(ps.total_pagado, 0) AS NUMERIC) AS "totalPagado",
-                CAST((COALESCE(rs.realized_cost, 0) - COALESCE(ps.total_pagado, 0)) AS NUMERIC) AS "saldo",
+                CAST(((CASE WHEN CAST(p.total AS NUMERIC) > 0 THEN LEAST(COALESCE(rs.realized_cost, 0), CAST(p.total AS NUMERIC)) ELSE COALESCE(rs.realized_cost, 0) END) - COALESCE(ps.total_pagado, 0)) AS NUMERIC) AS "saldo",
                 lh.ultima_cita AS "ultimaCita",
                 e.especialidad AS "especialidad",
                 lh.tratamiento AS "tratamiento",

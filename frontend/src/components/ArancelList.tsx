@@ -30,6 +30,7 @@ const ArancelList: React.FC = () => {
     const [selectedArancelId, setSelectedArancelId] = useState<number | null>(null);
 
     const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+    const [selectedEspecialidadId, setSelectedEspecialidadId] = useState<number | ''>('');
 
     // Modal State
     const [showUpdateModal, setShowUpdateModal] = useState(false);
@@ -76,9 +77,12 @@ const ArancelList: React.FC = () => {
     }, [searchTerm]);
 
     useEffect(() => {
-        fetchAranceles();
         fetchEspecialidades();
-    }, [currentPage, debouncedSearchTerm]);
+    }, []);
+
+    useEffect(() => {
+        fetchAranceles();
+    }, [currentPage, debouncedSearchTerm, selectedEspecialidadId]);
 
     const formatCurrency = (val: number | string | undefined) => {
         if (val === undefined || val === null) return '0,00';
@@ -89,8 +93,12 @@ const ArancelList: React.FC = () => {
 
     const fetchEspecialidades = async () => {
         try {
-            const response = await api.get('/arancel/used-specialties');
-            setEspecialidades(response.data);
+            const response = await api.get('/especialidad?limit=1000');
+            if (response.data && Array.isArray(response.data.data)) {
+                setEspecialidades(response.data.data);
+            } else if (Array.isArray(response.data)) {
+                setEspecialidades(response.data);
+            }
         } catch (error) {
             console.error('Error fetching especialidades:', error);
         }
@@ -105,6 +113,10 @@ const ArancelList: React.FC = () => {
 
             if (debouncedSearchTerm) {
                 params.append('search', debouncedSearchTerm);
+            }
+
+            if (selectedEspecialidadId !== '' && selectedEspecialidadId !== 0) {
+                params.append('especialidadId', selectedEspecialidadId.toString());
             }
 
             const response = await api.get<PaginatedResponse>(`/arancel?${params}`);
@@ -346,7 +358,14 @@ const ArancelList: React.FC = () => {
     const handlePrint = async () => {
         try {
             // Fetch ALL records for printing
-            const response = await api.get<PaginatedResponse>(`/arancel?page=1&limit=9999${debouncedSearchTerm ? `&search=${debouncedSearchTerm}` : ''}`);
+            let printUrl = `/arancel?page=1&limit=9999`;
+            if (debouncedSearchTerm) {
+                printUrl += `&search=${encodeURIComponent(debouncedSearchTerm)}`;
+            }
+            if (selectedEspecialidadId !== '' && selectedEspecialidadId !== 0) {
+                printUrl += `&especialidadId=${selectedEspecialidadId}`;
+            }
+            const response = await api.get<PaginatedResponse>(printUrl);
             const allAranceles = response.data.data;
 
             const iframe = document.createElement('iframe');
@@ -634,26 +653,50 @@ const ArancelList: React.FC = () => {
                 </div>
             </div>
 
-            {/* Search Bar */}
+            {/* Search and Filters Bar */}
             <div className="mb-6 flex flex-wrap gap-4 items-center justify-between bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 no-print">
-                <div className="flex items-center gap-2 flex-grow max-w-md">
-                    <div className="relative flex-grow">
+                <div className="flex flex-col sm:flex-row items-center gap-3 flex-grow max-w-2xl">
+                    <div className="relative flex-grow w-full sm:w-auto">
                         <input
                             type="text"
                             placeholder="Buscar arancel..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 text-gray-800 dark:text-white bg-white dark:bg-gray-700 placeholder-gray-500 dark:placeholder-gray-400"
+                            className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 text-gray-800 dark:text-white bg-white dark:bg-gray-700 placeholder-gray-500 dark:placeholder-gray-400 text-sm"
                         />
                         <svg className="w-5 h-5 text-gray-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                         </svg>
                     </div>
-                    {searchTerm && (
+
+                    <div className="w-full sm:w-64 shrink-0">
+                        <select
+                            value={selectedEspecialidadId}
+                            onChange={(e) => {
+                                setSelectedEspecialidadId(e.target.value ? Number(e.target.value) : '');
+                                setCurrentPage(1);
+                            }}
+                            className="w-full py-2 px-3 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-800 dark:text-white bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                            <option value="">Todas las especialidades</option>
+                            {especialidades.map((esp) => (
+                                <option key={esp.id} value={esp.id}>
+                                    {esp.especialidad}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+
+                    {(searchTerm || selectedEspecialidadId !== '') && (
                         <button
                             type="button"
-                            onClick={() => { setSearchTerm(''); setCurrentPage(1); }}
+                            onClick={() => {
+                                setSearchTerm('');
+                                setSelectedEspecialidadId('');
+                                setCurrentPage(1);
+                            }}
                             className="px-3 py-2 bg-gray-500 hover:bg-gray-600 text-white font-bold rounded-lg shadow-sm transition-all text-xs flex items-center gap-1 shrink-0"
+                            title="Limpiar filtros"
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                                 <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
@@ -930,7 +973,7 @@ const ArancelList: React.FC = () => {
 
             {aranceles.length === 0 && (
                 <p className="text-center mt-5 text-gray-500 dark:text-gray-400">
-                    {searchTerm ? 'No se encontraron resultados' : 'No hay aranceles registrados'}
+                    {(searchTerm || selectedEspecialidadId !== '') ? 'No se encontraron resultados' : 'No hay aranceles registrados'}
                 </p>
             )}
 
