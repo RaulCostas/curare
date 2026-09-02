@@ -21,6 +21,7 @@ logs/
 backups/
 *.sql
 *.sql.gz
+!backend/scripts/create_estudios_complementarios_table.sql
 
 # Uploads
 uploads/

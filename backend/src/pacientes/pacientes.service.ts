@@ -48,23 +48,68 @@ export class PacientesService {
         queryBuilder.leftJoinAndSelect('paciente.categoria', 'categoria');
         queryBuilder.leftJoinAndSelect('paciente.fichaMedica', 'fichaMedica');
 
-        if (search) {
-            const searchTerm = `%${search}%`;
-            queryBuilder.where(
-                "(paciente.nombre ILIKE :search OR paciente.paterno ILIKE :search OR paciente.materno ILIKE :search OR CONCAT(paciente.nombre, ' ', paciente.paterno, ' ', paciente.materno) ILIKE :search OR CONCAT(paciente.paterno, ' ', paciente.materno, ' ', paciente.nombre) ILIKE :search)",
-                { search: searchTerm }
+        if (search && search.trim()) {
+            const trimmed = search.trim();
+            const searchPattern = `%${trimmed}%`;
+            const searchExact = trimmed;
+            const searchPrefix = `${trimmed}%`;
+            const words = trimmed.split(/\s+/).filter(Boolean);
+
+            const params: Record<string, any> = {
+                searchPattern,
+                searchExact,
+                searchPrefix,
+                firstWord: words[0],
+                firstWordPrefix: `${words[0]}%`,
+                firstWordPattern: `%${words[0]}%`,
+            };
+
+            let whereCondition = "(paciente.paterno ILIKE :searchPattern OR paciente.materno ILIKE :searchPattern OR paciente.nombre ILIKE :searchPattern OR CONCAT(COALESCE(paciente.paterno, ''), ' ', COALESCE(paciente.materno, ''), ' ', COALESCE(paciente.nombre, '')) ILIKE :searchPattern OR CONCAT(COALESCE(paciente.nombre, ''), ' ', COALESCE(paciente.paterno, ''), ' ', COALESCE(paciente.materno, '')) ILIKE :searchPattern)";
+
+            if (words.length > 1) {
+                const wordConds = words.map((w, idx) => {
+                    params[`word_${idx}`] = `%${w}%`;
+                    return `(paciente.paterno ILIKE :word_${idx} OR paciente.materno ILIKE :word_${idx} OR paciente.nombre ILIKE :word_${idx})`;
+                }).join(' AND ');
+
+                whereCondition = `(${whereCondition} OR (${wordConds}))`;
+            }
+
+            queryBuilder.where(whereCondition, params);
+
+            queryBuilder.addSelect(
+                `CASE 
+                    WHEN LOWER(COALESCE(paciente.paterno, '')) = LOWER(:firstWord) THEN 1
+                    WHEN LOWER(COALESCE(paciente.paterno, '')) LIKE LOWER(:firstWordPrefix) THEN 2
+                    WHEN LOWER(COALESCE(paciente.paterno, '')) LIKE LOWER(:firstWordPattern) THEN 3
+                    WHEN LOWER(COALESCE(paciente.materno, '')) = LOWER(:firstWord) THEN 4
+                    WHEN LOWER(COALESCE(paciente.materno, '')) LIKE LOWER(:firstWordPrefix) THEN 5
+                    WHEN LOWER(COALESCE(paciente.materno, '')) LIKE LOWER(:firstWordPattern) THEN 6
+                    WHEN LOWER(COALESCE(paciente.nombre, '')) = LOWER(:firstWord) THEN 7
+                    WHEN LOWER(COALESCE(paciente.nombre, '')) LIKE LOWER(:firstWordPrefix) THEN 8
+                    WHEN LOWER(COALESCE(paciente.nombre, '')) LIKE LOWER(:firstWordPattern) THEN 9
+                    ELSE 10
+                END`,
+                'search_priority'
             );
+
+            queryBuilder
+                .orderBy('search_priority', 'ASC')
+                .addOrderBy('paciente.paterno', 'ASC')
+                .addOrderBy('paciente.materno', 'ASC')
+                .addOrderBy('paciente.nombre', 'ASC');
+        } else {
+            queryBuilder
+                .orderBy('paciente.paterno', 'ASC')
+                .addOrderBy('paciente.materno', 'ASC')
+                .addOrderBy('paciente.nombre', 'ASC');
         }
 
         if (mesCumpleanos) {
             queryBuilder.andWhere("EXTRACT(MONTH FROM paciente.fecha_nacimiento) = :mesCumpleanos", { mesCumpleanos });
         }
 
-
         queryBuilder
-            .orderBy('paciente.paterno', 'ASC')
-            .addOrderBy('paciente.materno', 'ASC')
-            .addOrderBy('paciente.nombre', 'ASC')
             .skip(skip)
             .take(limit);
 

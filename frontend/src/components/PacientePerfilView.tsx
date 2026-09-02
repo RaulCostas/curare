@@ -8,6 +8,7 @@ import PresupuestoList from './PresupuestoList';
 import HistoriaClinica from './HistoriaClinica';
 import PacientePagosTab from './PacientePagosTab';
 import PacienteImagenesTab from './PacienteImagenesTab';
+import PacienteEstudiosComplementariosTab from './PacienteEstudiosComplementariosTab';
 import PropuestasList from './PropuestasList';
 import PacienteRecetarioTab from './PacienteRecetarioTab';
 import PacienteTabInformes from './PacienteTabInformes';
@@ -18,7 +19,7 @@ import {
     ArrowLeft, Edit, Activity, Heart, CheckCircle, PlusSquare, FileCheck
 } from 'lucide-react';
 
-type TabType = 'ficha-medica' | 'citas' | 'presupuestos' | 'historia-clinica' | 'pagos' | 'imagenes' | 'propuestas' | 'recetario' | 'informes' | 'consentimientos';
+type TabType = 'ficha-medica' | 'citas' | 'presupuestos' | 'historia-clinica' | 'pagos' | 'imagenes' | 'estudios-complementarios' | 'propuestas' | 'recetario' | 'informes' | 'consentimientos';
 
 const PacientePerfilView: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -45,6 +46,7 @@ const PacientePerfilView: React.FC = () => {
         if (path.includes('/historia-clinica')) return 'historia-clinica';
         if (path.includes('/pagos')) return 'pagos';
         if (path.includes('/imagenes')) return 'imagenes';
+        if (path.includes('/estudios-complementarios') || path.includes('/estudios')) return 'estudios-complementarios';
         if (path.includes('/propuestas')) return 'propuestas';
         if (path.includes('/recetario')) return 'recetario';
         if (path.includes('/informes')) return 'informes';
@@ -163,6 +165,7 @@ const PacientePerfilView: React.FC = () => {
         { id: 'historia-clinica', label: 'HISTORIA CLÍNICA', icon: <Activity size={15} /> },
         ...(hasAccessTo('pacientes-pagos') ? [{ id: 'pagos' as TabType, label: 'PAGOS', icon: <FileText size={15} /> }] : []),
         { id: 'imagenes', label: 'IMÁGENES', icon: <ImageIcon size={15} /> },
+        { id: 'estudios-complementarios', label: 'ESTUDIOS COMP.', icon: <Activity size={15} /> },
         { id: 'propuestas', label: 'PROPUESTAS', icon: <ClipboardList size={15} /> },
         { id: 'recetario', label: 'RECETAS', icon: <PlusSquare size={15} /> },
         { id: 'informes', label: 'INFORMES', icon: <FileText size={15} /> },
@@ -345,6 +348,9 @@ const PacientePerfilView: React.FC = () => {
                 )}
                 {activeTab === 'imagenes' && (
                     <PacienteImagenesTab pacienteId={pacienteIdNum} />
+                )}
+                {activeTab === 'estudios-complementarios' && (
+                    <PacienteEstudiosComplementariosTab pacienteId={pacienteIdNum} paciente={paciente} />
                 )}
                 {activeTab === 'propuestas' && (
                     <PropuestasList />

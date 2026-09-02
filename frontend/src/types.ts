@@ -1036,4 +1036,19 @@ export interface ConsentimientoPaciente {
     updatedAt?: string;
 }
 
+export interface EstudioComplementario {
+    id: number;
+    pacienteId: number;
+    paciente?: Paciente;
+    fecha: string;
+    tipo_estudio: string;
+    observaciones?: string;
+    orden_estudio_url?: string;
+    archivo_url?: string;
+    usuarioId?: number;
+    usuario?: User;
+    createdAt?: string;
+    updatedAt?: string;
+}
+
 

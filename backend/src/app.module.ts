@@ -137,6 +137,8 @@ import { ConsentimientoPlantilla } from './consentimientos-plantillas/entities/c
 import { ConsentimientosPacientesModule } from './consentimientos-pacientes/consentimientos-pacientes.module';
 import { ConsentimientoPaciente } from './consentimientos-pacientes/entities/consentimiento-paciente.entity';
 import { FirmaDigital } from './firmas/entities/firma-digital.entity';
+import { EstudiosComplementariosModule } from './estudios_complementarios/estudios_complementarios.module';
+import { EstudioComplementario } from './estudios_complementarios/entities/estudio_complementario.entity';
 
 @Module({
   imports: [
@@ -216,6 +218,7 @@ import { FirmaDigital } from './firmas/entities/firma-digital.entity';
         ConsentimientoPlantilla,
         ConsentimientoPaciente,
         FirmaDigital,
+        EstudioComplementario,
       ],
       synchronize: false,
     }),
@@ -279,6 +282,7 @@ import { FirmaDigital } from './firmas/entities/firma-digital.entity';
     ConsentimientosPlantillasModule,
     ConsentimientosPacientesModule,
     FirmasModule,
+    EstudiosComplementariosModule,
     StorageModule,
     DatabaseRestoreModule,
   ],
