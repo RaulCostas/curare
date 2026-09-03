@@ -109,28 +109,33 @@ button:focus-visible {
 
   .sidebar,
   .top-header,
-  .no-print {
+  .no-print,
+  .chat-widget-container,
+  .chat-toggle-btn {
     display: none !important;
   }
 
-  .dashboard-container {
-    display: block;
-  }
-
-  .main-content {
-    margin-left: 0;
-    width: 100%;
-    padding: 0;
-  }
-
-  .content-area {
-    padding: 0;
-  }
-
+  :root,
+  html,
+  html.dark,
+  body,
+  body.dark,
+  #root,
+  .dashboard-container,
+  .main-content,
+  .content-area,
   .content-card {
-    box-shadow: none;
-    padding: 0;
-    border: none;
+    color-scheme: light !important;
+    --background-color: #ffffff !important;
+    --text-color: #000000 !important;
+    background-color: #ffffff !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    height: auto !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    border: none !important;
   }
 
   /* Ensure table fits */

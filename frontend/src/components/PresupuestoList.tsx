@@ -608,7 +608,7 @@ const PresupuestoList: React.FC = () => {
         doc.text('En conformidad y aceptando el presente presupuesto, firmo.', 14, footerY + 17);
 
         // 10. Signatures
-        const sigY = footerY + 28;
+        const sigY = footerY + 45;
 
         // Left Signature
         doc.line(30, sigY, 80, sigY);
@@ -616,7 +616,7 @@ const PresupuestoList: React.FC = () => {
 
         // Right Signature
         if (patientSignatureBase64) {
-            doc.addImage(patientSignatureBase64, 'PNG', 130, sigY - 20, 40, 20);
+            doc.addImage(patientSignatureBase64, 'PNG', 130, sigY - 22, 40, 20);
         }
         doc.line(120, sigY, 180, sigY);
         doc.text(patientName, 125, sigY + 5);

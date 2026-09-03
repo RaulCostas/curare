@@ -328,7 +328,7 @@ const PropuestasList: React.FC = () => {
         doc.text('En conformidad y aceptando el presente presupuesto, firmo.', 14, footerY + 17);
 
         // 10. Signatures
-        const sigY = footerY + 28;
+        const sigY = footerY + 45;
 
         // Left Signature
         doc.line(30, sigY, 80, sigY);

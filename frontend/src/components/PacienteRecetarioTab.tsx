@@ -167,10 +167,7 @@ const PacienteRecetarioTab: React.FC<PacienteRecetarioTabProps> = ({ pacienteId 
         }
     };
 
-    const handlePrint = (receta: Receta) => {
-        const printWindow = window.open('', '_blank');
-        if (!printWindow) return;
-
+    const executePrint = (receta: Receta, mode: 'center' | 'direct') => {
         const patientName = paciente
             ? `${paciente.paterno || ''} ${paciente.materno || ''} ${paciente.nombre || ''}`.trim().toUpperCase()
             : `${receta.paciente?.paterno || ''} ${receta.paciente?.materno || ''} ${receta.paciente?.nombre || ''}`.trim().toUpperCase() || 'N/A';
@@ -200,34 +197,36 @@ const PacienteRecetarioTab: React.FC<PacienteRecetarioTabProps> = ({ pacienteId 
             `;
         }
 
-        const htmlContent = `
+        const isCenter = mode === 'center';
+
+        const printContent = `
             <!DOCTYPE html>
             <html>
             <head>
                 <title>Receta Médica - ${patientName}</title>
                 <style>
                     @page {
-                        size: 140mm 215mm portrait;
+                        size: ${isCenter ? 'letter portrait' : '140mm 215.9mm portrait'};
                         margin: 0;
                     }
                     * {
                         box-sizing: border-box;
+                        -webkit-print-color-adjust: exact !important;
+                        print-color-adjust: exact !important;
                     }
                     html, body {
-                        width: 140mm;
-                        height: 215mm;
+                        width: ${isCenter ? '215.9mm' : '140mm'};
+                        height: ${isCenter ? '279.4mm' : '215.9mm'};
                         margin: 0;
                         padding: 0;
                         font-family: Arial, Helvetica, sans-serif;
                         color: #1a202c;
                         background: transparent;
-                        -webkit-print-color-adjust: exact;
-                        print-color-adjust: exact;
                     }
                     .prescription-container {
                         padding-top: 48mm;
-                        padding-left: 12mm;
-                        padding-right: 12mm;
+                        padding-left: 8mm;
+                        padding-right: 8mm;
                         padding-bottom: 16mm;
                         width: 140mm;
                         min-height: 215mm;
@@ -235,6 +234,7 @@ const PacienteRecetarioTab: React.FC<PacienteRecetarioTabProps> = ({ pacienteId 
                         display: flex;
                         flex-direction: column;
                         justify-content: space-between;
+                        ${isCenter ? 'margin: 0 auto;' : ''}
                     }
                     .patient-info {
                         margin-bottom: 8px;
@@ -249,13 +249,13 @@ const PacienteRecetarioTab: React.FC<PacienteRecetarioTabProps> = ({ pacienteId 
                     }
                     .patient-name {
                         font-weight: bold;
-                        font-size: 11.5px;
+                        font-size: 11px;
                         color: #000;
                     }
                     .receta-date {
-                        font-size: 11px;
+                        font-size: 10.5px;
                         color: #2d3748;
-                        font-weight: 500;
+                        font-weight: 600;
                     }
                     .diagnostico-row {
                         font-size: 10.5px;
@@ -266,24 +266,22 @@ const PacienteRecetarioTab: React.FC<PacienteRecetarioTabProps> = ({ pacienteId 
                         width: 100%;
                         border-collapse: collapse;
                         margin-top: 4px;
-                        margin-bottom: 10px;
+                        margin-bottom: 8px;
                     }
                     .rx-table th {
                         background-color: #edf2f7 !important;
                         color: #2d3748 !important;
-                        font-size: 10px;
+                        font-size: 9.5px;
                         font-weight: bold;
                         text-transform: uppercase;
-                        padding: 5px 6px;
+                        padding: 4px 5px;
                         border: 1px solid #cbd5e0;
-                        -webkit-print-color-adjust: exact;
-                        print-color-adjust: exact;
                     }
                     .rx-table td {
-                        padding: 6px;
+                        padding: 5px;
                         border: 1px solid #e2e8f0;
-                        font-size: 10.5px;
-                        line-height: 1.35;
+                        font-size: 10px;
+                        line-height: 1.3;
                         vertical-align: top;
                     }
                     .med-name {
@@ -298,25 +296,25 @@ const PacienteRecetarioTab: React.FC<PacienteRecetarioTabProps> = ({ pacienteId 
                         color: #2d3748;
                     }
                     .indicaciones-box {
-                        margin-top: 6px;
-                        padding: 6px 8px;
+                        margin-top: 4px;
+                        padding: 5px 7px;
                         background: #f7fafc;
                         border-left: 3px solid #718096;
                         border-radius: 2px;
-                        font-size: 10px;
-                        line-height: 1.4;
+                        font-size: 9.5px;
+                        line-height: 1.35;
                         color: #2d3748;
                     }
                     .indicaciones-title {
                         font-weight: bold;
                         text-transform: uppercase;
-                        font-size: 9.5px;
+                        font-size: 9px;
                         color: #4a5568;
                         margin-bottom: 2px;
                     }
                     .signature-area {
                         margin-top: auto;
-                        padding-top: 25px;
+                        padding-top: 20px;
                         text-align: center;
                     }
                     .signature-line {
@@ -326,11 +324,11 @@ const PacienteRecetarioTab: React.FC<PacienteRecetarioTabProps> = ({ pacienteId 
                     }
                     .signature-doctor {
                         font-weight: bold;
-                        font-size: 11px;
+                        font-size: 10.5px;
                         color: #000;
                     }
                     .signature-subtitle {
-                        font-size: 9.5px;
+                        font-size: 9px;
                         color: #718096;
                     }
                 </style>
@@ -377,20 +375,60 @@ const PacienteRecetarioTab: React.FC<PacienteRecetarioTabProps> = ({ pacienteId 
                         <div class="signature-subtitle">Firma y Sello Médico</div>
                     </div>
                 </div>
-
-                <script>
-                    window.onload = function() {
-                        setTimeout(function() {
-                            window.print();
-                        }, 300);
-                    };
-                </script>
             </body>
             </html>
         `;
 
-        printWindow.document.write(htmlContent);
-        printWindow.document.close();
+        const iframe = document.createElement('iframe');
+        iframe.style.position = 'fixed';
+        iframe.style.right = '0';
+        iframe.style.bottom = '0';
+        iframe.style.width = '0';
+        iframe.style.height = '0';
+        iframe.style.border = '0';
+        document.body.appendChild(iframe);
+
+        const doc = iframe.contentWindow?.document;
+        if (!doc) {
+            document.body.removeChild(iframe);
+            return;
+        }
+
+        doc.open();
+        doc.write(printContent);
+        doc.close();
+
+        setTimeout(() => {
+            iframe.contentWindow?.focus();
+            iframe.contentWindow?.print();
+            setTimeout(() => {
+                if (document.body.contains(iframe)) {
+                    document.body.removeChild(iframe);
+                }
+            }, 1000);
+        }, 300);
+    };
+
+    const handlePrint = (receta: Receta) => {
+        Swal.fire({
+            title: 'Imprimir Receta Médica',
+            text: '¿Cómo coloca la media hoja (14 x 21.5 cm) en su impresora?',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Al Centro de la bandeja (Común)',
+            cancelButtonText: 'Alineada a la Izquierda / Media Carta',
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#6b7280',
+            showDenyButton: true,
+            denyButtonText: 'Cancelar',
+            denyButtonColor: '#d33'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                executePrint(receta, 'center');
+            } else if (result.dismiss === Swal.DismissReason.cancel) {
+                executePrint(receta, 'direct');
+            }
+        });
     };
 
     return (

@@ -18,7 +18,7 @@ import { formatFullName, formatPaternoMaternoNombre } from '../utils/formatters'
 type ValuePiece = Date | null;
 type Value = ValuePiece | [ValuePiece, ValuePiece];
 
-import { Calendar as CalendarIcon, X as CloseIcon, UserCheck, Bell, Contact, Gift } from 'lucide-react';
+import { Calendar as CalendarIcon, X as CloseIcon, UserCheck, Bell, Contact, Gift, Printer } from 'lucide-react';
 
 const getStatusColor = (estado?: string) => {
     if (!estado) return '#3498db';
@@ -28,6 +28,7 @@ const getStatusColor = (estado?: string) => {
         case 'registrado':
         case 'reservado':
         case 'pendiente':
+        case 'activo':
             return '#3498db'; // Blue
         case 'confirmado':
             return '#2ecc71'; // Green
@@ -35,6 +36,7 @@ const getStatusColor = (estado?: string) => {
             return '#e74c3c'; // Red
         case 'atendido':
         case 'completado':
+        case 'realizado':
             return '#95a5a6'; // Gray
         case 'no asistio':
         case 'no asistió':
@@ -53,6 +55,7 @@ const getStatusText = (estado?: string) => {
         case 'registrado':
         case 'reservado':
         case 'pendiente':
+        case 'activo':
             return 'Agendado';
         case 'confirmado':
             return 'Confirmado';
@@ -60,13 +63,14 @@ const getStatusText = (estado?: string) => {
             return 'Cancelado';
         case 'atendido':
         case 'completado':
+        case 'realizado':
             return 'Atendido';
         case 'no asistio':
         case 'no asistió':
         case 'falta':
             return 'No Asistió';
         default:
-            return estado;
+            return 'Agendado';
     }
 };
 
@@ -88,6 +92,16 @@ const isLightColor = (color?: string): boolean => {
         }
     }
     return false;
+};
+
+const getDayAndFormattedDate = (dateStr: string) => {
+    if (!dateStr) return '-';
+    const [year, month, day] = dateStr.split('-').map(Number);
+    const dateObj = new Date(year, month - 1, day, 12, 0, 0);
+    const dayName = new Intl.DateTimeFormat('es-ES', { weekday: 'long' }).format(dateObj);
+    const capitalizedDay = dayName.charAt(0).toUpperCase() + dayName.slice(1);
+    const formattedDate = `${day.toString().padStart(2, '0')}/${month.toString().padStart(2, '0')}/${year}`;
+    return `${capitalizedDay} - ${formattedDate}`;
 };
 
 interface AgendaViewProps {
@@ -348,8 +362,266 @@ const AgendaView: React.FC<AgendaViewProps> = ({ defaultPacienteId, isEmbedded =
         setCurrentDate(`${year}-${month}-${day}`);
     };
 
+    useEffect(() => {
+        let wasDark = false;
+        const handleBeforePrint = () => {
+            if (document.documentElement.classList.contains('dark')) {
+                wasDark = true;
+                document.documentElement.classList.remove('dark');
+            }
+        };
+        const handleAfterPrint = () => {
+            if (wasDark) {
+                document.documentElement.classList.add('dark');
+                wasDark = false;
+            }
+        };
+
+        window.addEventListener('beforeprint', handleBeforePrint);
+        window.addEventListener('afterprint', handleAfterPrint);
+
+        return () => {
+            window.removeEventListener('beforeprint', handleBeforePrint);
+            window.removeEventListener('afterprint', handleAfterPrint);
+        };
+    }, []);
+
     const handleToday = () => {
         setCurrentDate(getLocalDateString());
+    };
+
+    const handlePrint = () => {
+        const dateStr = getDayAndFormattedDate(currentDate);
+
+        let tableRowsHtml = '';
+        for (const time of timeSlots) {
+            tableRowsHtml += '<tr>';
+            tableRowsHtml += `<td class="time-col">${time}</td>`;
+
+            for (let consultorio = 1; consultorio <= 5; consultorio++) {
+                const cellKey = `${time}-${consultorio}`;
+                if (skipCells.has(cellKey)) {
+                    continue;
+                }
+
+                const appointment = getAppointmentForSlot(time, consultorio);
+                const rowSpan = appointment ? Math.ceil((appointment.duracion || 30) / 30) : 1;
+                const rowSpanAttr = rowSpan > 1 ? ` rowspan="${rowSpan}"` : '';
+
+                if (!appointment) {
+                    tableRowsHtml += `<td class="cell-slot"${rowSpanAttr}></td>`;
+                } else {
+                    const hasPatient = !!(appointment.paciente && appointment.pacienteId);
+                    const patientName = hasPatient
+                        ? formatPaternoMaternoNombre(appointment.paciente)
+                        : (appointment.tratamiento || 'Bloqueo');
+                    const doctorName = appointment.doctor ? `Dr. ${formatPaternoMaternoNombre(appointment.doctor)}` : '';
+                    const treatment = (hasPatient && appointment.tratamiento) ? appointment.tratamiento : '';
+                    const status = hasPatient ? getStatusText(appointment.estado) : 'BLOQUEO';
+                    const statusClass = hasPatient ? 'status-badge' : 'badge-bloqueo';
+
+                    tableRowsHtml += `
+                        <td class="cell-slot has-app"${rowSpanAttr}>
+                            <div class="appointment-box">
+                                <div class="patient-name">${patientName}</div>
+                                ${doctorName ? `<div class="doctor-name">${doctorName}</div>` : ''}
+                                ${treatment ? `<div class="treatment-name">${treatment}</div>` : ''}
+                                <div class="status-wrapper"><span class="${statusClass}">${status}</span></div>
+                            </div>
+                        </td>
+                    `;
+                }
+            }
+            tableRowsHtml += '</tr>';
+        }
+
+        const printHtml = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Agenda de Citas - ${dateStr}</title>
+    <style>
+        @page {
+            size: landscape;
+            margin: 6mm 6mm;
+        }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+        html, body {
+            background-color: #ffffff !important;
+            background: #ffffff !important;
+            color: #000000 !important;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        .print-header {
+            margin-bottom: 6px;
+            border-bottom: 2px solid #000000;
+            padding-bottom: 3px;
+        }
+        .print-header h1 {
+            font-size: 15pt;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #000000;
+            margin: 0;
+        }
+        .print-header p {
+            font-size: 10pt;
+            font-weight: bold;
+            color: #000000;
+            text-transform: capitalize;
+            margin-top: 1px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+            background-color: #ffffff !important;
+            background: #ffffff !important;
+            font-size: 8pt;
+        }
+        th, td {
+            border: 1px solid #555555;
+            vertical-align: top;
+            background-color: #ffffff;
+        }
+        th {
+            background-color: #f0f0f0 !important;
+            color: #000000 !important;
+            font-weight: 800;
+            text-align: center;
+            padding: 3px 2px;
+            font-size: 8.5pt;
+        }
+        th.time-col {
+            width: 48px;
+        }
+        td.time-col {
+            width: 48px;
+            background-color: #f7f7f7 !important;
+            color: #000000 !important;
+            font-weight: 800;
+            text-align: center;
+            vertical-align: middle;
+            font-size: 8pt;
+            padding: 1px 2px;
+        }
+        td.cell-slot {
+            height: 14px;
+            padding: 1px 2px;
+            background-color: #ffffff;
+        }
+        .appointment-box {
+            padding: 1px 2px;
+            font-size: 7.5pt;
+            line-height: 1.15;
+            color: #000000;
+        }
+        .patient-name {
+            font-weight: 900;
+            font-size: 8pt;
+            color: #000000;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .doctor-name {
+            font-size: 7.5pt;
+            color: #222222;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .treatment-name {
+            font-size: 7pt;
+            font-style: italic;
+            color: #444444;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .status-wrapper {
+            margin-top: 1px;
+        }
+        .status-badge {
+            display: inline-block;
+            font-size: 6.5pt;
+            font-weight: 800;
+            text-transform: uppercase;
+            border: 1px solid #444444;
+            padding: 0 3px;
+            border-radius: 3px;
+            background-color: #ffffff;
+            color: #000000;
+        }
+        .badge-bloqueo {
+            display: inline-block;
+            font-size: 6.5pt;
+            font-weight: 800;
+            text-transform: uppercase;
+            border: 1px solid #666666;
+            padding: 0 3px;
+            border-radius: 3px;
+            background-color: #e5e5e5;
+            color: #000000;
+        }
+    </style>
+</head>
+<body>
+    <div class="print-header">
+        <h1>AGENDA DE CITAS DEL DÍA</h1>
+        <p>${dateStr}</p>
+    </div>
+    <table>
+        <thead>
+            <tr>
+                <th class="time-col">HORA</th>
+                <th>CONSULTORIO #1</th>
+                <th>CONSULTORIO #2</th>
+                <th>CONSULTORIO #3</th>
+                <th>CONSULTORIO #4</th>
+                <th>CONSULTORIO #5</th>
+            </tr>
+        </thead>
+        <tbody>
+            ${tableRowsHtml}
+        </tbody>
+    </table>
+</body>
+</html>`;
+
+        let iframe = document.getElementById('agenda-print-frame') as HTMLIFrameElement;
+        if (!iframe) {
+            iframe = document.createElement('iframe');
+            iframe.id = 'agenda-print-frame';
+            iframe.style.position = 'fixed';
+            iframe.style.right = '0';
+            iframe.style.bottom = '0';
+            iframe.style.width = '0';
+            iframe.style.height = '0';
+            iframe.style.border = '0';
+            document.body.appendChild(iframe);
+        }
+
+        const doc = iframe.contentWindow?.document;
+        if (doc) {
+            doc.open();
+            doc.write(printHtml);
+            doc.close();
+
+            setTimeout(() => {
+                iframe.contentWindow?.focus();
+                iframe.contentWindow?.print();
+            }, 200);
+        }
     };
 
     const handleCalendarChange = (value: Value) => {
@@ -572,7 +844,13 @@ const AgendaView: React.FC<AgendaViewProps> = ({ defaultPacienteId, isEmbedded =
     };
 
     return (
-        <div className="flex flex-col h-[85vh] p-2 md:p-5">
+        <div className="flex flex-col h-[85vh] p-2 md:p-5 agenda-main-container print:h-auto print:p-0 print:overflow-visible print:bg-white">
+            {/* Print Header */}
+            <div className="hidden print:block mb-2 text-left border-b-2 border-black pb-1.5">
+                <h1 className="text-xl font-black text-black uppercase tracking-wide m-0">AGENDA DE CITAS DEL DÍA</h1>
+                <p className="text-sm font-bold text-black capitalize m-0 mt-0.5">{getDayAndFormattedDate(currentDate)}</p>
+            </div>
+
             {/* Main View Header */}
             <div className="flex flex-col md:flex-row justify-between items-center mb-2 md:mb-6 no-print gap-2 md:gap-4">
                 <div className="flex items-center gap-4">
@@ -594,6 +872,16 @@ const AgendaView: React.FC<AgendaViewProps> = ({ defaultPacienteId, isEmbedded =
                             title="Ayuda / Manual"
                         >
                             ?
+                        </button>
+
+                        {/* Botón Imprimir */}
+                        <button
+                            onClick={handlePrint}
+                            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 active:bg-black text-white dark:bg-slate-700 dark:hover:bg-slate-600 rounded-lg font-bold text-xs sm:text-sm shadow-md flex items-center justify-center gap-2 transition-all duration-200 transform hover:scale-105 active:scale-95 hover:-translate-y-0.5 cursor-pointer"
+                            title="Imprimir agenda de todo el día"
+                        >
+                            <Printer size={16} />
+                            <span>Imprimir</span>
                         </button>
 
                         {/* 2. Quién Agendó */}
@@ -691,10 +979,10 @@ const AgendaView: React.FC<AgendaViewProps> = ({ defaultPacienteId, isEmbedded =
                 </div>
             </div>
 
-            <div className="flex flex-col md:flex-row-reverse gap-5 flex-1 overflow-hidden">
+            <div className="flex flex-col md:flex-row-reverse gap-5 flex-1 overflow-hidden agenda-inner-wrapper">
 
-                {/* Sidebar Calendar - Hidden on mobile */}
-                <div className="hidden md:flex w-[300px] flex-shrink-0 flex-col gap-4 overflow-y-auto">
+                {/* Sidebar Calendar - Hidden on mobile & print */}
+                <div className="hidden md:flex w-[300px] flex-shrink-0 flex-col gap-4 overflow-y-auto no-print">
 
                     {/* Patient Search Widget */}
                     <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm relative border border-gray-100 dark:border-gray-700">
@@ -784,10 +1072,10 @@ const AgendaView: React.FC<AgendaViewProps> = ({ defaultPacienteId, isEmbedded =
                 </div>
 
                 {/* Main Agenda Grid */}
-                <div className="flex-1 flex flex-col bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden min-w-0">
+                <div className="flex-1 flex flex-col bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden min-w-0 agenda-grid-card print:bg-white print:border-none print:shadow-none">
 
                     {/* Mobile-only date controls bar (Hidden on desktop to maximize vertical space) */}
-                    <div className="md:hidden flex justify-between items-center p-2 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 z-10">
+                    <div className="md:hidden flex justify-between items-center p-2 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 z-10 no-print">
                         <div className="flex items-center gap-1 sm:gap-2 w-full justify-between">
                             <button
                                 onClick={handleToday}
@@ -825,14 +1113,14 @@ const AgendaView: React.FC<AgendaViewProps> = ({ defaultPacienteId, isEmbedded =
                         </div>
                     </div>
 
-                    <div className="flex-1 overflow-x-auto overflow-y-auto relative bg-white dark:bg-gray-800 flex flex-col">
+                    <div className="flex-1 overflow-x-auto overflow-y-auto relative bg-white dark:bg-gray-800 flex flex-col agenda-table-container print:bg-white">
                         {viewMode === 'day' ? (
-                            <table className="min-w-[800px] w-full border-collapse table-fixed">
-                                <thead className="sticky top-0 bg-gray-50 dark:bg-gray-700 z-10 shadow-sm">
+                            <table className="min-w-[800px] w-full border-collapse table-fixed agenda-table print:bg-white">
+                                <thead className="sticky top-0 bg-gray-50 dark:bg-gray-700 z-10 shadow-sm print:static print:bg-gray-100">
                                     <tr>
-                                        <th className="border border-gray-300 dark:border-gray-600 p-1 text-center font-bold text-gray-700 dark:text-gray-200 w-16 text-[10px]">HORA</th>
+                                        <th className="border border-gray-300 dark:border-gray-600 p-1 text-center font-bold text-gray-700 dark:text-gray-200 w-16 text-[10px] time-col print:text-black print:bg-gray-100">HORA</th>
                                         {[1, 2, 3, 4, 5].map(num => (
-                                            <th key={num} className="border border-gray-300 dark:border-gray-600 p-1 text-center font-bold text-gray-700 dark:text-gray-200 text-[10px] sm:text-xs">
+                                            <th key={num} className="border border-gray-300 dark:border-gray-600 p-1 text-center font-bold text-gray-700 dark:text-gray-200 text-[10px] sm:text-xs print:text-black print:bg-gray-100">
                                                 CONSULTORIO #{num}
                                             </th>
                                         ))}
@@ -840,8 +1128,8 @@ const AgendaView: React.FC<AgendaViewProps> = ({ defaultPacienteId, isEmbedded =
                                 </thead>
                                 <tbody>
                                     {timeSlots.map(time => (
-                                        <tr key={time}>
-                                            <td className={`border border-gray-300 dark:border-gray-600 text-center bg-gray-50 dark:bg-gray-700 font-black text-gray-700 dark:text-gray-300 text-[10px] align-middle ${isCompact ? 'py-0.5 px-0.5' : 'p-1'}`}>{time}</td>
+                                        <tr key={time} className="print:bg-white">
+                                            <td className={`border border-gray-300 dark:border-gray-600 text-center bg-gray-50 dark:bg-gray-700 font-black text-gray-700 dark:text-gray-300 text-[10px] align-middle time-col print:text-black print:bg-gray-100 ${isCompact ? 'py-0.5 px-0.5' : 'p-1'}`}>{time}</td>
                                             {[1, 2, 3, 4, 5].map(consultorio => {
                                                 const cellKey = `${time}-${consultorio}`;
                                                 if (skipCells.has(cellKey)) {
@@ -865,7 +1153,7 @@ const AgendaView: React.FC<AgendaViewProps> = ({ defaultPacienteId, isEmbedded =
                                                     <td
                                                         key={cellKey}
                                                         rowSpan={rowSpan}
-                                                        className={`border border-gray-300 dark:border-gray-600 align-top cursor-pointer transition-colors hover:opacity-95 ${isCompact ? 'p-0.5' : 'p-1'} ${!appointment ? 'bg-white dark:bg-gray-800' : ''}`}
+                                                        className={`border border-gray-300 dark:border-gray-600 align-top cursor-pointer transition-colors hover:opacity-95 cell-slot ${isCompact ? 'p-0.5' : 'p-1'} ${!appointment ? 'bg-white dark:bg-gray-800 print:bg-white' : 'cell-has-appointment'}`}
                                                         style={{
                                                             backgroundColor: bgColor,
                                                             borderLeft: statusColor ? `5px solid ${statusColor}` : undefined,
@@ -874,7 +1162,7 @@ const AgendaView: React.FC<AgendaViewProps> = ({ defaultPacienteId, isEmbedded =
                                                         onClick={() => handleCellClick(time, consultorio)}
                                                     >
                                                         {appointment && (
-                                                            <div className={`h-full flex flex-col justify-between text-[10px] overflow-hidden ${isCompact ? 'px-1 py-0.5' : 'pl-2 pr-1 py-1'} rounded-sm relative ${isLight ? 'text-gray-900 font-extrabold' : 'text-white drop-shadow-md'}`}>
+                                                            <div className={`h-full flex flex-col justify-between text-[10px] overflow-hidden ${isCompact ? 'px-1 py-0.5' : 'pl-2 pr-1 py-1'} rounded-sm relative appointment-box ${isLight ? 'text-gray-900 font-extrabold' : 'text-white drop-shadow-md print:text-black print:drop-shadow-none'}`}>
                                                                 
                                                                 {appointment.paciente && (appointment.paciente as any).clasificacion && (
                                                                     <div className={`absolute top-0 right-0 px-1 py-0.2 rounded-bl text-[8px] font-black backdrop-blur-sm z-10 border-l border-b border-black/20 shadow-xs ${
@@ -890,7 +1178,7 @@ const AgendaView: React.FC<AgendaViewProps> = ({ defaultPacienteId, isEmbedded =
                                                                     <div className={`font-extrabold truncate pr-5 leading-tight ${isCompact ? 'text-[10px]' : 'text-[11px]'}`}>
                                                                         {appointment.paciente ? (
                                                                             <span 
-                                                                                className={`hover:underline cursor-pointer transition-all ${isLight ? 'hover:text-blue-900 text-gray-900 font-black' : 'hover:text-white/80 font-black'}`}
+                                                                                className={`hover:underline cursor-pointer transition-all ${isLight ? 'hover:text-blue-900 text-gray-900 font-black' : 'hover:text-white/80 font-black print:text-black'}`}
                                                                                 onClick={(e) => {
                                                                                     e.stopPropagation();
                                                                                     const id = appointment.pacienteId;
@@ -905,9 +1193,9 @@ const AgendaView: React.FC<AgendaViewProps> = ({ defaultPacienteId, isEmbedded =
                                                                             </span>
                                                                         )}
                                                                     </div>
-                                                                    <div className={`truncate ${isCompact ? 'text-[9px] mt-0' : 'mt-0.5'} ${isLight ? 'text-gray-800 font-bold' : 'opacity-90'}`}>{appointment.doctor ? `Dr. ${formatPaternoMaternoNombre(appointment.doctor)}` : ''}</div>
+                                                                    <div className={`truncate ${isCompact ? 'text-[9px] mt-0' : 'mt-0.5'} ${isLight ? 'text-gray-800 font-bold' : 'opacity-90 print:text-black print:opacity-100'}`}>{appointment.doctor ? `Dr. ${formatPaternoMaternoNombre(appointment.doctor)}` : ''}</div>
                                                                     {appointment.paciente && appointment.tratamiento && (
-                                                                        <div className={`text-[8.5px] italic truncate ${isCompact ? 'mt-0' : 'mt-0.5'} ${isLight ? 'text-gray-800 font-medium' : 'opacity-85'}`}>
+                                                                        <div className={`text-[8.5px] italic truncate ${isCompact ? 'mt-0' : 'mt-0.5'} ${isLight ? 'text-gray-800 font-medium' : 'opacity-85 print:text-black print:opacity-100'}`}>
                                                                             {appointment.tratamiento}
                                                                         </div>
                                                                     )}
@@ -915,22 +1203,33 @@ const AgendaView: React.FC<AgendaViewProps> = ({ defaultPacienteId, isEmbedded =
 
                                                                 <div className={`text-[8.5px] font-bold uppercase flex items-center gap-1 flex-wrap ${isCompact ? 'mt-0.5' : 'mt-1.5'}`}>
                                                                     {appointment.paciente && appointment.pacienteId ? (
-                                                                        <select
-                                                                            value={appointment.estado}
-                                                                            style={{ 
-                                                                                backgroundColor: getStatusColor(appointment.estado),
-                                                                                color: isLightColor(getStatusColor(appointment.estado)) ? '#111827' : '#ffffff'
-                                                                            }}
-                                                                            className="border border-black/30 shadow-xs rounded-full px-2 py-0 cursor-pointer font-black text-[8px] outline-none tracking-wider uppercase"
-                                                                            onClick={(e) => e.stopPropagation()}
-                                                                            onChange={(e) => handleStatusChange(appointment.id, e.target.value, e)}
-                                                                        >
-                                                                            <option value="agendado" className="bg-[#3498db] text-white font-bold">● AGENDADO</option>
-                                                                            <option value="confirmado" className="bg-[#2ecc71] text-white font-bold">● CONFIRMADO</option>
-                                                                            <option value="atendido" className="bg-[#95a5a6] text-white font-bold">● ATENDIDO</option>
-                                                                            <option value="no asistio" className="bg-[#e67e22] text-white font-bold">● NO ASISTIÓ</option>
-                                                                            <option value="cancelado" className="bg-[#e74c3c] text-white font-bold">● CANCELADO</option>
-                                                                        </select>
+                                                                        <>
+                                                                            <select
+                                                                                value={appointment.estado}
+                                                                                style={{ 
+                                                                                    backgroundColor: getStatusColor(appointment.estado),
+                                                                                    color: isLightColor(getStatusColor(appointment.estado)) ? '#111827' : '#ffffff'
+                                                                                }}
+                                                                                className="border border-black/30 shadow-xs rounded-full px-2 py-0 cursor-pointer font-black text-[8px] outline-none tracking-wider uppercase no-print"
+                                                                                onClick={(e) => e.stopPropagation()}
+                                                                                onChange={(e) => handleStatusChange(appointment.id, e.target.value, e)}
+                                                                            >
+                                                                                <option value="agendado" className="bg-[#3498db] text-white font-bold">● AGENDADO</option>
+                                                                                <option value="confirmado" className="bg-[#2ecc71] text-white font-bold">● CONFIRMADO</option>
+                                                                                <option value="atendido" className="bg-[#95a5a6] text-white font-bold">● ATENDIDO</option>
+                                                                                <option value="no asistio" className="bg-[#e67e22] text-white font-bold">● NO ASISTIÓ</option>
+                                                                                <option value="cancelado" className="bg-[#e74c3c] text-white font-bold">● CANCELADO</option>
+                                                                            </select>
+                                                                            <span 
+                                                                                className="hidden print:inline-block px-1.5 py-0.5 rounded text-[7.5px] font-black uppercase text-white shadow-none"
+                                                                                style={{ 
+                                                                                    backgroundColor: getStatusColor(appointment.estado),
+                                                                                    color: isLightColor(getStatusColor(appointment.estado)) ? '#111827' : '#ffffff'
+                                                                                }}
+                                                                            >
+                                                                                {getStatusText(appointment.estado)}
+                                                                            </span>
+                                                                        </>
                                                                     ) : (
                                                                         <span className="bg-slate-700/80 text-slate-100 px-1.5 py-0 rounded-full font-extrabold text-[7.5px] tracking-wider uppercase border border-slate-500/50 shadow-xs">
                                                                             BLOQUEO
@@ -939,7 +1238,7 @@ const AgendaView: React.FC<AgendaViewProps> = ({ defaultPacienteId, isEmbedded =
                                                                     {(appointment.paciente || appointment.pacienteId) && (appointment.fecha || currentDate) >= getLocalDateString() && (
                                                                         <button
                                                                             onClick={(e) => handleEnviarRecordatorioIndividual(appointment.id, e)}
-                                                                            className="ml-0.5 flex-shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white p-0.5 rounded-full transition-all shadow-xs flex items-center justify-center border border-white/30"
+                                                                            className="ml-0.5 flex-shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white p-0.5 rounded-full transition-all shadow-xs flex items-center justify-center border border-white/30 no-print"
                                                                             title="Enviar recordatorio por WhatsApp"
                                                                         >
                                                                             <svg xmlns="http://www.w3.org/2000/svg" className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1115,13 +1414,22 @@ const AgendaView: React.FC<AgendaViewProps> = ({ defaultPacienteId, isEmbedded =
                             />
                         </div>
                         <div className="p-3 bg-gray-50 dark:bg-gray-800 border-t border-gray-100 dark:border-gray-700 flex flex-col gap-2">
-                            <button
-                                onClick={() => { setShowMobileCalendar(false); setShowQuienAgendoModal(true); }}
-                                className="w-full py-2 bg-purple-600 hover:bg-purple-700 active:bg-purple-800 text-white rounded-xl font-bold text-xs shadow-md flex items-center justify-center gap-2 transition-all duration-200 transform hover:scale-105 active:scale-95 cursor-pointer"
-                            >
-                                <UserCheck size={16} />
-                                <span>Quién Agendó</span>
-                            </button>
+                            <div className="grid grid-cols-2 gap-2">
+                                <button
+                                    onClick={() => { setShowMobileCalendar(false); setShowQuienAgendoModal(true); }}
+                                    className="w-full py-2 bg-purple-600 hover:bg-purple-700 active:bg-purple-800 text-white rounded-xl font-bold text-xs shadow-md flex items-center justify-center gap-1.5 transition-all duration-200 transform hover:scale-105 active:scale-95 cursor-pointer"
+                                >
+                                    <UserCheck size={16} />
+                                    <span>Quién Agendó</span>
+                                </button>
+                                <button
+                                    onClick={() => { setShowMobileCalendar(false); handlePrint(); }}
+                                    className="w-full py-2 bg-slate-800 hover:bg-slate-900 active:bg-black text-white rounded-xl font-bold text-xs shadow-md flex items-center justify-center gap-1.5 transition-all duration-200 transform hover:scale-105 active:scale-95 cursor-pointer"
+                                >
+                                    <Printer size={16} />
+                                    <span>Imprimir</span>
+                                </button>
+                            </div>
                             {!isEmbedded && (
                                 <div className="grid grid-cols-2 gap-2">
                                     <button

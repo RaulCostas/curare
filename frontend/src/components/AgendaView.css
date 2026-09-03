@@ -29,3 +29,133 @@
         justify-content: space-between;
     }
 }
+
+@media print {
+    @page {
+        size: landscape;
+        margin: 6mm 6mm;
+    }
+
+    * {
+        color-scheme: light !important;
+    }
+
+    html,
+    html.dark,
+    body,
+    body.dark,
+    #root,
+    .dashboard-container,
+    .main-content,
+    .content-area,
+    .content-card,
+    .agenda-main-container,
+    .agenda-inner-wrapper,
+    .agenda-grid-card,
+    .agenda-table-container,
+    .dark .agenda-main-container,
+    .dark .agenda-inner-wrapper,
+    .dark .agenda-grid-card,
+    .dark .agenda-table-container {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        background-color: #ffffff !important;
+        background: #ffffff !important;
+        color: #000000 !important;
+        height: auto !important;
+        min-height: 0 !important;
+        max-height: none !important;
+        overflow: visible !important;
+        display: block !important;
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+    .no-print {
+        display: none !important;
+    }
+
+    .agenda-table,
+    .dark .agenda-table {
+        background-color: #ffffff !important;
+        background: #ffffff !important;
+        color: #000000 !important;
+        width: 100% !important;
+        min-width: 100% !important;
+        table-layout: fixed !important;
+        border-collapse: collapse !important;
+    }
+
+    .agenda-table thead,
+    .agenda-table thead tr,
+    .agenda-table thead th,
+    .dark .agenda-table thead,
+    .dark .agenda-table thead tr,
+    .dark .agenda-table thead th {
+        background-color: #f1f5f9 !important;
+        background: #f1f5f9 !important;
+        color: #0f172a !important;
+        font-weight: 800 !important;
+        font-size: 8pt !important;
+        padding: 3px 2px !important;
+        border: 1px solid #64748b !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    .agenda-table tbody tr,
+    .dark .agenda-table tbody tr {
+        background-color: #ffffff !important;
+        background: #ffffff !important;
+    }
+
+    .agenda-table th,
+    .agenda-table td {
+        border: 1px solid #64748b !important;
+        page-break-inside: avoid;
+    }
+
+    .agenda-table thead {
+        display: table-header-group;
+    }
+
+    .agenda-table td.time-col,
+    .dark .agenda-table td.time-col {
+        width: 45px !important;
+        background-color: #f8fafc !important;
+        background: #f8fafc !important;
+        color: #0f172a !important;
+        font-weight: 800 !important;
+        font-size: 7.5pt !important;
+        padding: 1px 2px !important;
+        text-align: center !important;
+        border: 1px solid #64748b !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    .agenda-table td.cell-slot,
+    .dark .agenda-table td.cell-slot {
+        background-color: #ffffff !important;
+        color: #000000 !important;
+        height: 14px !important;
+        padding: 0.5px 2px !important;
+        vertical-align: top !important;
+    }
+
+    /* Keep inline category colors for slots with appointments */
+    .agenda-table td.cell-has-appointment,
+    .dark .agenda-table td.cell-has-appointment {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    .appointment-box {
+        padding: 1px 2px !important;
+        border-radius: 2px !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+}
