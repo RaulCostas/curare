@@ -179,7 +179,14 @@ const Home: React.FC = () => {
     const fetchNoRegistrados = async () => {
         try {
             const response = await api.get('/pacientes/no-registrados');
-            setNoRegistrados(response.data);
+            const data = Array.isArray(response.data) ? response.data : [];
+            const validPacientes = data.filter((item: any) => 
+                item.pacienteId && 
+                formatPaternoMaternoNombre(item).trim() !== '' &&
+                !formatPaternoMaternoNombre(item).toLowerCase().includes('bloqueo') &&
+                !formatPaternoMaternoNombre(item).toLowerCase().includes('evento')
+            );
+            setNoRegistrados(validPacientes);
         } catch (error) {
             console.error('Error fetching no registrados:', error);
         }

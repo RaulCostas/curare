@@ -44,12 +44,13 @@ export class ReciboService {
         if (query?.search) {
             const term = `%${query.search.trim().toLowerCase()}%`;
             qb.where(
-                'LOWER(r.nombre) LIKE :term OR LOWER(r.concepto) LIKE :term OR LOWER(CAST(r.id AS text)) LIKE :term',
+                '(LOWER(r.nombre) LIKE :term OR LOWER(r.concepto) LIKE :term OR LOWER(r.accessId) LIKE :term)',
                 { term }
             );
         }
 
-        qb.orderBy('r.id', 'DESC')
+        qb.orderBy("CASE WHEN r.accessId ~ '^[0-9]+$' THEN CAST(r.accessId AS INTEGER) ELSE 0 END", 'DESC')
+          .addOrderBy('r.id', 'DESC')
           .skip(skip)
           .take(limit);
 

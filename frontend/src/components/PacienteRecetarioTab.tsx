@@ -185,23 +185,20 @@ const PacienteRecetarioTab: React.FC<PacienteRecetarioTabProps> = ({ pacienteId 
         if (receta.detalles && receta.detalles.length > 0) {
             medicationRows = receta.detalles.map(d => `
                 <tr>
-                    <td style="font-weight: bold; color: #1e293b;">${d.medicamento || ''}</td>
-                    <td style="text-align: center;">${d.cantidad || '-'}</td>
-                    <td>${d.indicacion || '-'}</td>
+                    <td class="med-name">${d.medicamento || ''}</td>
+                    <td class="med-qty">${d.cantidad || '-'}</td>
+                    <td class="med-ind">${d.indicacion || '-'}</td>
                 </tr>
             `).join('');
         } else if (receta.medicamentos) {
             medicationRows = `
                 <tr>
-                    <td style="font-weight: bold; color: #1e293b;">${receta.medicamentos}</td>
-                    <td style="text-align: center;">-</td>
-                    <td>${receta.indicaciones || '-'}</td>
+                    <td class="med-name">${receta.medicamentos}</td>
+                    <td class="med-qty">-</td>
+                    <td class="med-ind">${receta.indicaciones || '-'}</td>
                 </tr>
             `;
         }
-
-        const hasDiagnostico = receta.diagnostico && receta.diagnostico.trim() !== '';
-        const hasIndicaciones = receta.indicaciones && receta.indicaciones.trim() !== '';
 
         const htmlContent = `
             <!DOCTYPE html>
@@ -209,107 +206,183 @@ const PacienteRecetarioTab: React.FC<PacienteRecetarioTabProps> = ({ pacienteId 
             <head>
                 <title>Receta Médica - ${patientName}</title>
                 <style>
-                    @page { size: A4 portrait; margin: 15mm; }
-                    body { font-family: Arial, Helvetica, sans-serif; margin: 0; padding: 0; color: #2c3e50; }
-                    
-                    .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 3px solid #3498db; }
-                    .header-left { display: flex; align-items: center; gap: 20px; }
-                    .header img { height: 60px; object-fit: contain; }
-                    .header h1 { color: #2c3e50; margin: 0; font-size: 24px; font-weight: bold; letter-spacing: 0.5px; text-transform: uppercase; }
-                    
-                    .info-box { margin-bottom: 20px; padding: 14px 18px; background-color: #f8f9fa; border-left: 6px solid #3498db; border-radius: 2px; }
-                    .info-row { margin-bottom: 6px; font-size: 13px; font-family: Arial, sans-serif; }
-                    .info-row:last-child { margin-bottom: 0; }
-                    .info-label { font-weight: bold; color: #1e293b; min-width: 140px; display: inline-block; }
-                    .info-value { color: #1e293b; letter-spacing: 0.3px; }
-
-                    .diagnostico-box { margin-bottom: 20px; padding: 10px 14px; background-color: #f1f5f9; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 13px; }
-                    
-                    table { width: 100%; border-collapse: collapse; margin-top: 10px; margin-bottom: 25px; }
-                    th {
-                        background-color: #ebf5fb !important;
-                        color: #1e293b !important;
-                        padding: 12px 10px;
-                        text-align: left;
-                        font-weight: bold;
-                        border: 1px solid #dce6f1;
-                        font-size: 12px;
+                    @page {
+                        size: 140mm 215mm portrait;
+                        margin: 0;
+                    }
+                    * {
+                        box-sizing: border-box;
+                    }
+                    html, body {
+                        width: 140mm;
+                        height: 215mm;
+                        margin: 0;
+                        padding: 0;
+                        font-family: Arial, Helvetica, sans-serif;
+                        color: #1a202c;
+                        background: transparent;
                         -webkit-print-color-adjust: exact;
                         print-color-adjust: exact;
                     }
-                    td { padding: 10px; border: 1px solid #e2e8f0; font-size: 12px; color: #334155; }
-                    tr:nth-child(even) { background-color: #f8fafc !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                    
-                    .section-title { font-weight: bold; color: #2c3e50; font-size: 13px; margin-top: 25px; margin-bottom: 8px; text-transform: uppercase; }
-                    .notes-box { font-size: 12px; line-height: 1.6; color: #334155; background: #fff; border: 1px solid #e2e8f0; padding: 12px; border-radius: 4px; }
-                    
-                    .signature-area { margin-top: 80px; text-align: center; }
-                    .signature-line { width: 220px; margin: 0 auto 8px auto; border-top: 1px solid #334155; }
-                    .signature-name { font-weight: bold; font-size: 13px; color: #1e293b; }
-                    .signature-title { font-size: 11px; color: #64748b; }
+                    .prescription-container {
+                        padding-top: 48mm;
+                        padding-left: 12mm;
+                        padding-right: 12mm;
+                        padding-bottom: 16mm;
+                        width: 140mm;
+                        min-height: 215mm;
+                        box-sizing: border-box;
+                        display: flex;
+                        flex-direction: column;
+                        justify-content: space-between;
+                    }
+                    .patient-info {
+                        margin-bottom: 8px;
+                        padding-bottom: 4px;
+                        border-bottom: 1.5px solid #4a5568;
+                    }
+                    .patient-row {
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: baseline;
+                        margin-bottom: 3px;
+                    }
+                    .patient-name {
+                        font-weight: bold;
+                        font-size: 11.5px;
+                        color: #000;
+                    }
+                    .receta-date {
+                        font-size: 11px;
+                        color: #2d3748;
+                        font-weight: 500;
+                    }
+                    .diagnostico-row {
+                        font-size: 10.5px;
+                        color: #4a5568;
+                        margin-top: 2px;
+                    }
+                    .rx-table {
+                        width: 100%;
+                        border-collapse: collapse;
+                        margin-top: 4px;
+                        margin-bottom: 10px;
+                    }
+                    .rx-table th {
+                        background-color: #edf2f7 !important;
+                        color: #2d3748 !important;
+                        font-size: 10px;
+                        font-weight: bold;
+                        text-transform: uppercase;
+                        padding: 5px 6px;
+                        border: 1px solid #cbd5e0;
+                        -webkit-print-color-adjust: exact;
+                        print-color-adjust: exact;
+                    }
+                    .rx-table td {
+                        padding: 6px;
+                        border: 1px solid #e2e8f0;
+                        font-size: 10.5px;
+                        line-height: 1.35;
+                        vertical-align: top;
+                    }
+                    .med-name {
+                        font-weight: bold;
+                        color: #000;
+                    }
+                    .med-qty {
+                        text-align: center;
+                        font-weight: 600;
+                    }
+                    .med-ind {
+                        color: #2d3748;
+                    }
+                    .indicaciones-box {
+                        margin-top: 6px;
+                        padding: 6px 8px;
+                        background: #f7fafc;
+                        border-left: 3px solid #718096;
+                        border-radius: 2px;
+                        font-size: 10px;
+                        line-height: 1.4;
+                        color: #2d3748;
+                    }
+                    .indicaciones-title {
+                        font-weight: bold;
+                        text-transform: uppercase;
+                        font-size: 9.5px;
+                        color: #4a5568;
+                        margin-bottom: 2px;
+                    }
+                    .signature-area {
+                        margin-top: auto;
+                        padding-top: 25px;
+                        text-align: center;
+                    }
+                    .signature-line {
+                        width: 180px;
+                        margin: 0 auto 4px auto;
+                        border-top: 1px solid #2d3748;
+                    }
+                    .signature-doctor {
+                        font-weight: bold;
+                        font-size: 11px;
+                        color: #000;
+                    }
+                    .signature-subtitle {
+                        font-size: 9.5px;
+                        color: #718096;
+                    }
                 </style>
             </head>
             <body>
-                <div class="header">
-                    <div class="header-left">
-                        <img src="/logo-curare.png" alt="Curare Centro Dental">
-                        <h1>RECETA MÉDICA</h1>
-                    </div>
-                </div>
+                <div class="prescription-container">
+                    <div>
+                        <div class="patient-info">
+                            <div class="patient-row">
+                                <div class="patient-name">PACIENTE: ${patientName}</div>
+                                <div class="receta-date">FECHA: ${fechaFormateada}</div>
+                            </div>
+                            ${(receta.diagnostico && receta.diagnostico.trim() !== '') ? `
+                            <div class="diagnostico-row">
+                                <strong>DIAGNÓSTICO:</strong> ${receta.diagnostico}
+                            </div>
+                            ` : ''}
+                        </div>
 
-                <div class="info-box">
-                    <div class="info-row">
-                        <span class="info-label">PACIENTE:</span>
-                        <span class="info-value" style="font-weight: bold; font-size: 14px;">${patientName}</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">DOCTOR:</span>
-                        <span class="info-value" style="font-weight: bold;">${doctorName}</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">FECHA:</span>
-                        <span class="info-value">${fechaFormateada}</span>
-                    </div>
-                </div>
+                        <table class="rx-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 38%; text-align: left;">Medicamento</th>
+                                    <th style="width: 16%; text-align: center;">Cantidad</th>
+                                    <th style="width: 46%; text-align: left;">Indicaciones / Posología</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${medicationRows}
+                            </tbody>
+                        </table>
 
-                ${hasDiagnostico ? `
-                <div class="diagnostico-box">
-                    <strong style="color: #0f172a; text-transform: uppercase;">DIAGNÓSTICO:</strong>
-                    <span style="color: #334155; font-weight: 500; margin-left: 6px;">${receta.diagnostico}</span>
-                </div>
-                ` : ''}
-
-                <table>
-                    <thead>
-                        <tr>
-                            <th style="width: 35%;">Medicamento</th>
-                            <th style="width: 20%; text-align: center;">Cantidad</th>
-                            <th style="width: 45%;">Indicaciones / Posología</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${medicationRows}
-                    </tbody>
-                </table>
-
-                ${hasIndicaciones ? `
-                    <div class="section-title">Indicaciones Generales / Recomendaciones</div>
-                    <div class="notes-box">
-                        ${receta.indicaciones.replace(/\n/g, '<br>')}
+                        ${(receta.indicaciones && receta.indicaciones.trim() !== '') ? `
+                        <div class="indicaciones-box">
+                            <div class="indicaciones-title">Indicaciones Generales / Recomendaciones:</div>
+                            <div>${receta.indicaciones.replace(/\n/g, '<br>')}</div>
+                        </div>
+                        ` : ''}
                     </div>
-                ` : ''}
 
-                <div class="signature-area">
-                    <div class="signature-line"></div>
-                    <div class="signature-name">${doctorName !== 'NO ESPECIFICADO' ? `Dr. ${doctorName}` : 'Dr. JOSE ARTIEDA S.'}</div>
-                    <div class="signature-title">Firma y Sello Médico</div>
+                    <div class="signature-area">
+                        <div class="signature-line"></div>
+                        <div class="signature-doctor">${doctorName !== 'NO ESPECIFICADO' ? `Dr. ${doctorName}` : 'Dr. JOSE ARTIEDA S.'}</div>
+                        <div class="signature-subtitle">Firma y Sello Médico</div>
+                    </div>
                 </div>
 
                 <script>
                     window.onload = function() {
                         setTimeout(function() {
                             window.print();
-                        }, 500);
+                        }, 300);
                     };
                 </script>
             </body>

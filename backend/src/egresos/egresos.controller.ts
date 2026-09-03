@@ -38,6 +38,11 @@ export class EgresosController {
         return this.egresosService.update(+id, updateEgresoDto);
     }
 
+    @Post(':id/generar-recibo')
+    generarRecibo(@Param('id') id: string) {
+        return this.egresosService.generarRecibo(+id);
+    }
+
     @Delete(':id')
     remove(@Param('id') id: string) {
         return this.egresosService.remove(+id);

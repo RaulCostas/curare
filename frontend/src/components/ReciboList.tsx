@@ -25,6 +25,7 @@ const ReciboList: React.FC = () => {
     const navigate = useNavigate();
     const [recibos, setRecibos] = useState<ReciboItem[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
     const [total, setTotal] = useState(0);
@@ -54,8 +55,15 @@ const ReciboList: React.FC = () => {
     ];
 
     useEffect(() => {
+        const handler = setTimeout(() => {
+            setDebouncedSearch(searchTerm);
+        }, 300);
+        return () => clearTimeout(handler);
+    }, [searchTerm]);
+
+    useEffect(() => {
         fetchRecibos();
-    }, [currentPage, searchTerm]);
+    }, [currentPage, debouncedSearch]);
 
     const fetchRecibos = async () => {
         try {
@@ -64,8 +72,8 @@ const ReciboList: React.FC = () => {
                 limit: limit.toString(),
             });
 
-            if (searchTerm) {
-                params.append('search', searchTerm);
+            if (debouncedSearch) {
+                params.append('search', debouncedSearch);
             }
 
             const response = await api.get<PaginatedResponse>(`/recibo?${params}`);
@@ -354,7 +362,7 @@ const ReciboList: React.FC = () => {
                     <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
                         <thead className="bg-gray-50 dark:bg-gray-700/50">
                             <tr>
-                                <th className="px-4 py-3 text-left font-semibold text-gray-600 dark:text-gray-300">#</th>
+                                <th className="px-4 py-3 text-left font-semibold text-gray-600 dark:text-gray-300">N° Recibo</th>
                                 <th className="px-4 py-3 text-left font-semibold text-gray-600 dark:text-gray-300">Fecha</th>
                                 <th className="px-4 py-3 text-left font-semibold text-gray-600 dark:text-gray-300">Nombre / Beneficiario</th>
                                 <th className="px-4 py-3 text-left font-semibold text-gray-600 dark:text-gray-300">Concepto</th>
@@ -375,8 +383,8 @@ const ReciboList: React.FC = () => {
                                     const isDolares = item.moneda?.toUpperCase() === 'DOLARES';
                                     return (
                                         <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors">
-                                            <td className="px-4 py-3 text-gray-700 dark:text-gray-300 font-bold whitespace-nowrap">
-                                                {item.accessId || item.id}
+                                            <td className="px-4 py-3 text-blue-600 dark:text-blue-400 font-bold whitespace-nowrap">
+                                                {item.accessId || '-'}
                                             </td>
                                             <td className="px-4 py-3 text-gray-700 dark:text-gray-300 whitespace-nowrap">
                                                 {formatDate(item.fecha)}

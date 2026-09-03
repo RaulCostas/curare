@@ -3,6 +3,7 @@ import Swal from 'sweetalert2';
 import ManualModal, { type ManualSection } from './ManualModal';
 import { formatPaternoMaternoNombre } from '../utils/formatters';
 import { formatNumberBs, getLocalDateString } from '../utils/dateUtils';
+import { Printer, X } from 'lucide-react';
 
 interface DetailItem {
     id: number;
@@ -323,6 +324,268 @@ const Utilidades: React.FC = () => {
         setActiveTab('Consultorio');
     };
 
+    const getFilterDescription = () => {
+        if (filterType === 'date' && startDate && endDate) {
+            return `Del ${formatDateBO(startDate)} al ${formatDateBO(endDate)}`;
+        }
+        if (filterType === 'month' && selectedMonth) {
+            const [y, m] = selectedMonth.split('-');
+            const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+            return `${monthNames[parseInt(m, 10) - 1] || m} de ${y}`;
+        }
+        if (filterType === 'year' && selectedYear) {
+            return `Año ${selectedYear}`;
+        }
+        return 'General';
+    };
+
+    const handlePrintDetail = (itemsToPrint: DetailItem[], totalMonto: number) => {
+        const printWindow = window.open('', '_blank');
+        if (!printWindow || !selectedDetail) return;
+
+        const isBs = selectedDetail.currency === 'Bolivianos';
+        const prefix = isBs ? 'Bs' : 'Sus';
+        const periodText = getFilterDescription();
+        const nowStr = `${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+        const isEgresosOGastos = selectedDetail.title.includes('Egresos Diarios') || selectedDetail.title.includes('Gastos');
+        const titleText = `${selectedDetail.title.toUpperCase()} (${selectedDetail.currency.toUpperCase()})${isEgresosOGastos ? ` - ${activeTab.toUpperCase()}` : ''}`;
+
+        let tableHeadersHtml = '';
+        let tableRowsHtml = '';
+
+        if (selectedDetail.title.includes('Ingresos')) {
+            tableHeadersHtml = `
+                <tr>
+                    <th style="width: 12%;">Fecha</th>
+                    <th style="width: 28%;">Paciente</th>
+                    <th style="width: 14%;">Presupuesto</th>
+                    <th style="width: 14%;">Fact/Rec</th>
+                    <th style="width: 16%;">Forma Pago</th>
+                    <th style="width: 16%; text-align: right;">Monto</th>
+                </tr>
+            `;
+            tableRowsHtml = itemsToPrint.map(item => {
+                const fact = item.factura && item.factura !== '-' ? `F: ${item.factura}` : '';
+                const rec = item.recibo && item.recibo !== '-' ? `R: ${item.recibo}` : '';
+                const sep = fact && rec ? ' / ' : '';
+                const factRec = fact || rec ? `${fact}${sep}${rec}` : '-';
+                return `
+                    <tr>
+                        <td>${formatDateBO(item.fecha)}</td>
+                        <td style="font-weight: 500;">${item.paciente || '-'}</td>
+                        <td>${item.presupuesto || '-'}</td>
+                        <td>${factRec}</td>
+                        <td>${item.formaPago || '-'}</td>
+                        <td style="text-align: right; font-weight: bold;">${formatMoney(item.monto, prefix)}</td>
+                    </tr>
+                `;
+            }).join('');
+        } else if (selectedDetail.title.includes('Egresos Diarios')) {
+            tableHeadersHtml = `
+                <tr>
+                    <th style="width: 15%;">Fecha</th>
+                    <th style="width: 45%;">Descripción</th>
+                    <th style="width: 20%;">Forma Pago</th>
+                    <th style="width: 20%; text-align: right;">Monto</th>
+                </tr>
+            `;
+            tableRowsHtml = itemsToPrint.map(item => `
+                <tr>
+                    <td>${formatDateBO(item.fecha)}</td>
+                    <td>${item.descripcion || '-'}</td>
+                    <td>${item.formaPago || '-'}</td>
+                    <td style="text-align: right; font-weight: bold;">${formatMoney(item.monto, prefix)}</td>
+                </tr>
+            `).join('');
+        } else if (selectedDetail.title.includes('Pagos a Laboratorios')) {
+            tableHeadersHtml = `
+                <tr>
+                    <th style="width: 12%;">Fecha</th>
+                    <th style="width: 22%;">Laboratorio</th>
+                    <th style="width: 22%;">Trabajo</th>
+                    <th style="width: 22%;">Paciente</th>
+                    <th style="width: 10%;">Forma Pago</th>
+                    <th style="width: 12%; text-align: right;">Monto</th>
+                </tr>
+            `;
+            tableRowsHtml = itemsToPrint.map(item => `
+                <tr>
+                    <td>${formatDateBO(item.fecha)}</td>
+                    <td style="font-weight: 500;">${item.laboratorio || '-'}</td>
+                    <td>${item.trabajo || '-'}</td>
+                    <td>${item.paciente || '-'}</td>
+                    <td>${item.formaPago || '-'}</td>
+                    <td style="text-align: right; font-weight: bold;">${formatMoney(item.monto, prefix)}</td>
+                </tr>
+            `).join('');
+        } else if (selectedDetail.title.includes('Pagos de Pedidos')) {
+            tableHeadersHtml = `
+                <tr>
+                    <th style="width: 15%;">Fecha</th>
+                    <th style="width: 35%;">Proveedor</th>
+                    <th style="width: 15%;">Fact/Rec</th>
+                    <th style="width: 15%;">Forma Pago</th>
+                    <th style="width: 20%; text-align: right;">Monto</th>
+                </tr>
+            `;
+            tableRowsHtml = itemsToPrint.map(item => {
+                const fact = item.factura && item.factura !== '-' ? `F: ${item.factura}` : '';
+                const rec = item.recibo && item.recibo !== '-' ? `R: ${item.recibo}` : '';
+                const sep = fact && rec ? ' / ' : '';
+                const factRec = fact || rec ? `${fact}${sep}${rec}` : '-';
+                return `
+                    <tr>
+                        <td>${formatDateBO(item.fecha)}</td>
+                        <td style="font-weight: 500;">${item.proveedor || '-'}</td>
+                        <td>${factRec}</td>
+                        <td>${item.formaPago || '-'}</td>
+                        <td style="text-align: right; font-weight: bold;">${formatMoney(item.monto, prefix)}</td>
+                    </tr>
+                `;
+            }).join('');
+        } else if (selectedDetail.title.includes('Pagos a Doctores')) {
+            tableHeadersHtml = `
+                <tr>
+                    <th style="width: 15%;">Fecha</th>
+                    <th style="width: 45%;">Doctor</th>
+                    <th style="width: 20%;">Forma Pago</th>
+                    <th style="width: 20%; text-align: right;">Monto</th>
+                </tr>
+            `;
+            tableRowsHtml = itemsToPrint.map(item => `
+                <tr>
+                    <td>${formatDateBO(item.fecha)}</td>
+                    <td style="font-weight: 500;">${item.doctor || '-'}</td>
+                    <td>${item.formaPago || '-'}</td>
+                    <td style="text-align: right; font-weight: bold;">${formatMoney(item.monto, prefix)}</td>
+                </tr>
+            `).join('');
+        } else if (selectedDetail.title.includes('Pagos de Gastos') || selectedDetail.title.includes('Gastos')) {
+            tableHeadersHtml = `
+                <tr>
+                    <th style="width: 15%;">Fecha</th>
+                    <th style="width: 45%;">Gasto Fijo</th>
+                    <th style="width: 20%;">Forma Pago</th>
+                    <th style="width: 20%; text-align: right;">Monto</th>
+                </tr>
+            `;
+            tableRowsHtml = itemsToPrint.map(item => `
+                <tr>
+                    <td>${formatDateBO(item.fecha)}</td>
+                    <td style="font-weight: 500;">${item.gasto || item.descripcion || '-'}</td>
+                    <td>${item.formaPago || '-'}</td>
+                    <td style="text-align: right; font-weight: bold;">${formatMoney(item.monto, prefix)}</td>
+                </tr>
+            `).join('');
+        } else {
+            tableHeadersHtml = `
+                <tr>
+                    <th style="width: 20%;">Fecha</th>
+                    <th style="width: 55%;">Descripción</th>
+                    <th style="width: 25%; text-align: right;">Monto</th>
+                </tr>
+            `;
+            tableRowsHtml = itemsToPrint.map(item => `
+                <tr>
+                    <td>${formatDateBO(item.fecha)}</td>
+                    <td>${item.descripcion || '-'}</td>
+                    <td style="text-align: right; font-weight: bold;">${formatMoney(item.monto, prefix)}</td>
+                </tr>
+            `).join('');
+        }
+
+        const colSpanTotal = selectedDetail.title.includes('Ingresos') ? 5 :
+            selectedDetail.title.includes('Egresos Diarios') ? 3 :
+            selectedDetail.title.includes('Pagos a Laboratorios') ? 5 :
+            selectedDetail.title.includes('Pagos de Pedidos') ? 4 :
+            selectedDetail.title.includes('Pagos a Doctores') ? 3 :
+            (selectedDetail.title.includes('Pagos de Gastos') || selectedDetail.title.includes('Gastos')) ? 3 : 2;
+
+        const htmlContent = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Reporte - ${selectedDetail.title}</title>
+                <style>
+                    @page { size: A4 portrait; margin: 12mm; }
+                    body { font-family: Arial, Helvetica, sans-serif; margin: 0; padding: 0; color: #1e293b; font-size: 12px; }
+                    
+                    .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid #0ea5e9; }
+                    .header-left { display: flex; align-items: center; gap: 15px; }
+                    .header img { height: 50px; object-fit: contain; }
+                    .header h1 { color: #0f172a; margin: 0; font-size: 18px; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; }
+                    .header p { margin: 2px 0 0 0; font-size: 11px; color: #64748b; }
+                    
+                    .info-card { display: flex; justify-content: space-between; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px 14px; margin-bottom: 15px; }
+                    .info-item { font-size: 12px; }
+                    .info-item strong { color: #334155; }
+                    
+                    table { width: 100%; border-collapse: collapse; margin-top: 5px; font-size: 11px; }
+                    th { background-color: #0f172a; color: #ffffff; text-align: left; padding: 7px 10px; font-weight: 600; text-transform: uppercase; font-size: 10px; letter-spacing: 0.5px; }
+                    td { padding: 6px 10px; border-bottom: 1px solid #e2e8f0; }
+                    tr:nth-child(even) { background-color: #f8fafc; }
+                    
+                    tfoot { display: table-row-group; }
+                    .tfoot-total td { background-color: #f1f5f9; font-weight: bold; border-top: 2px solid #cbd5e1; border-bottom: 2px solid #cbd5e1; font-size: 12px; padding: 8px 10px; page-break-inside: avoid; }
+                    
+                    .footer { margin-top: 25px; display: flex; justify-content: space-between; font-size: 10px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 8px; }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <div class="header-left">
+                        <img src="/logo-curare.png" alt="Curare Centro Dental">
+                        <div>
+                            <h1>${titleText}</h1>
+                            <p>CURARE CENTRO DENTAL • REPORTE DE UTILIDADES</p>
+                        </div>
+                    </div>
+                    <div style="text-align: right; font-size: 11px; color: #64748b;">
+                        <div><strong>Fecha Impresión:</strong> ${nowStr}</div>
+                        <div><strong>Registros:</strong> ${itemsToPrint.length}</div>
+                    </div>
+                </div>
+
+                <div class="info-card">
+                    <div class="info-item"><strong>Período:</strong> ${periodText}</div>
+                    <div class="info-item"><strong>Moneda:</strong> ${selectedDetail.currency}</div>
+                    ${isEgresosOGastos ? `<div class="info-item"><strong>Destino:</strong> ${activeTab}</div>` : ''}
+                    <div class="info-item"><strong>Total:</strong> <span style="font-weight: bold; color: #0284c7;">${formatMoney(totalMonto, prefix)}</span></div>
+                </div>
+
+                <table>
+                    <thead>
+                        ${tableHeadersHtml}
+                    </thead>
+                    <tbody>
+                        ${tableRowsHtml.length > 0 ? tableRowsHtml : `<tr><td colspan="${colSpanTotal + 1}" style="text-align: center; padding: 20px; color: #94a3b8;">No se encontraron registros para este período.</td></tr>`}
+                    </tbody>
+                    <tfoot>
+                        <tr class="tfoot-total">
+                            <td colspan="${colSpanTotal}" style="text-align: right; text-transform: uppercase;">TOTAL:</td>
+                            <td style="text-align: right; color: #0f172a;">${formatMoney(totalMonto, prefix)}</td>
+                        </tr>
+                    </tfoot>
+                </table>
+
+                <div class="footer">
+                    <div>Sistema Curare - Control Financiero</div>
+                    <div>Reporte Oficial</div>
+                </div>
+
+                <script>
+                    window.onload = function() {
+                        setTimeout(function() { window.print(); }, 500);
+                    };
+                </script>
+            </body>
+            </html>
+        `;
+
+        printWindow.document.write(htmlContent);
+        printWindow.document.close();
+    };
+
     const closeModal = () => setSelectedDetail(null);
 
     return (
@@ -634,236 +897,264 @@ const Utilidades: React.FC = () => {
             )}
 
             {/* DETAIL MODAL */}
-            {selectedDetail && (
-                <div className="fixed inset-0 z-[9999] overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-                    <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-                        <div className="fixed inset-0 bg-gray-500 dark:bg-gray-900 bg-opacity-75 dark:bg-opacity-80 transition-opacity" onClick={closeModal} aria-hidden="true"></div>
-                        <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-                        <div className={`inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:w-full ${selectedDetail.title.includes('Ingresos') || selectedDetail.title.includes('Egresos Diarios') || selectedDetail.title.includes('Pagos a Laboratorios') || selectedDetail.title.includes('Pagos de Pedidos') || selectedDetail.title.includes('Pagos a Doctores') || selectedDetail.title.includes('Gastos') ? 'sm:max-w-6xl' : 'sm:max-w-2xl'}`}>
-                            <div className="bg-white dark:bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4 transition-colors">
-                                <div className="sm:flex sm:items-start">
-                                    <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
-                                        <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-white" id="modal-title">
+            {selectedDetail && (() => {
+                let itemsToDisplay = sortByFechaAsc(selectedDetail.items);
+                if (selectedDetail.title.includes('Egresos Diarios') || selectedDetail.title.includes('Gastos')) {
+                    itemsToDisplay = itemsToDisplay.filter(item => {
+                        const itemDest = (item.destino || 'consultorio').toLowerCase();
+                        return itemDest === activeTab.toLowerCase();
+                    });
+                }
+                const totalMonto = itemsToDisplay.reduce((acc, item) => acc + (Number(item.monto) || 0), 0);
+                const colSpanTotal = selectedDetail.title.includes('Ingresos') ? 5 :
+                    selectedDetail.title.includes('Egresos Diarios') ? 3 :
+                    selectedDetail.title.includes('Pagos a Laboratorios') ? 5 :
+                    selectedDetail.title.includes('Pagos de Pedidos') ? 4 :
+                    selectedDetail.title.includes('Pagos a Doctores') ? 3 :
+                    (selectedDetail.title.includes('Pagos de Gastos') || selectedDetail.title.includes('Gastos')) ? 3 : 2;
+
+                return (
+                    <div className="fixed inset-0 z-[9999] overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+                        <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+                            <div className="fixed inset-0 bg-gray-500/75 dark:bg-gray-900/80 backdrop-blur-sm transition-opacity" onClick={closeModal} aria-hidden="true"></div>
+                            <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+                            <div className={`inline-block align-bottom bg-white dark:bg-gray-800 rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:w-full ${selectedDetail.title.includes('Ingresos') || selectedDetail.title.includes('Egresos Diarios') || selectedDetail.title.includes('Pagos a Laboratorios') || selectedDetail.title.includes('Pagos de Pedidos') || selectedDetail.title.includes('Pagos a Doctores') || selectedDetail.title.includes('Gastos') ? 'sm:max-w-6xl' : 'sm:max-w-3xl'}`}>
+                                
+                                {/* Modal Header */}
+                                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-700/30">
+                                    <div>
+                                        <h3 className="text-xl font-bold text-gray-900 dark:text-white" id="modal-title">
                                             Detalle: {selectedDetail.title} ({selectedDetail.currency})
                                         </h3>
-                                        <div className="mt-4">
-                                            {/* Tabs for Egresos Diarios AND Gastos Fijos */}
-                                            {(selectedDetail.title.includes('Egresos Diarios') || selectedDetail.title.includes('Gastos')) && (
-                                                <div className="flex border-b border-gray-200 dark:border-gray-600 mb-5 px-2">
-                                                    <div
-                                                        onClick={() => setActiveTab('Consultorio')}
-                                                        className={`px-5 py-2.5 cursor-pointer border-b-4 flex items-center gap-2 transition-all duration-200 text-sm ${activeTab === 'Consultorio'
-                                                            ? 'border-blue-500 text-blue-500 font-bold dark:border-blue-400 dark:text-blue-400'
-                                                            : 'border-transparent text-gray-600 dark:text-gray-400 font-normal hover:text-blue-500 dark:hover:text-blue-300'
-                                                            }`}
-                                                    >
-                                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                            <rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect>
-                                                            <line x1="9" y1="22" x2="9" y2="22"></line>
-                                                            <line x1="15" y1="22" x2="15" y2="22"></line>
-                                                            <line x1="12" y1="18" x2="12" y2="18"></line>
-                                                            <line x1="12" y1="14" x2="12" y2="14"></line>
-                                                            <line x1="8" y1="10" x2="8" y2="10"></line>
-                                                            <line x1="8" y1="6" x2="8" y2="6"></line>
-                                                            <line x1="16" y1="10" x2="16" y2="10"></line>
-                                                            <line x1="16" y1="6" x2="16" y2="6"></line>
-                                                        </svg>
-                                                        Consultorio
-                                                    </div>
-                                                    <div
-                                                        onClick={() => setActiveTab('Casa')}
-                                                        className={`px-5 py-2.5 cursor-pointer border-b-4 flex items-center gap-2 transition-all duration-200 text-sm ${activeTab === 'Casa'
-                                                            ? 'border-blue-500 text-blue-500 font-bold dark:border-blue-400 dark:text-blue-400'
-                                                            : 'border-transparent text-gray-600 dark:text-gray-400 font-normal hover:text-blue-500 dark:hover:text-blue-300'
-                                                            }`}
-                                                    >
-                                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-                                                            <polyline points="9 22 9 12 15 12 15 22"></polyline>
-                                                        </svg>
-                                                        Casa
-                                                    </div>
-                                                </div>
-                                            )}
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                            Período: {getFilterDescription()} {selectedDetail.title.includes('Egresos Diarios') || selectedDetail.title.includes('Gastos') ? `• Destino: ${activeTab}` : ''}
+                                        </p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={closeModal}
+                                        className="text-gray-400 bg-transparent hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 p-2 rounded-full transition-all cursor-pointer"
+                                        title="Cerrar"
+                                    >
+                                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                </div>
 
-                                            <div className="max-h-96 overflow-y-auto">
-                                                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                                                    <thead className="bg-gray-50 dark:bg-gray-700">
-                                                        {selectedDetail.title.includes('Ingresos') ? (
-                                                            <tr>
-                                                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Fecha</th>
-                                                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Paciente</th>
-                                                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Presup.</th>
-                                                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Fact/Rec</th>
-                                                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Forma Pago</th>
-                                                                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Monto</th>
-                                                            </tr>
-                                                        ) : selectedDetail.title.includes('Egresos Diarios') ? (
-                                                            <tr>
-                                                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Fecha</th>
-                                                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Descripción</th>
-                                                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Forma Pago</th>
-                                                                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Monto</th>
-                                                            </tr>
-                                                        ) : selectedDetail.title.includes('Pagos a Laboratorios') ? (
-                                                            <tr>
-                                                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Fecha</th>
-                                                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Laboratorio</th>
-                                                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Trabajo</th>
-                                                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Paciente</th>
-                                                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Forma Pago</th>
-                                                                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Monto</th>
-                                                            </tr>
-                                                        ) : selectedDetail.title.includes('Pagos de Pedidos') ? (
-                                                            <tr>
-                                                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Fecha</th>
-                                                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Proveedor</th>
-                                                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Fact/Rec</th>
-                                                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Forma Pago</th>
-                                                                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Monto</th>
-                                                            </tr>
-                                                        ) : selectedDetail.title.includes('Pagos a Doctores') ? (
-                                                            <tr>
-                                                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Fecha</th>
-                                                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Doctor</th>
-                                                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Forma Pago</th>
-                                                                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Monto</th>
-                                                            </tr>
-                                                        ) : selectedDetail.title.includes('Gastos') ? (
-                                                            <tr>
-                                                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Fecha</th>
-                                                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Gasto Fijo</th>
-                                                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Forma Pago</th>
-                                                                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Monto</th>
-                                                            </tr>
-                                                        ) : (
-                                                            <tr>
-                                                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Fecha</th>
-                                                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Descripción</th>
-                                                                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Monto</th>
-                                                            </tr>
-                                                        )}
-                                                    </thead>
-                                                    <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                                                        {(() => {
-                                                            let itemsToDisplay = sortByFechaAsc(selectedDetail.items);
-                                                            if (selectedDetail.title.includes('Egresos Diarios') || selectedDetail.title.includes('Gastos')) {
-                                                                itemsToDisplay = itemsToDisplay.filter(item => {
-                                                                    const itemDest = (item.destino || 'consultorio').toLowerCase();
-                                                                    return itemDest === activeTab.toLowerCase();
-                                                                });
-                                                            }
-
-                                                            return itemsToDisplay.length > 0 ? itemsToDisplay.map((item) => (
-                                                                <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                                                                    {selectedDetail.title.includes('Ingresos') ? (
-                                                                        <>
-                                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{formatDateBO(item.fecha)}</td>
-                                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200 font-medium">{item.paciente}</td>
-                                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{item.presupuesto}</td>
-                                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                                                                                {item.factura && item.factura !== '-' ? `F: ${item.factura}` : ''}
-                                                                                {item.factura && item.recibo && item.factura !== '-' && item.recibo !== '-' ? ' / ' : ''}
-                                                                                {item.recibo && item.recibo !== '-' ? `R: ${item.recibo}` : ''}
-                                                                                {(!item.factura || item.factura === '-') && (!item.recibo || item.recibo === '-') ? '-' : ''}
-                                                                            </td>
-                                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{item.formaPago}</td>
-                                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200 text-right font-bold">
-                                                                                {formatMoney(item.monto, selectedDetail.currency === 'Bolivianos' ? 'Bs' : 'Sus')}
-                                                                            </td>
-                                                                        </>
-                                                                    ) : selectedDetail.title.includes('Egresos Diarios') ? (
-                                                                        <>
-                                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{formatDateBO(item.fecha)}</td>
-                                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">{item.descripcion}</td>
-                                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{item.formaPago}</td>
-                                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200 text-right font-bold">
-                                                                                {formatMoney(item.monto, selectedDetail.currency === 'Bolivianos' ? 'Bs' : 'Sus')}
-                                                                            </td>
-                                                                        </>
-                                                                    ) : selectedDetail.title.includes('Pagos a Laboratorios') ? (
-                                                                        <>
-                                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{formatDateBO(item.fecha)}</td>
-                                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200 font-medium">{item.laboratorio}</td>
-                                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{item.trabajo}</td>
-                                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{item.paciente}</td>
-                                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{item.formaPago}</td>
-                                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200 text-right font-bold">
-                                                                                {formatMoney(item.monto, selectedDetail.currency === 'Bolivianos' ? 'Bs' : 'Sus')}
-                                                                            </td>
-                                                                        </>
-                                                                    ) : selectedDetail.title.includes('Pagos de Pedidos') ? (
-                                                                        <>
-                                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{formatDateBO(item.fecha)}</td>
-                                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200 font-medium">{item.proveedor}</td>
-                                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                                                                                {item.factura && item.factura !== '-' ? `F: ${item.factura}` : ''}
-                                                                                {item.factura && item.recibo && item.factura !== '-' && item.recibo !== '-' ? ' / ' : ''}
-                                                                                {item.recibo && item.recibo !== '-' ? `R: ${item.recibo}` : ''}
-                                                                                {(!item.factura || item.factura === '-') && (!item.recibo || item.recibo === '-') ? '-' : ''}
-                                                                            </td>
-                                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{item.formaPago}</td>
-                                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200 text-right font-bold">
-                                                                                {formatMoney(item.monto, selectedDetail.currency === 'Bolivianos' ? 'Bs' : 'Sus')}
-                                                                            </td>
-                                                                        </>
-                                                                    ) : selectedDetail.title.includes('Pagos a Doctores') ? (
-                                                                        <>
-                                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{formatDateBO(item.fecha)}</td>
-                                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200 font-medium">{item.doctor}</td>
-                                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{item.formaPago}</td>
-                                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200 text-right font-bold">
-                                                                                {formatMoney(item.monto, selectedDetail.currency === 'Bolivianos' ? 'Bs' : 'Sus')}
-                                                                            </td>
-                                                                        </>
-                                                                    ) : selectedDetail.title.includes('Pagos de Gastos') ? (
-                                                                        <>
-                                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{formatDateBO(item.fecha)}</td>
-                                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200 font-medium">{item.gasto}</td>
-                                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{item.formaPago}</td>
-                                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200 text-right font-bold">
-                                                                                {formatMoney(item.monto, selectedDetail.currency === 'Bolivianos' ? 'Bs' : 'Sus')}
-                                                                            </td>
-                                                                        </>
-                                                                    ) : (
-                                                                        <>
-                                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{formatDateBO(item.fecha)}</td>
-                                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">{item.descripcion}</td>
-                                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200 text-right font-bold">
-                                                                                {formatMoney(item.monto, selectedDetail.currency === 'Bolivianos' ? 'Bs' : 'Sus')}
-                                                                            </td>
-                                                                        </>
-                                                                    )}
-                                                                </tr>
-                                                            )) : (
-                                                                <tr>
-                                                                    <td colSpan={selectedDetail.title.includes('Ingresos') ? 6 : selectedDetail.title.includes('Egresos Diarios') ? 4 : selectedDetail.title.includes('Pagos a Laboratorios') ? 6 : selectedDetail.title.includes('Pagos de Pedidos') ? 5 : selectedDetail.title.includes('Pagos a Doctores') ? 4 : selectedDetail.title.includes('Pagos de Gastos') ? 4 : 3} className="px-6 py-4 text-center text-sm text-gray-500 dark:text-gray-400 font-light italic">No hay registros</td>
-                                                                </tr>
-                                                            );
-                                                        })()}
-                                                    </tbody>
-                                                </table>
-                                            </div>
+                                {/* Modal Body */}
+                                <div className="p-6">
+                                    {/* Tabs for Egresos Diarios AND Gastos Fijos */}
+                                    {(selectedDetail.title.includes('Egresos Diarios') || selectedDetail.title.includes('Gastos')) && (
+                                        <div className="flex items-center gap-2 mb-5">
+                                            <button
+                                                type="button"
+                                                onClick={() => setActiveTab('Consultorio')}
+                                                className={`px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-2 transition-all cursor-pointer ${activeTab === 'Consultorio'
+                                                    ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
+                                                    : 'bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200'
+                                                    }`}
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                    <rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect>
+                                                    <line x1="9" y1="22" x2="9" y2="22"></line>
+                                                    <line x1="15" y1="22" x2="15" y2="22"></line>
+                                                    <line x1="12" y1="18" x2="12" y2="18"></line>
+                                                    <line x1="12" y1="14" x2="12" y2="14"></line>
+                                                    <line x1="8" y1="10" x2="8" y2="10"></line>
+                                                    <line x1="8" y1="6" x2="8" y2="6"></line>
+                                                    <line x1="16" y1="10" x2="16" y2="10"></line>
+                                                    <line x1="16" y1="6" x2="16" y2="6"></line>
+                                                </svg>
+                                                Consultorio
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setActiveTab('Casa')}
+                                                className={`px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-2 transition-all cursor-pointer ${activeTab === 'Casa'
+                                                    ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
+                                                    : 'bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200'
+                                                    }`}
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                                                    <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                                                </svg>
+                                                Casa
+                                            </button>
                                         </div>
+                                    )}
+
+                                    <div className="max-h-[420px] overflow-y-auto rounded-xl border border-gray-100 dark:border-gray-700">
+                                        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
+                                            <thead className="bg-gray-50 dark:bg-gray-700/60 sticky top-0 z-10">
+                                                {selectedDetail.title.includes('Ingresos') ? (
+                                                    <tr>
+                                                        <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Fecha</th>
+                                                        <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Paciente</th>
+                                                        <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Presup.</th>
+                                                        <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Fact/Rec</th>
+                                                        <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Forma Pago</th>
+                                                        <th scope="col" className="px-6 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Monto</th>
+                                                    </tr>
+                                                ) : selectedDetail.title.includes('Egresos Diarios') ? (
+                                                    <tr>
+                                                        <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Fecha</th>
+                                                        <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Descripción</th>
+                                                        <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Forma Pago</th>
+                                                        <th scope="col" className="px-6 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Monto</th>
+                                                    </tr>
+                                                ) : selectedDetail.title.includes('Pagos a Laboratorios') ? (
+                                                    <tr>
+                                                        <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Fecha</th>
+                                                        <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Laboratorio</th>
+                                                        <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Trabajo</th>
+                                                        <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Paciente</th>
+                                                        <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Forma Pago</th>
+                                                        <th scope="col" className="px-6 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Monto</th>
+                                                    </tr>
+                                                ) : selectedDetail.title.includes('Pagos de Pedidos') ? (
+                                                    <tr>
+                                                        <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Fecha</th>
+                                                        <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Proveedor</th>
+                                                        <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Fact/Rec</th>
+                                                        <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Forma Pago</th>
+                                                        <th scope="col" className="px-6 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Monto</th>
+                                                    </tr>
+                                                ) : selectedDetail.title.includes('Pagos a Doctores') ? (
+                                                    <tr>
+                                                        <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Fecha</th>
+                                                        <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Doctor</th>
+                                                        <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Forma Pago</th>
+                                                        <th scope="col" className="px-6 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Monto</th>
+                                                    </tr>
+                                                ) : selectedDetail.title.includes('Gastos') ? (
+                                                    <tr>
+                                                        <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Fecha</th>
+                                                        <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Gasto Fijo</th>
+                                                        <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Forma Pago</th>
+                                                        <th scope="col" className="px-6 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Monto</th>
+                                                    </tr>
+                                                ) : (
+                                                    <tr>
+                                                        <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Fecha</th>
+                                                        <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Descripción</th>
+                                                        <th scope="col" className="px-6 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Monto</th>
+                                                    </tr>
+                                                )}
+                                            </thead>
+                                            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                                                {itemsToDisplay.length > 0 ? itemsToDisplay.map((item) => (
+                                                    <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors">
+                                                        {selectedDetail.title.includes('Ingresos') ? (
+                                                            <>
+                                                                <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{formatDateBO(item.fecha)}</td>
+                                                                <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200 font-medium">{item.paciente}</td>
+                                                                <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{item.presupuesto}</td>
+                                                                <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                                                    {item.factura && item.factura !== '-' ? `F: ${item.factura}` : ''}
+                                                                    {item.factura && item.recibo && item.factura !== '-' && item.recibo !== '-' ? ' / ' : ''}
+                                                                    {item.recibo && item.recibo !== '-' ? `R: ${item.recibo}` : ''}
+                                                                    {(!item.factura || item.factura === '-') && (!item.recibo || item.recibo === '-') ? '-' : ''}
+                                                                </td>
+                                                                <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{item.formaPago}</td>
+                                                                <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200 text-right font-bold">
+                                                                    {formatMoney(item.monto, selectedDetail.currency === 'Bolivianos' ? 'Bs' : 'Sus')}
+                                                                </td>
+                                                            </>
+                                                        ) : selectedDetail.title.includes('Egresos Diarios') ? (
+                                                            <>
+                                                                <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{formatDateBO(item.fecha)}</td>
+                                                                <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">{item.descripcion}</td>
+                                                                <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{item.formaPago}</td>
+                                                                <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200 text-right font-bold">
+                                                                    {formatMoney(item.monto, selectedDetail.currency === 'Bolivianos' ? 'Bs' : 'Sus')}
+                                                                </td>
+                                                            </>
+                                                        ) : selectedDetail.title.includes('Pagos a Laboratorios') ? (
+                                                            <>
+                                                                <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{formatDateBO(item.fecha)}</td>
+                                                                <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200 font-medium">{item.laboratorio}</td>
+                                                                <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{item.trabajo}</td>
+                                                                <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{item.paciente}</td>
+                                                                <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{item.formaPago}</td>
+                                                                <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200 text-right font-bold">
+                                                                    {formatMoney(item.monto, selectedDetail.currency === 'Bolivianos' ? 'Bs' : 'Sus')}
+                                                                </td>
+                                                            </>
+                                                        ) : selectedDetail.title.includes('Pagos de Pedidos') ? (
+                                                            <>
+                                                                <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{formatDateBO(item.fecha)}</td>
+                                                                <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200 font-medium">{item.proveedor}</td>
+                                                                <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                                                    {item.factura && item.factura !== '-' ? `F: ${item.factura}` : ''}
+                                                                    {item.factura && item.recibo && item.factura !== '-' && item.recibo !== '-' ? ' / ' : ''}
+                                                                    {item.recibo && item.recibo !== '-' ? `R: ${item.recibo}` : ''}
+                                                                    {(!item.factura || item.factura === '-') && (!item.recibo || item.recibo === '-') ? '-' : ''}
+                                                                </td>
+                                                                <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{item.formaPago}</td>
+                                                                <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200 text-right font-bold">
+                                                                    {formatMoney(item.monto, selectedDetail.currency === 'Bolivianos' ? 'Bs' : 'Sus')}
+                                                                </td>
+                                                            </>
+                                                        ) : selectedDetail.title.includes('Pagos a Doctores') ? (
+                                                            <>
+                                                                <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{formatDateBO(item.fecha)}</td>
+                                                                <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200 font-medium">{item.doctor}</td>
+                                                                <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{item.formaPago}</td>
+                                                                <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200 text-right font-bold">
+                                                                    {formatMoney(item.monto, selectedDetail.currency === 'Bolivianos' ? 'Bs' : 'Sus')}
+                                                                </td>
+                                                            </>
+                                                        ) : selectedDetail.title.includes('Gastos') ? (
+                                                            <>
+                                                                <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{formatDateBO(item.fecha)}</td>
+                                                                <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200 font-medium">{item.gasto}</td>
+                                                                <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{item.formaPago}</td>
+                                                                <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200 text-right font-bold">
+                                                                    {formatMoney(item.monto, selectedDetail.currency === 'Bolivianos' ? 'Bs' : 'Sus')}
+                                                                </td>
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{formatDateBO(item.fecha)}</td>
+                                                                <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">{item.descripcion}</td>
+                                                                <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200 text-right font-bold">
+                                                                    {formatMoney(item.monto, selectedDetail.currency === 'Bolivianos' ? 'Bs' : 'Sus')}
+                                                                </td>
+                                                            </>
+                                                        )}
+                                                    </tr>
+                                                )) : (
+                                                    <tr>
+                                                        <td colSpan={selectedDetail.title.includes('Ingresos') ? 6 : selectedDetail.title.includes('Egresos Diarios') ? 4 : selectedDetail.title.includes('Pagos a Laboratorios') ? 6 : selectedDetail.title.includes('Pagos de Pedidos') ? 5 : selectedDetail.title.includes('Pagos a Doctores') ? 4 : selectedDetail.title.includes('Gastos') ? 4 : 3} className="px-6 py-8 text-center text-sm text-gray-500 dark:text-gray-400 font-light italic">No hay registros para este criterio</td>
+                                                    </tr>
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                {/* Modal Footer (Bottom Bar) */}
+                                <div className="bg-gray-50 dark:bg-gray-700/60 px-6 py-3.5 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between">
+                                    <button
+                                        type="button"
+                                        onClick={() => handlePrintDetail(itemsToDisplay, totalMonto)}
+                                        className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md transition-all transform hover:-translate-y-0.5 text-sm font-semibold cursor-pointer"
+                                        title="Imprimir Detalle"
+                                    >
+                                        <Printer size={16} />
+                                        <span>Imprimir Reporte</span>
+                                    </button>
+                                    <div className="text-sm font-medium text-gray-600 dark:text-gray-300">
+                                        Mostrando <span className="font-bold text-gray-900 dark:text-white">{itemsToDisplay.length}</span> registros &bull; Total: <span className="font-extrabold text-blue-600 dark:text-blue-400">{formatMoney(totalMonto, selectedDetail.currency === 'Bolivianos' ? 'Bs' : 'Sus')}</span>
                                     </div>
                                 </div>
                             </div>
-                            <div className="bg-gray-50 dark:bg-gray-700 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                                <button
-                                    type="button"
-                                    className="mt-3 w-full inline-flex justify-center items-center gap-2 rounded-lg border border-gray-300 dark:border-gray-500 shadow-md px-4 py-2 bg-white dark:bg-gray-600 text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-500 transition-all transform hover:-translate-y-0.5 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
-                                    onClick={closeModal}
-                                >
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-500 dark:text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
-                                    Cerrar
-                                </button>
-                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                );
+            })()}
             {/* Manual Modal */}
             <ManualModal
                 isOpen={showManual}

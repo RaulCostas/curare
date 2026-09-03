@@ -324,7 +324,6 @@ export class PacientesService {
 
     async findNoRegistrados() {
         const today = new Date().toISOString().split('T')[0];
-        console.log(`FindNoRegistrados: Date=${today}`);
         const query = `
             SELECT 
                 p.id as "pacienteId",
@@ -334,6 +333,13 @@ export class PacientesService {
             JOIN pacientes p ON p.id = a."pacienteId"
             WHERE a.fecha <= '${today}' 
               AND LOWER(a.estado) = 'atendido'
+              AND a."pacienteId" IS NOT NULL
+              AND a."pacienteId" > 0
+              AND TRIM(CONCAT(COALESCE(p.paterno, ''), ' ', COALESCE(p.materno, ''), ' ', COALESCE(p.nombre, ''))) != ''
+              AND (a.tratamiento IS NULL OR (
+                  LOWER(a.tratamiento) NOT LIKE '%bloqueo%' 
+                  AND LOWER(a.tratamiento) NOT LIKE '%evento%'
+              ))
               AND NOT EXISTS (
                   SELECT 1 
                   FROM historia_clinica hc 
@@ -342,9 +348,7 @@ export class PacientesService {
               )
             ORDER BY a.fecha DESC
         `;
-        console.log('Query:', query);
         const results = await this.pacientesRepository.query(query);
-        console.log(`Found ${results.length} no registrados results`);
         return results;
     }
 

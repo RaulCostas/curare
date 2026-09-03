@@ -12,6 +12,7 @@ import { formatDate, getLocalDateString } from '../utils/dateUtils';
 import { formatCurrency } from '../utils/formatters';
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
+import Swal from 'sweetalert2';
 
 interface PaginatedResponse {
     data: Egreso[];
@@ -147,6 +148,124 @@ const EgresoList: React.FC = () => {
                 alert('Error al eliminar el egreso');
             }
         }
+    };
+
+    const handleGenerarRecibo = async (egreso: Egreso) => {
+        try {
+            const response = await api.post(`/egresos/${egreso.id}/generar-recibo`);
+            const { recibo } = response.data;
+
+            Swal.fire({
+                icon: 'success',
+                title: '¡Recibo Generado!',
+                text: `Se generó el Recibo N° ${recibo.accessId || recibo.id} para este egreso.`,
+                timer: 1800,
+                showConfirmButton: false,
+                background: document.documentElement.classList.contains('dark') ? '#1f2937' : '#fff',
+                color: document.documentElement.classList.contains('dark') ? '#f3f4f6' : '#000',
+            });
+
+            // Actualizar el estado local para que el botón cambie a "Imprimir Recibo"
+            setEgresos(prev => prev.map(e => e.id === egreso.id ? { ...e, reciboId: recibo.id, recibo } : e));
+
+            // Abrir automáticamente la vista de impresión del recibo generado
+            handlePrintRecibo(recibo);
+        } catch (error) {
+            console.error('Error al generar recibo:', error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'No se pudo generar el recibo del egreso.',
+                background: document.documentElement.classList.contains('dark') ? '#1f2937' : '#fff',
+                color: document.documentElement.classList.contains('dark') ? '#f3f4f6' : '#000',
+            });
+        }
+    };
+
+    const handlePrintRecibo = (item: any) => {
+        const printWindow = window.open('', '_blank');
+        if (!printWindow) return;
+
+        const isDolares = (item.moneda || '').toUpperCase().includes('DOLAR');
+        const simbolo = isDolares ? '$us' : 'Bs.';
+        const montoFormatted = formatCurrency(item.monto);
+        const fechaStr = formatDate(item.fecha);
+        const numeroRecibo = item.accessId || item.id || '-';
+
+        const htmlContent = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Recibo N° ${numeroRecibo}</title>
+                <style>
+                    @page { size: A4 portrait; margin: 15mm; }
+                    body { font-family: Arial, Helvetica, sans-serif; margin: 0; padding: 0; color: #1e293b; }
+                    
+                    .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 3px solid #3498db; }
+                    .header-left { display: flex; align-items: center; gap: 20px; }
+                    .header img { height: 60px; object-fit: contain; }
+                    .header h1 { color: #2c3e50; margin: 0; font-size: 24px; font-weight: bold; letter-spacing: 0.5px; text-transform: uppercase; }
+                    
+                    .recibo-box { margin-bottom: 25px; padding: 20px 24px; background-color: #f8f9fa; border-left: 6px solid #3498db; border-radius: 4px; }
+                    .info-row { margin-bottom: 14px; font-size: 14px; font-family: Arial, sans-serif; display: flex; align-items: baseline; }
+                    .info-row:last-child { margin-bottom: 0; }
+                    .info-label { font-weight: bold; color: #1e293b; min-width: 140px; text-transform: uppercase; }
+                    .info-value { color: #1e293b; letter-spacing: 0.3px; flex: 1; border-bottom: 1px dotted #cbd5e1; padding-bottom: 3px; }
+
+                    .signature-area { margin-top: 100px; display: flex; justify-content: space-around; text-align: center; }
+                    .signature-line { width: 220px; margin: 0 auto 8px auto; border-top: 1px solid #334155; }
+                    .signature-name { font-weight: bold; font-size: 13px; color: #1e293b; }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <div class="header-left">
+                        <img src="/logo-curare.png" alt="Curare Centro Dental">
+                        <h1>RECIBO</h1>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-size: 18px; font-weight: bold; color: #dc2626;">N° ${numeroRecibo}</div>
+                        <div style="font-size: 12px; color: #64748b; margin-top: 4px;">Fecha: ${fechaStr}</div>
+                    </div>
+                </div>
+
+                <div class="recibo-box">
+                    <div class="info-row">
+                        <span class="info-label">NOMBRE:</span>
+                        <span class="info-value" style="font-weight: bold; font-size: 16px;">${item.nombre || 'N/A'}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">CONCEPTO:</span>
+                        <span class="info-value">${item.concepto || 'Sin concepto'}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">MONTO:</span>
+                        <span class="info-value" style="font-weight: bold; font-size: 18px; color: #1e3a8a;">${simbolo} ${montoFormatted}</span>
+                    </div>
+                </div>
+
+                <div class="signature-area">
+                    <div>
+                        <div class="signature-line"></div>
+                        <div class="signature-name">Firma Conforme</div>
+                    </div>
+                    <div>
+                        <div class="signature-line"></div>
+                        <div class="signature-name">Entregué Conforme</div>
+                    </div>
+                </div>
+
+                <script>
+                    window.onload = function() {
+                        setTimeout(function() { window.print(); }, 500);
+                    };
+                </script>
+            </body>
+            </html>
+        `;
+
+        printWindow.document.write(htmlContent);
+        printWindow.document.close();
     };
 
     const handlePageChange = (page: number) => {
@@ -686,25 +805,52 @@ const EgresoList: React.FC = () => {
                                         <td className="p-3 text-gray-700 dark:text-gray-300">
                                             {egreso.formaPago?.forma_pago || 'N/A'}
                                         </td>
-                                        <td className="p-3 flex gap-2">
+                                        <td className="p-3 flex items-center gap-1.5 whitespace-nowrap">
+                                            {egreso.reciboId || egreso.recibo ? (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handlePrintRecibo(egreso.recibo || { id: egreso.reciboId, fecha: egreso.fecha, nombre: egreso.destino, concepto: egreso.detalle, monto: egreso.monto, moneda: egreso.moneda })}
+                                                    className="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-md transition-all transform hover:-translate-y-0.5 flex items-center gap-1.5 text-xs font-semibold cursor-pointer"
+                                                    title={`Imprimir Recibo N° ${egreso.recibo?.accessId || egreso.recibo?.id || egreso.reciboId || ''}`}
+                                                >
+                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                                    </svg>
+                                                    <span>Imprimir Recibo</span>
+                                                </button>
+                                            ) : (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleGenerarRecibo(egreso)}
+                                                    className="p-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg shadow-md transition-all transform hover:-translate-y-0.5 flex items-center gap-1.5 text-xs font-semibold cursor-pointer"
+                                                    title="Generar Recibo de Egreso"
+                                                >
+                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                    </svg>
+                                                    <span>Generar Recibo</span>
+                                                </button>
+                                            )}
                                             <button
+                                                type="button"
                                                 onClick={() => {
                                                     setSelectedEgresoId(egreso.id);
                                                     setIsFormOpen(true);
                                                 }}
-                                                className="p-2 bg-amber-400 hover:bg-amber-500 text-white rounded-lg shadow-md transition-all transform hover:-translate-y-0.5"
+                                                className="p-2 bg-amber-400 hover:bg-amber-500 text-white rounded-lg shadow-md transition-all transform hover:-translate-y-0.5 cursor-pointer"
                                                 title="Editar"
                                             >
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 20 20" fill="currentColor">
                                                     <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
                                                 </svg>
                                             </button>
                                             <button
+                                                type="button"
                                                 onClick={() => handleDelete(egreso.id)}
-                                                className="p-2 bg-red-500 hover:bg-red-600 text-white rounded-lg shadow-md transition-all transform hover:-translate-y-0.5"
+                                                className="p-2 bg-red-500 hover:bg-red-600 text-white rounded-lg shadow-md transition-all transform hover:-translate-y-0.5 cursor-pointer"
                                                 title="Eliminar"
                                             >
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 20 20" fill="currentColor">
                                                     <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
                                                 </svg>
                                             </button>

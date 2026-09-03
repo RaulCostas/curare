@@ -34,7 +34,11 @@ interface HistoriaClinica {
     cantidad?: number;
     proformaId?: number;
     proformaDetalle?: {
+        id?: number;
+        subTotal?: number;
+        precioUnitario?: number;
         descuento: number;
+        total?: number;
     };
     ultimoPagoPaciente?: {
         fecha: string;
@@ -83,8 +87,8 @@ const PagosDoctoresForm: React.FC<PagosDoctoresFormProps> = ({ isOpen, onClose, 
             content: 'Seleccione un doctor para ver su lista de tratamientos pendientes. Marque los tratamientos que desea incluir en este pago.'
         },
         {
-            title: 'Ajustes y Descuentos',
-            content: 'Puede ingresar el Costo de Laboratorio y el porcentaje de Descuento para cada tratamiento seleccionado. El subtotal se actualizará automáticamente.'
+            title: 'Precio, Descuento y Costo de Laboratorio',
+            content: 'La tabla muestra el Precio del tratamiento y el Descuento pactado en el presupuesto (no editable). Puede ingresar el Costo de Laboratorio y el subtotal se calculará automáticamente: (Precio - Descuento) - Costo Lab.'
         },
         {
             title: 'Datos del Pago',
@@ -242,11 +246,23 @@ const PagosDoctoresForm: React.FC<PagosDoctoresFormProps> = ({ isOpen, onClose, 
         selectedFormaPago.forma_pago.toLowerCase().includes('banco')
     ));
 
+    const getOriginalPrice = (item: HistoriaClinica) => {
+        if (item.proformaDetalle) {
+            if (item.proformaDetalle.subTotal != null && Number(item.proformaDetalle.subTotal) > 0) {
+                return Number(item.proformaDetalle.subTotal);
+            }
+            if (item.proformaDetalle.precioUnitario != null && Number(item.proformaDetalle.precioUnitario) > 0) {
+                return Number(item.proformaDetalle.precioUnitario) * (item.cantidad || 1);
+            }
+        }
+        return Number(item.precio) || 0;
+    };
+
     const calculateRowTotal = (item: HistoriaClinica) => {
         const details = rowDetails[item.id] || { costoLaboratorio: 0, descuento: 0 };
-        const base = Number(item.precio) || 0;
+        const base = getOriginalPrice(item);
 
-        const descNum = getDetailNum(details.descuento);
+        const descNum = getDetailNum(details.descuento != null ? details.descuento : (item.proformaDetalle?.descuento || 0));
         const labNum = getDetailNum(details.costoLaboratorio);
 
         const discountAmount = (base * descNum) / 100;
@@ -345,7 +361,7 @@ const PagosDoctoresForm: React.FC<PagosDoctoresFormProps> = ({ isOpen, onClose, 
                     costo_laboratorio: getDetailNum(rd.costoLaboratorio),
                     fecha_pago_paciente: p.ultimoPagoPaciente?.fecha || null,
                     forma_pago_paciente: p.ultimoPagoPaciente?.forma_pago || null,
-                    descuento: getDetailNum(rd.descuento)
+                    descuento: getDetailNum(rd.descuento != null ? rd.descuento : (p.proformaDetalle?.descuento || 0))
                 };
             });
 
@@ -397,7 +413,7 @@ const PagosDoctoresForm: React.FC<PagosDoctoresFormProps> = ({ isOpen, onClose, 
                         <button
                             type="button"
                             onClick={() => setShowManual(true)}
-                            className="bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 p-1.5 rounded-full flex items-center justify-center w-[30px] h-[30px] text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                            className="bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 p-1.5 rounded-full flex items-center justify-center w-[30px] h-[30px] text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors cursor-pointer"
                             title="Ayuda / Manual"
                         >
                             ?
@@ -405,7 +421,7 @@ const PagosDoctoresForm: React.FC<PagosDoctoresFormProps> = ({ isOpen, onClose, 
                         <button
                             type="button"
                             onClick={onClose}
-                            className="text-gray-400 bg-transparent hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 p-2 rounded-full transition-all"
+                            className="text-gray-400 bg-transparent hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 p-2 rounded-full transition-all cursor-pointer"
                             title="Cerrar"
                         >
                             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -486,8 +502,8 @@ const PagosDoctoresForm: React.FC<PagosDoctoresFormProps> = ({ isOpen, onClose, 
                                             <th className="p-2">Paciente</th>
                                             <th className="p-2">Tratamiento</th>
                                             <th className="p-2 text-right">Precio</th>
-                                            <th className="p-2 w-28">Costo Lab.</th>
-                                            <th className="p-2 w-20">Desc (%)</th>
+                                            <th className="p-2 text-center w-20">Desc (%)</th>
+                                            <th className="p-2 text-right w-28">Costo Lab.</th>
                                             <th className="p-2 text-right">Subtotal</th>
                                         </tr>
                                     </thead>
@@ -503,6 +519,8 @@ const PagosDoctoresForm: React.FC<PagosDoctoresFormProps> = ({ isOpen, onClose, 
                                                 const isSelected = selectedIds.includes(p.id);
                                                 const details = rowDetails[p.id] || { costoLaboratorio: 0, descuento: 0 };
                                                 const rowTotal = calculateRowTotal(p);
+                                                const originalPrice = getOriginalPrice(p);
+                                                const discountPercent = details.descuento != null ? Number(details.descuento) : (p.proformaDetalle?.descuento || 0);
 
                                                 return (
                                                     <tr key={p.id} className={isSelected ? 'bg-blue-50/60 dark:bg-blue-900/20' : ''}>
@@ -516,7 +534,18 @@ const PagosDoctoresForm: React.FC<PagosDoctoresFormProps> = ({ isOpen, onClose, 
                                                         <td className="p-2">{formatDate(p.fecha)}</td>
                                                         <td className="p-2 font-medium">{`${p.paciente?.paterno || ''} ${p.paciente?.materno || ''} ${p.paciente?.nombre || ''}`.trim()}</td>
                                                         <td className="p-2">{p.tratamiento}</td>
-                                                        <td className="p-2 text-right font-bold">Bs {Number(p.precio).toFixed(2)}</td>
+                                                        <td className="p-2 text-right font-bold">Bs {originalPrice.toFixed(2)}</td>
+                                                        <td className="p-2 text-center font-semibold text-gray-700 dark:text-gray-300">
+                                                            {isSelected ? (
+                                                                discountPercent > 0 ? (
+                                                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+                                                                        {discountPercent}%
+                                                                    </span>
+                                                                ) : (
+                                                                    <span className="text-gray-400">0%</span>
+                                                                )
+                                                            ) : '-'}
+                                                        </td>
                                                         <td className="p-1">
                                                             {isSelected && (
                                                                 <input
@@ -524,17 +553,7 @@ const PagosDoctoresForm: React.FC<PagosDoctoresFormProps> = ({ isOpen, onClose, 
                                                                     inputMode="decimal"
                                                                     value={details.costoLaboratorio ?? ''}
                                                                     onChange={(e) => handleDetailChange(p.id, 'costoLaboratorio', e.target.value)}
-                                                                    className="w-full px-2.5 py-1.5 border border-gray-300 dark:border-gray-600 rounded-xl text-right bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 shadow-sm"
-                                                                />
-                                                            )}
-                                                        </td>
-                                                        <td className="p-1">
-                                                            {isSelected && (
-                                                                <input
-                                                                    type="text"
-                                                                    inputMode="decimal"
-                                                                    value={details.descuento ?? ''}
-                                                                    onChange={(e) => handleDetailChange(p.id, 'descuento', e.target.value)}
+                                                                    placeholder="0.00"
                                                                     className="w-full px-2.5 py-1.5 border border-gray-300 dark:border-gray-600 rounded-xl text-right bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 shadow-sm"
                                                                 />
                                                             )}

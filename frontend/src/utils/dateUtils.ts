@@ -44,12 +44,23 @@ export const formatDate = (date: string | Date | undefined | null): string => {
     return `${day}/${month}/${year}`;
 };
 
-/**
- * Returns the current date in 'YYYY-MM-DD' format, adjusted for the local timezone.
- * Useful for initializing <input type="date"> values.
- */
 export const getLocalDateString = (dateInput?: Date | string | null): string => {
-    const d = dateInput ? new Date(dateInput) : new Date();
+    if (!dateInput) {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+
+    if (typeof dateInput === 'string') {
+        const datePart = dateInput.split('T')[0];
+        if (datePart.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            return datePart;
+        }
+    }
+
+    const d = new Date(dateInput);
     if (isNaN(d.getTime())) {
         const now = new Date();
         const year = now.getFullYear();
@@ -57,9 +68,9 @@ export const getLocalDateString = (dateInput?: Date | string | null): string => 
         const day = String(now.getDate()).padStart(2, '0');
         return `${year}-${month}-${day}`;
     }
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
+    const year = d.getUTCFullYear();
+    const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(d.getUTCDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
 };
 

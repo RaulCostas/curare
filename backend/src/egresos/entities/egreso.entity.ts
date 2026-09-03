@@ -1,5 +1,6 @@
 import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { FormaPago } from '../../forma_pago/entities/forma_pago.entity';
+import { Recibo } from '../../recibo/entities/recibo.entity';
 
 @Entity('egresos')
 export class Egreso {
@@ -30,4 +31,11 @@ export class Egreso {
     @ManyToOne(() => FormaPago, { eager: true, nullable: true })
     @JoinColumn({ name: 'forma_pago_id' })
     formaPago: FormaPago;
+
+    @Column({ name: 'recibo_id', nullable: true })
+    reciboId: number | null;
+
+    @ManyToOne(() => Recibo, { eager: true, nullable: true })
+    @JoinColumn({ name: 'recibo_id' })
+    recibo: Recibo;
 }

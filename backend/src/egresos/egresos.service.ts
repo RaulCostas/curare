@@ -1,23 +1,27 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between, ILike } from 'typeorm';
 import { CreateEgresoDto } from './dto/create-egreso.dto';
 import { UpdateEgresoDto } from './dto/update-egreso.dto';
 import { Egreso } from './entities/egreso.entity';
+import { Recibo } from '../recibo/entities/recibo.entity';
 
 @Injectable()
 export class EgresosService {
     constructor(
         @InjectRepository(Egreso)
         private egresosRepository: Repository<Egreso>,
+        @InjectRepository(Recibo)
+        private recibosRepository: Repository<Recibo>,
     ) { }
 
     async onModuleInit() {
-        // Fix for existing records with null forma_pago_id
+        // Fix for existing records with null forma_pago_id or missing column
         try {
             await this.egresosRepository.query(`UPDATE egresos SET forma_pago_id = 1 WHERE forma_pago_id IS NULL`);
+            await this.egresosRepository.query(`ALTER TABLE egresos ADD COLUMN IF NOT EXISTS recibo_id INTEGER REFERENCES recibos(id) ON DELETE SET NULL`);
         } catch (e) {
-            console.log('Skipping egresos update, table might not exist yet');
+            console.log('Skipping egresos alter/update on init, table might not exist yet');
         }
     }
 
@@ -35,6 +39,7 @@ export class EgresosService {
 
         const queryBuilder = this.egresosRepository.createQueryBuilder('egreso')
             .leftJoinAndSelect('egreso.formaPago', 'formaPago')
+            .leftJoinAndSelect('egreso.recibo', 'recibo')
             .orderBy('egreso.fecha', 'DESC')
             .addOrderBy('egreso.detalle', 'ASC')
             .skip(skip)
@@ -107,7 +112,7 @@ export class EgresosService {
     findOne(id: number) {
         return this.egresosRepository.findOne({
             where: { id },
-            relations: ['formaPago']
+            relations: ['formaPago', 'recibo']
         });
     }
 
@@ -122,5 +127,61 @@ export class EgresosService {
 
     remove(id: number) {
         return this.egresosRepository.delete(id);
+    }
+
+    async generarRecibo(id: number) {
+        const egreso = await this.egresosRepository.findOne({
+            where: { id },
+            relations: ['formaPago', 'recibo']
+        });
+
+        if (!egreso) {
+            throw new NotFoundException(`Egreso #${id} no encontrado`);
+        }
+
+        if (egreso.recibo) {
+            return {
+                egreso,
+                recibo: egreso.recibo,
+                message: 'El recibo ya fue generado previamente'
+            };
+        }
+
+        // Obtener el siguiente número correlativo de accessId (ej. 002363)
+        const lastRecibo = await this.recibosRepository
+            .createQueryBuilder('r')
+            .where("r.accessId ~ '^[0-9]+$'")
+            .orderBy('CAST(r.accessId AS INTEGER)', 'DESC')
+            .getOne();
+
+        let nextNum = 1;
+        if (lastRecibo && lastRecibo.accessId) {
+            nextNum = parseInt(lastRecibo.accessId, 10) + 1;
+        } else {
+            const count = await this.recibosRepository.count();
+            nextNum = count + 1;
+        }
+        const accessId = String(nextNum).padStart(6, '0');
+
+        const nuevoRecibo = this.recibosRepository.create({
+            accessId,
+            fecha: egreso.fecha,
+            nombre: egreso.destino || 'Consultorio',
+            concepto: egreso.detalle || 'Egreso registrado',
+            moneda: (egreso.moneda || 'BOLIVIANOS').toUpperCase().includes('DOLAR') ? 'DOLARES' : 'BOLIVIANOS',
+            monto: Number(egreso.monto) || 0,
+        });
+
+        const reciboGuardado = await this.recibosRepository.save(nuevoRecibo);
+
+        egreso.reciboId = reciboGuardado.id;
+        egreso.recibo = reciboGuardado;
+        await this.egresosRepository.save(egreso);
+
+        return {
+            egreso,
+            recibo: reciboGuardado,
+            message: 'Recibo generado exitosamente'
+        };
     }
 }

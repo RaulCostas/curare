@@ -153,7 +153,10 @@ export interface Egreso {
     detalle: string;
     monto: number;
     moneda: 'Bolivianos' | 'Dólares';
+    formaPagoId?: number | null;
     formaPago?: FormaPago;
+    reciboId?: number | null;
+    recibo?: ReciboItem | null;
 }
 
 export interface Laboratorio {
