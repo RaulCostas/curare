@@ -402,11 +402,22 @@ export class RecetaPdfService {
                         ? `${hc.paciente.nombre} ${hc.paciente.paterno}`
                         : 'Desconocido';
 
+                    let precioOriginal = Number(hc?.precio || 0);
+                    if (hc?.proformaDetalle) {
+                        if (hc.proformaDetalle.subTotal != null && Number(hc.proformaDetalle.subTotal) > 0) {
+                            precioOriginal = Number(hc.proformaDetalle.subTotal);
+                        } else if (hc.proformaDetalle.precioUnitario != null && Number(hc.proformaDetalle.precioUnitario) > 0) {
+                            precioOriginal = Number(hc.proformaDetalle.precioUnitario) * (hc.cantidad || 1);
+                        } else if (hc.proformaDetalle.arancel?.precio1 != null && Number(hc.proformaDetalle.arancel.precio1) > 0) {
+                            precioOriginal = Number(hc.proformaDetalle.arancel.precio1) * (hc.cantidad || 1);
+                        }
+                    }
+
                     tableBody.push([
                         { text: paciente, fontSize: 9, alignment: 'left', fillColor: rowColor },
                         { text: hc?.tratamiento || '-', fontSize: 9, alignment: 'left', fillColor: rowColor },
                         { text: hc?.pieza || '-', fontSize: 9, alignment: 'center', fillColor: rowColor },
-                        { text: Number(hc?.precio || 0).toFixed(2), fontSize: 9, alignment: 'right', fillColor: rowColor },
+                        { text: Number(precioOriginal).toFixed(2), fontSize: 9, alignment: 'right', fillColor: rowColor },
                         { text: detalle.descuento > 0 ? `-${detalle.descuento}%` : '-', fontSize: 9, alignment: 'right', color: '#e74c3c', fillColor: rowColor },
                         { text: detalle.costo_laboratorio > 0 ? `-${Number(detalle.costo_laboratorio).toFixed(2)}` : '-', fontSize: 9, alignment: 'right', color: '#e74c3c', fillColor: rowColor },
                         { text: Number(detalle.total).toFixed(2), fontSize: 9, alignment: 'right', bold: true, fillColor: rowColor }

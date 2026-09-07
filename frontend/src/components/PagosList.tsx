@@ -162,52 +162,85 @@ const PagosList: React.FC = () => {
         doc.text('RECIBO DE PAGO', 105, 25, { align: 'center' });
         doc.setTextColor(0, 0, 0);
 
-        // Box for Recibo Info
+        // Current logged in user name (from users table / session)
+        const userStr = localStorage.getItem('user');
+        let userName = 'RAUL COSTAS DELGADILLO';
+        if (userStr) {
+            try {
+                const parsedUser = JSON.parse(userStr);
+                if (parsedUser.name) userName = parsedUser.name.toUpperCase();
+            } catch (e) {
+                console.error('Error parsing user', e);
+            }
+        }
+
+        const boxY = 42;
+        const boxHeight = 115;
         doc.setDrawColor(200);
         doc.setFillColor(248, 249, 250);
-        doc.rect(15, 45, pageWidth - 30, 90, 'F');
+        doc.rect(15, boxY, pageWidth - 30, boxHeight, 'F');
         doc.setDrawColor(52, 152, 219); // Blue border
-        doc.rect(15, 45, pageWidth - 30, 90, 'S');
+        doc.rect(15, boxY, pageWidth - 30, boxHeight, 'S');
 
-        doc.setFontSize(11);
-        let y = 60;
+        doc.setFontSize(10);
+        let y = boxY + 12;
         const xLabel = 25;
-        const xValue = 75;
+        const xValue = 70;
 
-        // Recibo #
+        // Fecha & Recibo #
         doc.setFont('helvetica', 'bold');
-        doc.text('Nº Recibo:', xLabel, y);
+        doc.text('Fecha:', xLabel, y);
         doc.setFont('helvetica', 'normal');
-        doc.text(pago.recibo || String(pago.id), xValue, y);
+        doc.text(dateStr, xValue, y);
 
-        // Factura # (if exists)
+        doc.setFont('helvetica', 'bold');
+        doc.text('Nº Recibo:', 125, y);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(220, 38, 38); // Red color for receipt number
+        doc.text(pago.recibo || String(pago.id), 150, y);
+        doc.setTextColor(0, 0, 0);
+
         if (pago.factura) {
+            y += 10;
             doc.setFont('helvetica', 'bold');
-            doc.text('Factura:', 120, y);
+            doc.text('Factura:', xLabel, y);
             doc.setFont('helvetica', 'normal');
-            doc.text(pago.factura, 150, y);
+            doc.text(pago.factura, xValue, y);
         }
-        y += 12;
+
+        y += 11;
 
         // Paciente
         doc.setFont('helvetica', 'bold');
-        doc.text('Recibí de:', xLabel, y);
+        doc.text('Paciente:', xLabel, y);
         doc.setFont('helvetica', 'normal');
         const pacienteNombre = pago.paciente
-            ? `${pago.paciente.paterno} ${pago.paciente.materno || ''} ${pago.paciente.nombre}`
+            ? `${pago.paciente.paterno} ${pago.paciente.materno || ''} ${pago.paciente.nombre}`.trim()
             : 'N/A';
         doc.text(pacienteNombre.toUpperCase(), xValue, y);
-        y += 12;
+        y += 11;
 
         // Monto
+        const isDollar = pago.moneda === 'Dólares' || (pago.moneda as any) === '$us' || (pago.moneda as any) === 'USD';
+        const montoStr = isDollar
+            ? `$us. ${formatCurrency(pago.monto)}`
+            : `Bs. ${formatCurrency(pago.monto)}`;
         doc.setFont('helvetica', 'bold');
-        doc.text('La suma de:', xLabel, y);
-        doc.setFont('helvetica', 'normal');
-        const montoStr = pago.moneda === 'Dólares'
-            ? `USD ${Number(pago.monto).toFixed(2)}`
-            : `Bs ${Number(pago.monto).toFixed(2)}`;
+        doc.text('Monto:', xLabel, y);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(22, 101, 52); // Dark green
         doc.text(montoStr, xValue, y);
-        y += 12;
+        doc.setTextColor(0, 0, 0);
+        y += 11;
+
+        // Forma de Pago
+        doc.setFont('helvetica', 'bold');
+        doc.text('Forma de Pago:', xLabel, y);
+        doc.setFont('helvetica', 'normal');
+        let fp = pago.formaPagoRel ? pago.formaPagoRel.forma_pago : (pago.formaPago || 'Efectivo');
+        if (pago.comisionTarjeta) fp += ` (${pago.comisionTarjeta.redBanco})`;
+        doc.text(fp, xValue, y);
+        y += 11;
 
         // Concepto
         doc.setFont('helvetica', 'bold');
@@ -219,22 +252,32 @@ const PagosList: React.FC = () => {
         doc.text(concepto, xValue, y);
         y += 12;
 
-        // Forma de Pago
-        doc.setFont('helvetica', 'bold');
-        doc.text('Forma de Pago:', xLabel, y);
-        doc.setFont('helvetica', 'normal');
-        let fp = pago.formaPagoRel ? pago.formaPagoRel.forma_pago : pago.formaPago || 'Efectivo';
-        if (pago.comisionTarjeta) fp += ` (${pago.comisionTarjeta.redBanco})`;
-        doc.text(fp, xValue, y);
-        y += 12;
+        if (pago.proforma && pago.proforma.total != null) {
+            doc.setDrawColor(220, 226, 230);
+            doc.setLineWidth(0.5);
+            doc.line(20, y - 3, pageWidth - 20, y - 3);
+
+            doc.setFont('helvetica', 'bold');
+            doc.text('Total Proforma:', xLabel, y + 4);
+            doc.setFont('helvetica', 'normal');
+            doc.text(`Bs. ${formatCurrency(pago.proforma.total)}`, xValue, y + 4);
+            y += 11;
+        }
 
         // Observaciones
         if (pago.observaciones) {
             doc.setFont('helvetica', 'bold');
-            doc.text('Observaciones:', xLabel, y);
+            doc.text('Observaciones:', xLabel, y + 4);
             doc.setFont('helvetica', 'normal');
-            doc.text(pago.observaciones, xValue, y);
+            doc.text(pago.observaciones, xValue, y + 4);
+            y += 10;
         }
+
+        // Usuario / Nombre
+        doc.setFont('helvetica', 'bold');
+        doc.text('Nombre:', xLabel, y + 4);
+        doc.setFont('helvetica', 'normal');
+        doc.text(userName, xValue, y + 4);
 
         // Signatures
         const pageHeight = doc.internal.pageSize.height;

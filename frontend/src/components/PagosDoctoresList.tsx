@@ -221,12 +221,24 @@ const PagosDoctoresList = () => {
                 const paciente = hc?.paciente 
                     ? `${hc.paciente.paterno || ''} ${hc.paciente.materno || ''} ${hc.paciente.nombre || ''}`.trim() || `${hc.paciente.nombre} ${hc.paciente.paterno}`
                     : 'Desconocido';
+
+                let precioOriginal = Number(hc?.precio || 0);
+                if (hc?.proformaDetalle) {
+                    if (hc.proformaDetalle.subTotal != null && Number(hc.proformaDetalle.subTotal) > 0) {
+                        precioOriginal = Number(hc.proformaDetalle.subTotal);
+                    } else if (hc.proformaDetalle.precioUnitario != null && Number(hc.proformaDetalle.precioUnitario) > 0) {
+                        precioOriginal = Number(hc.proformaDetalle.precioUnitario) * (hc.cantidad || 1);
+                    } else if (hc.proformaDetalle.arancel?.precio1 != null && Number(hc.proformaDetalle.arancel.precio1) > 0) {
+                        precioOriginal = Number(hc.proformaDetalle.arancel.precio1) * (hc.cantidad || 1);
+                    }
+                }
+
                 return `
                     <tr>
                         <td style="font-size: 10px;">${paciente}</td>
                         <td style="font-size: 10px;">${hc?.tratamiento || '-'}</td>
                         <td style="font-size: 10px; text-align: center;">${hc?.pieza || '-'}</td>
-                        <td style="font-size: 10px; text-align: right;">${formatCurrency(hc?.precio || 0)}</td>
+                        <td style="font-size: 10px; text-align: right;">${formatCurrency(precioOriginal)}</td>
                         <td style="font-size: 10px; text-align: right; color: #e74c3c;">${d.descuento > 0 ? `-${formatCurrency(d.descuento)}%` : '-'}</td>
                         <td style="font-size: 10px; text-align: right; color: #e74c3c;">${d.costo_laboratorio > 0 ? `-${formatCurrency(d.costo_laboratorio)}` : '-'}</td>
                         <td style="font-size: 10px; text-align: right; font-weight: bold;">${formatCurrency(d.total)}</td>

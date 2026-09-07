@@ -254,6 +254,9 @@ const PagosDoctoresForm: React.FC<PagosDoctoresFormProps> = ({ isOpen, onClose, 
             if (item.proformaDetalle.precioUnitario != null && Number(item.proformaDetalle.precioUnitario) > 0) {
                 return Number(item.proformaDetalle.precioUnitario) * (item.cantidad || 1);
             }
+            if ((item.proformaDetalle as any).arancel?.precio1 != null && Number((item.proformaDetalle as any).arancel.precio1) > 0) {
+                return Number((item.proformaDetalle as any).arancel.precio1) * (item.cantidad || 1);
+            }
         }
         return Number(item.precio) || 0;
     };

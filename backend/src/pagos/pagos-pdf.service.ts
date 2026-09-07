@@ -402,6 +402,9 @@ export class PagosPdfService {
             ? `Tratamiento Odontológico - Plan #${pago.proforma.numero}`
             : 'Tratamiento Odontológico';
 
+        let fp = pago.formaPagoRel ? pago.formaPagoRel.forma_pago : (pago.formaPago || 'Efectivo');
+        if (pago.comisionTarjeta) fp += ` (${pago.comisionTarjeta.redBanco})`;
+
         const docDefinition = {
             pageSize: 'A4',
             pageMargins: [40, 40, 40, 40],
@@ -461,12 +464,33 @@ export class PagosPdfService {
                                             ],
                                             margin: [0, 0, 0, 12]
                                         },
+                                        {
+                                            columns: [
+                                                { text: 'Forma de Pago:', width: 110, bold: true, fontSize: 11 },
+                                                { text: fp, fontSize: 11 }
+                                            ],
+                                            margin: [0, 0, 0, 12]
+                                        },
+                                        pago.proforma?.total ? {
+                                            columns: [
+                                                { text: 'Total Proforma:', width: 110, bold: true, fontSize: 11 },
+                                                { text: `Bs. ${Number(pago.proforma.total).toFixed(2)}`, fontSize: 11 }
+                                            ],
+                                            margin: [0, 0, 0, 12]
+                                        } : { text: '' },
                                         pago.observaciones ? {
                                             columns: [
                                                 { text: 'Observaciones:', width: 110, bold: true, fontSize: 11 },
                                                 { text: pago.observaciones, fontSize: 10, italics: true }
+                                            ],
+                                            margin: [0, 0, 0, 12]
+                                        } : { text: '' },
+                                        {
+                                            columns: [
+                                                { text: 'Nombre:', width: 110, bold: true, fontSize: 11 },
+                                                { text: (pago.usuario?.name || 'RAUL COSTAS DELGADILLO').toUpperCase(), fontSize: 11 }
                                             ]
-                                        } : { text: '' }
+                                        }
                                     ]
                                 }
                             ]

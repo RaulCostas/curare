@@ -55,7 +55,7 @@ export class HistoriaClinicaService {
                 pagado: 'NO',
                 estadoTratamiento: 'terminado'
             },
-            relations: ['paciente', 'doctor', 'especialidad', 'proforma', 'proformaDetalle'],
+            relations: ['paciente', 'doctor', 'especialidad', 'proforma', 'proformaDetalle', 'proformaDetalle.arancel'],
             order: { fecha: 'ASC' }
         });
 

@@ -49,6 +49,8 @@ export class PagosDoctoresService {
             .leftJoinAndSelect('pago.detalles', 'detalles')
             .leftJoinAndSelect('detalles.historiaClinica', 'historiaClinica')
             .leftJoinAndSelect('historiaClinica.paciente', 'paciente')
+            .leftJoinAndSelect('historiaClinica.proformaDetalle', 'proformaDetalle')
+            .leftJoinAndSelect('proformaDetalle.arancel', 'arancel')
             .orderBy('pago.fecha', 'DESC');
 
         const startStr = (startDate || fecha || '').split('T')[0];
@@ -94,7 +96,15 @@ export class PagosDoctoresService {
     async findOne(id: number) {
         const pago = await this.pagosRepository.findOne({
             where: { id },
-            relations: ['doctor', 'formaPago', 'detalles', 'detalles.historiaClinica', 'detalles.historiaClinica.paciente'] // Added patient relation
+            relations: [
+                'doctor',
+                'formaPago',
+                'detalles',
+                'detalles.historiaClinica',
+                'detalles.historiaClinica.paciente',
+                'detalles.historiaClinica.proformaDetalle',
+                'detalles.historiaClinica.proformaDetalle.arancel'
+            ]
         });
         if (!pago) throw new NotFoundException(`Pago #${id} not found`);
         return pago;
