@@ -376,26 +376,40 @@ const PresupuestoList: React.FC = () => {
 
         const patientName = (formatFullName(paciente) || `${paciente?.nombre || ''} ${paciente?.paterno || ''} ${paciente?.materno || ''}`).trim() || 'Paciente';
 
+        // Dynamic compacting based on number of treatment items
+        const numItems = proforma.detalles.length;
+        const isVeryLarge = numItems > 10;
+        const isLarge = numItems > 5;
+
+        const dateY = 18;
+        const salutationY = isVeryLarge ? 44 : isLarge ? 48 : 52;
+        const patientY = salutationY + 5;
+        const consideracionY = patientY + 8;
+        const introY = consideracionY + 5;
+        const preNumY = introY + 7;
+        const tableStartY = preNumY + 4;
+
         // 1. Date (Right aligned)
-        doc.setFontSize(10);
+        doc.setFontSize(9);
         doc.setTextColor(0);
         const dateStr = formatDateSpanish(proforma.fecha);
-        doc.text(dateStr, 200, 20, { align: 'right' });
+        doc.text(dateStr, 196, dateY, { align: 'right' });
 
         // 2. Salutation (Lowered to clear the pre-printed clinic letterhead header)
         doc.setFont('helvetica', 'normal');
-        doc.text('Señor(a):', 14, 52);
+        doc.setFontSize(9);
+        doc.text('Señor(a):', 14, salutationY);
 
         doc.setFont('helvetica', 'bold');
-        doc.text(patientName.toUpperCase(), 14, 57);
+        doc.text(patientName.toUpperCase(), 14, patientY);
 
         doc.setFont('helvetica', 'normal');
-        doc.text('De mi consideración:', 14, 66);
-        doc.text('Según los estudios realizados le presentamos el siguiente presupuesto del tratamiento odontológico que Ud. requiere:', 14, 71);
+        doc.text('De mi consideración:', 14, consideracionY);
+        doc.text('Según los estudios realizados le presentamos el siguiente presupuesto del tratamiento odontológico que Ud. requiere:', 14, introY);
 
         // 3. Proforma Number
         doc.setFont('helvetica', 'bold');
-        doc.text(`Pre. # ${proforma.numero.toString().padStart(2, '0')}`, 200, 79, { align: 'right' });
+        doc.text(`Pre. # ${proforma.numero.toString().padStart(2, '0')}`, 196, preNumY, { align: 'right' });
 
         // 4. Table
         const hasDiscount = proforma.detalles.some(item => item.descuento > 0);
@@ -446,14 +460,18 @@ const PresupuestoList: React.FC = () => {
         let lastColX = 0;
         let lastColWidth = 0;
 
+        const tableFontSize = isVeryLarge ? 7.5 : isLarge ? 8 : 8.5;
+        const tableCellPadding = isVeryLarge ? 1.0 : isLarge ? 1.3 : 1.8;
+
         autoTable(doc, {
             head: [tableColumn],
             body: tableRows,
-            startY: 83,
+            startY: tableStartY,
+            margin: { top: 38, bottom: 20 },
             theme: 'plain',
             styles: {
-                fontSize: 9,
-                cellPadding: 2,
+                fontSize: tableFontSize,
+                cellPadding: tableCellPadding,
                 lineColor: [0, 0, 0],
                 lineWidth: 0.1,
                 textColor: [0, 0, 0]
@@ -493,44 +511,57 @@ const PresupuestoList: React.FC = () => {
             penultColWidth = 30; penultColX = 135;
         }
 
+        const totalRowHeight = isVeryLarge ? 5.5 : 6;
         doc.setFont('helvetica', 'bold');
+        doc.setFontSize(tableFontSize + 0.5);
 
-        doc.rect(penultColX, finalY, penultColWidth, 7);
-        doc.rect(lastColX, finalY, lastColWidth, 7);
+        doc.rect(penultColX, finalY, penultColWidth, totalRowHeight);
+        doc.rect(lastColX, finalY, lastColWidth, totalRowHeight);
 
-        doc.text('TOTAL Bs.', penultColX + penultColWidth - 2, finalY + 5, { align: 'right' });
+        doc.text('TOTAL Bs.', penultColX + penultColWidth - 2, finalY + (totalRowHeight - 1.5), { align: 'right' });
         const printTotal = proforma.detalles.reduce((sum, item) => sum + (item.posible ? 0 : Number(item.total)), 0);
-        doc.text(formatCurrency(printTotal), lastColX + lastColWidth - 2, finalY + 5, { align: 'right' });
+        doc.text(formatCurrency(printTotal), lastColX + lastColWidth - 2, finalY + (totalRowHeight - 1.5), { align: 'right' });
 
-        finalY += 15;
+        finalY += totalRowHeight + (isVeryLarge ? 3 : 5);
 
         // 5. Amount in Words
         doc.setFont('helvetica', 'normal');
+        doc.setFontSize(isVeryLarge ? 7.5 : 8);
         const decimalPart = (printTotal % 1).toFixed(2).substring(2);
         const words = numberToWords(printTotal);
         doc.text(`SON: ${words} ${decimalPart}/100 BOLIVIANOS`, 14, finalY);
 
-        finalY += 10;
+        finalY += isVeryLarge ? 4 : 5;
 
         // 5.1 Proforma Note
         if (proforma.nota) {
             doc.setFont('helvetica', 'bold');
+            doc.setFontSize(isVeryLarge ? 7 : 7.5);
             doc.text('NOTA:', 14, finalY);
 
             doc.setFont('helvetica', 'normal');
             const splitNote = doc.splitTextToSize(proforma.nota, 165);
-            doc.text(splitNote, 30, finalY);
+            doc.text(splitNote, 28, finalY);
 
-            finalY += (splitNote.length * 5) + 5;
+            finalY += (splitNote.length * 3.5) + (isVeryLarge ? 2 : 4);
+        }
+
+        // Automatic page break check: If bottom block (Nomenclatura, Sistema de Pago, Nota, Firmas) does not fit comfortably, move to page 2
+        const totalNeededBottomHeight = isVeryLarge ? 85 : 95;
+        if (finalY + totalNeededBottomHeight > 280) {
+            doc.addPage();
+            finalY = 38; // Clean start position on second page
         }
 
         // 6. Nomenclature Diagram
+        const nomY = finalY + (isVeryLarge ? 4 : 6);
         doc.setFont('helvetica', 'bold');
-        doc.text('NOMENCLATURA', 14, finalY + 5);
+        doc.setFontSize(8);
+        doc.text('NOMENCLATURA', 14, nomY + 3);
 
         const circleX = 60;
-        const circleY = finalY + 10;
-        const radius = 8;
+        const circleY = nomY + 8;
+        const radius = 6.5;
 
         // Head
         doc.circle(circleX, circleY, radius);
@@ -538,80 +569,79 @@ const PresupuestoList: React.FC = () => {
         // Eyes (Grey Diamonds/Ellipses)
         doc.setFillColor(128, 128, 128); // Grey
         // Left Eye
-        doc.ellipse(circleX - 3, circleY - 2, 1, 2, 'F');
+        doc.ellipse(circleX - 2.5, circleY - 1.5, 0.8, 1.6, 'F');
         // Right Eye
-        doc.ellipse(circleX + 3, circleY - 2, 1, 2, 'F');
+        doc.ellipse(circleX + 2.5, circleY - 1.5, 0.8, 1.6, 'F');
 
         // Mouth/Nose Lines
         doc.setDrawColor(0);
         // Vertical Line (from center downwards)
-        doc.line(circleX, circleY + 1, circleX, circleY + 6);
+        doc.line(circleX, circleY + 0.5, circleX, circleY + 5);
         // Horizontal Line (Mouth)
-        doc.line(circleX - 4, circleY + 4, circleX + 4, circleY + 4);
+        doc.line(circleX - 3.2, circleY + 3.2, circleX + 3.2, circleY + 3.2);
 
         // Numbers
-        doc.setFontSize(8);
-        doc.text('1', circleX - 3.5, circleY + 2.5);
-        doc.text('2', circleX + 2.0, circleY + 2.5);
-        doc.text('3', circleX + 2.0, circleY + 6.5);
-        doc.text('4', circleX - 3.5, circleY + 6.5);
+        doc.setFontSize(6.5);
+        doc.text('1', circleX - 2.8, circleY + 2.0);
+        doc.text('2', circleX + 1.5, circleY + 2.0);
+        doc.text('3', circleX + 1.5, circleY + 5.2);
+        doc.text('4', circleX - 2.8, circleY + 5.2);
 
-        // 7. Payment System
-        let noteY = finalY + 25;
+        // 7. Payment System / Phases (Placed BELOW Nomenclatura)
+        const paymentY = circleY + radius + (isVeryLarge ? 4 : 6);
+        let paymentSectionHeight = 12;
 
         if (includePaymentInfo) {
-            const paymentY = finalY + 25;
-            doc.setFontSize(10);
+            doc.setFontSize(8);
             doc.setFont('helvetica', 'bold');
-            doc.rect(14, paymentY, 40, 5);
-            doc.text('SISTEMA DE PAGO', 16, paymentY + 3.5);
+            doc.rect(14, paymentY, 40, 4.5);
+            doc.text('SISTEMA DE PAGO', 16, paymentY + 3.2);
 
             doc.setFont('helvetica', 'normal');
-            doc.rect(14, paymentY + 6, 180, 5);
-            doc.text('- Cancelación del 50% al inicio. 30% durante el tratamiento. 20% antes de finalizado el mismo.', 16, paymentY + 9.5);
-
-            noteY = paymentY + 20;
+            doc.setFontSize(7.5);
+            doc.rect(14, paymentY + 4.5, 182, 6.5);
+            doc.text('- Cancelación del 50% al inicio. 30% durante el tratamiento. 20% antes de finalizado el mismo.', 16, paymentY + 8.8);
+            paymentSectionHeight = 11;
         } else {
-            const phaseY = finalY + 25;
-            doc.setFontSize(10);
+            doc.setFontSize(7.5);
             doc.setFont('helvetica', 'normal');
 
             // Phase A
-            doc.rect(14, phaseY, 60, 5);
-            doc.text('Fase A Quirurgica: Implante.', 15, phaseY + 3.5);
+            doc.rect(14, paymentY, 55, 4);
+            doc.text('Fase A Quirurgica: Implante.', 15, paymentY + 3);
 
             // Phase B
-            const phaseBY = phaseY + 7;
             const textPhaseB = 'Fase B Rehabilitación: Transcurridos 4 a 6 meses de la cirugía se realizará la rehabilitación, es decir muñones y coronas sobre implantes.';
-            const splitPhaseB = doc.splitTextToSize(textPhaseB, 175);
-            const heightPhaseB = splitPhaseB.length * 5;
+            const splitPhaseB = doc.splitTextToSize(textPhaseB, 178);
+            const heightPhaseB = Math.max(splitPhaseB.length * 3.5 + 2, 7.5);
 
-            doc.rect(14, phaseBY, 180, heightPhaseB + 2);
-            doc.text(splitPhaseB, 15, phaseBY + 4.5);
-
-            noteY = phaseBY + heightPhaseB + 10;
+            doc.rect(14, paymentY + 4, 182, heightPhaseB);
+            doc.text(splitPhaseB, 15, paymentY + 7.5);
+            paymentSectionHeight = 4 + heightPhaseB;
         }
 
-        // 8. Note
+        // 8. Guarantee Note (Flows immediately below Sistema de Pago)
+        const guaranteeY = paymentY + paymentSectionHeight + (isVeryLarge ? 3 : 4);
         doc.setFont('helvetica', 'bold');
-        doc.rect(14, noteY, 180, 8);
-        doc.text('NOTA: CURARE CENTRO DENTAL garantiza los trabajos realizados si el paciente sigue las', 16, noteY + 3.5);
-        doc.text('recomendaciones indicadas y asiste a sus controles periódicos de manera puntual.', 16, noteY + 7);
+        doc.setFontSize(7.5);
+        doc.rect(14, guaranteeY, 182, 6.5);
+        doc.text('NOTA: CURARE CENTRO DENTAL garantiza los trabajos realizados si el paciente sigue las', 16, guaranteeY + 2.6);
+        doc.text('recomendaciones indicadas y asiste a sus controles periódicos de manera puntual.', 16, guaranteeY + 5.2);
 
-        // 9. Footer Text
-        const footerY = noteY + 15;
+        // 9. Footer Text (Flows immediately below Guarantee Note)
+        const footerY = guaranteeY + 10;
         doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7.5);
         doc.text('El presente presupuesto podría tener modificaciones en el transcurso del tratamiento; el mismo será notificado', 14, footerY);
-        doc.text('oportunamente a su persona.', 14, footerY + 5);
+        doc.text('oportunamente a su persona.', 14, footerY + 3.5);
 
-        doc.text('Presupuesto válido por 15 días.', 14, footerY + 12);
-        doc.text('En conformidad y aceptando el presente presupuesto, firmo.', 14, footerY + 17);
+        doc.text('Presupuesto válido por 15 días.', 14, footerY + 7.5);
+        doc.text('En conformidad y aceptando el presente presupuesto, firmo.', 14, footerY + 11.5);
 
-        // 10. Signatures
-        const sigY = footerY + 45;
-
+        // 10. Signatures (Generous, comfortable space for doctor and patient signatures)
+        const sigY = footerY + (isVeryLarge ? 28 : 34);
         // Left Signature
-        doc.line(30, sigY, 80, sigY);
+        doc.line(25, sigY, 85, sigY);
         doc.text('Dr. JOSE ARTIEDA S.', 35, sigY + 5);
 
         // Right Signature

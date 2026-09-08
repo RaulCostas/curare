@@ -184,7 +184,8 @@ const Home: React.FC = () => {
                 item.pacienteId && 
                 formatPaternoMaternoNombre(item).trim() !== '' &&
                 !formatPaternoMaternoNombre(item).toLowerCase().includes('bloqueo') &&
-                !formatPaternoMaternoNombre(item).toLowerCase().includes('evento')
+                !formatPaternoMaternoNombre(item).toLowerCase().includes('evento') &&
+                item.estado?.toLowerCase() !== 'inactivo'
             );
             setNoRegistrados(validPacientes);
         } catch (error) {

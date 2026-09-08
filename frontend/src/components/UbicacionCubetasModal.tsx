@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
 import type { TrabajoLaboratorio } from '../types';
+import { formatPaternoMaternoNombre } from '../utils/formatters';
 
 interface UbicacionCubetasModalProps {
     isOpen: boolean;
@@ -128,7 +129,7 @@ const UbicacionCubetasModal: React.FC<UbicacionCubetasModalProps> = ({ isOpen, o
                                                                 {trabajo.precioLaboratorio?.detalle || '-'}
                                                             </td>
                                                             <td className="p-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300 font-medium">
-                                                                {trabajo.paciente ? `${trabajo.paciente.nombre} ${trabajo.paciente.paterno}` : '-'}
+                                                                {trabajo.paciente ? formatPaternoMaternoNombre(trabajo.paciente) : '-'}
                                                             </td>
                                                             <td className="p-3 whitespace-nowrap">
                                                                 <span className="px-2 py-1 inline-flex text-xs font-semibold rounded-md bg-orange-100 text-orange-800 dark:bg-orange-900/50 dark:text-orange-300 border border-orange-200 dark:border-orange-800">

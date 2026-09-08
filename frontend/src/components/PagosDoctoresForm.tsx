@@ -35,6 +35,7 @@ interface HistoriaClinica {
     proformaId?: number;
     proformaDetalle?: {
         id?: number;
+        piezas?: string;
         subTotal?: number;
         precioUnitario?: number;
         descuento: number;
@@ -504,8 +505,9 @@ const PagosDoctoresForm: React.FC<PagosDoctoresFormProps> = ({ isOpen, onClose, 
                                             <th className="p-2">Fecha</th>
                                             <th className="p-2">Paciente</th>
                                             <th className="p-2">Tratamiento</th>
+                                            <th className="p-2 text-center">Pieza(s)</th>
                                             <th className="p-2 text-right">Precio</th>
-                                            <th className="p-2 text-center w-20">Desc (%)</th>
+                                            <th className="p-2 text-center w-24">Desc (%)</th>
                                             <th className="p-2 text-right w-28">Costo Lab.</th>
                                             <th className="p-2 text-right">Subtotal</th>
                                         </tr>
@@ -513,7 +515,7 @@ const PagosDoctoresForm: React.FC<PagosDoctoresFormProps> = ({ isOpen, onClose, 
                                     <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                                         {filteredPendientes.length === 0 ? (
                                             <tr>
-                                                <td colSpan={8} className="p-6 text-center text-gray-400 dark:text-gray-500">
+                                                <td colSpan={9} className="p-6 text-center text-gray-400 dark:text-gray-500">
                                                     {idDoctor ? 'No hay tratamientos pendientes' : 'Seleccione un doctor para ver sus pendientes'}
                                                 </td>
                                             </tr>
@@ -523,7 +525,7 @@ const PagosDoctoresForm: React.FC<PagosDoctoresFormProps> = ({ isOpen, onClose, 
                                                 const details = rowDetails[p.id] || { costoLaboratorio: 0, descuento: 0 };
                                                 const rowTotal = calculateRowTotal(p);
                                                 const originalPrice = getOriginalPrice(p);
-                                                const discountPercent = details.descuento != null ? Number(details.descuento) : (p.proformaDetalle?.descuento || 0);
+                                                const originalDiscount = Number(p.proformaDetalle?.descuento || 0);
 
                                                 return (
                                                     <tr key={p.id} className={isSelected ? 'bg-blue-50/60 dark:bg-blue-900/20' : ''}>
@@ -537,17 +539,32 @@ const PagosDoctoresForm: React.FC<PagosDoctoresFormProps> = ({ isOpen, onClose, 
                                                         <td className="p-2">{formatDate(p.fecha)}</td>
                                                         <td className="p-2 font-medium">{`${p.paciente?.paterno || ''} ${p.paciente?.materno || ''} ${p.paciente?.nombre || ''}`.trim()}</td>
                                                         <td className="p-2">{p.tratamiento}</td>
+                                                        <td className="p-2 text-center font-medium text-gray-600 dark:text-gray-300">
+                                                            {p.pieza || p.proformaDetalle?.piezas || '-'}
+                                                        </td>
                                                         <td className="p-2 text-right font-bold">Bs {originalPrice.toFixed(2)}</td>
-                                                        <td className="p-2 text-center font-semibold text-gray-700 dark:text-gray-300">
+                                                        <td className="p-1 text-center font-semibold text-gray-700 dark:text-gray-300">
                                                             {isSelected ? (
-                                                                discountPercent > 0 ? (
-                                                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
-                                                                        {discountPercent}%
+                                                                originalDiscount > 0 ? (
+                                                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300" title="Descuento pactado en presupuesto (no editable)">
+                                                                        {originalDiscount}%
                                                                     </span>
                                                                 ) : (
-                                                                    <span className="text-gray-400">0%</span>
+                                                                    <div className="flex items-center justify-center gap-1">
+                                                                        <input
+                                                                            type="text"
+                                                                            inputMode="decimal"
+                                                                            value={details.descuento ?? ''}
+                                                                            onChange={(e) => handleDetailChange(p.id, 'descuento', e.target.value)}
+                                                                            placeholder="0"
+                                                                            className="w-14 px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-xl text-center bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 shadow-sm"
+                                                                        />
+                                                                        <span className="text-xs text-gray-500 dark:text-gray-400">%</span>
+                                                                    </div>
                                                                 )
-                                                            ) : '-'}
+                                                            ) : (
+                                                                originalDiscount > 0 ? `${originalDiscount}%` : '-'
+                                                            )}
                                                         </td>
                                                         <td className="p-1">
                                                             {isSelected && (
@@ -571,7 +588,7 @@ const PagosDoctoresForm: React.FC<PagosDoctoresFormProps> = ({ isOpen, onClose, 
                                     </tbody>
                                     <tfoot className="sticky bottom-0 bg-gray-100 dark:bg-gray-700 font-bold border-t-2 border-gray-300 dark:border-gray-600 shadow-sm">
                                         <tr>
-                                            <td colSpan={7} className="p-2.5 text-right text-gray-700 dark:text-gray-200 font-bold uppercase text-xs">
+                                            <td colSpan={8} className="p-2.5 text-right text-gray-700 dark:text-gray-200 font-bold uppercase text-xs">
                                                 Subtotal ({selectedIds.length} {selectedIds.length === 1 ? 'tratamiento' : 'tratamientos'}):
                                             </td>
                                             <td className="p-2.5 text-right font-extrabold text-blue-600 dark:text-blue-400 text-sm">

@@ -486,17 +486,6 @@ const PacientePagosTab: React.FC<PacientePagosTabProps> = ({ pacienteId }) => {
 
         const dateStr = formatDate(pago.fecha);
 
-        // Current logged in user name (from users table / session)
-        const userStr = localStorage.getItem('user');
-        let userName = 'RAUL COSTAS DELGADILLO';
-        if (userStr) {
-            try {
-                const parsedUser = JSON.parse(userStr);
-                if (parsedUser.name) userName = parsedUser.name.toUpperCase();
-            } catch (e) {
-                console.error('Error parsing user', e);
-            }
-        }
 
         // Calculate Financial Summary values for this plan / context
         const targetProforma = proformas.find(p => p.id === pago.proformaId);
@@ -697,11 +686,6 @@ const PacientePagosTab: React.FC<PacientePagosTabProps> = ({ pacienteId }) => {
             y += 10;
         }
 
-        // Usuario / Nombre
-        doc.setFont('helvetica', 'bold');
-        doc.text('Nombre:', xLabel, y + 4);
-        doc.setFont('helvetica', 'normal');
-        doc.text(userName, xValue, y + 4);
 
         // Signatures
         const pageHeight = doc.internal.pageSize.height;

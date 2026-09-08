@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { TrabajoLaboratorio } from '../types';
+import { formatPaternoMaternoNombre } from '../utils/formatters';
 
 interface TrabajosNoTerminadosModalProps {
     isOpen: boolean;
@@ -19,7 +20,7 @@ const TrabajosNoTerminadosModal: React.FC<TrabajosNoTerminadosModalProps> = ({ i
 
     const filteredPendingJobs = pendingJobs.filter(trabajo => {
         const term = modalSearchTerm.toLowerCase();
-        const pacienteName = trabajo.paciente ? `${trabajo.paciente.nombre} ${trabajo.paciente.paterno}`.toLowerCase() : '';
+        const pacienteName = trabajo.paciente ? formatPaternoMaternoNombre(trabajo.paciente).toLowerCase() : '';
         const labName = trabajo.laboratorio?.laboratorio.toLowerCase() || '';
         const trabajoDetail = trabajo.precioLaboratorio?.detalle.toLowerCase() || '';
         return pacienteName.includes(term) || labName.includes(term) || trabajoDetail.includes(term);
@@ -97,7 +98,7 @@ const TrabajosNoTerminadosModal: React.FC<TrabajosNoTerminadosModalProps> = ({ i
                                                     <tr key={trabajo.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                                                         <td className="p-3 text-gray-700 dark:text-gray-300 text-sm whitespace-nowrap">{formatDate(trabajo.fecha)}</td>
                                                         <td className="p-3 text-gray-700 dark:text-gray-300 text-sm font-medium whitespace-nowrap">
-                                                            {trabajo.paciente ? `${trabajo.paciente.nombre} ${trabajo.paciente.paterno}` : '-'}
+                                                            {trabajo.paciente ? formatPaternoMaternoNombre(trabajo.paciente) : '-'}
                                                         </td>
                                                         <td className="p-3 text-gray-700 dark:text-gray-300 text-sm whitespace-nowrap">
                                                             {trabajo.laboratorio?.laboratorio || '-'}

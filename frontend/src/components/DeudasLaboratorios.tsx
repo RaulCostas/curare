@@ -147,7 +147,8 @@ const DeudasLaboratorios: React.FC = () => {
                             <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Paciente</th>
                             <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Laboratorio</th>
                             <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Trabajo</th>
-                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Monto (Bs)</th>
+                            <th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Pieza</th>
+                            <th className="px-6 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Monto (Bs)</th>
                             <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Acciones</th>
                         </tr>
                     </thead>
@@ -164,6 +165,9 @@ const DeudasLaboratorios: React.FC = () => {
                                 </td>
                                 <td className="p-3 text-gray-700 dark:text-gray-300">
                                     {work.precioLaboratorio ? work.precioLaboratorio.detalle : '-'}
+                                </td>
+                                <td className="p-3 text-center text-gray-700 dark:text-gray-300 font-medium">
+                                    {work.pieza || '-'}
                                 </td>
                                 <td className="p-3 text-green-600 dark:text-green-400 font-bold">
                                     {formatMonto(work.total)}
@@ -188,7 +192,7 @@ const DeudasLaboratorios: React.FC = () => {
                         ))}
                         {currentItems.length === 0 && (
                             <tr>
-                                <td colSpan={7} className="p-5 text-center text-gray-500 dark:text-gray-400">
+                                <td colSpan={8} className="p-5 text-center text-gray-500 dark:text-gray-400">
                                     No se encontraron deudas pendientes.
                                 </td>
                             </tr>

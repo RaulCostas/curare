@@ -162,17 +162,6 @@ const PagosList: React.FC = () => {
         doc.text('RECIBO DE PAGO', 105, 25, { align: 'center' });
         doc.setTextColor(0, 0, 0);
 
-        // Current logged in user name (from users table / session)
-        const userStr = localStorage.getItem('user');
-        let userName = 'RAUL COSTAS DELGADILLO';
-        if (userStr) {
-            try {
-                const parsedUser = JSON.parse(userStr);
-                if (parsedUser.name) userName = parsedUser.name.toUpperCase();
-            } catch (e) {
-                console.error('Error parsing user', e);
-            }
-        }
 
         const boxY = 42;
         const boxHeight = 115;
@@ -273,11 +262,6 @@ const PagosList: React.FC = () => {
             y += 10;
         }
 
-        // Usuario / Nombre
-        doc.setFont('helvetica', 'bold');
-        doc.text('Nombre:', xLabel, y + 4);
-        doc.setFont('helvetica', 'normal');
-        doc.text(userName, xValue, y + 4);
 
         // Signatures
         const pageHeight = doc.internal.pageSize.height;

@@ -327,7 +327,7 @@ export class PacientesService {
         const query = `
             SELECT 
                 p.id as "pacienteId",
-                p.nombre, p.paterno, p.materno,
+                p.nombre, p.paterno, p.materno, p.estado,
                 a.fecha, a.hora, a.consultorio
             FROM agenda a
             JOIN pacientes p ON p.id = a."pacienteId"
@@ -335,6 +335,7 @@ export class PacientesService {
               AND LOWER(a.estado) = 'atendido'
               AND a."pacienteId" IS NOT NULL
               AND a."pacienteId" > 0
+              AND (p.estado IS NULL OR LOWER(TRIM(p.estado)) != 'inactivo')
               AND TRIM(CONCAT(COALESCE(p.paterno, ''), ' ', COALESCE(p.materno, ''), ' ', COALESCE(p.nombre, ''))) != ''
               AND (a.tratamiento IS NULL OR (
                   LOWER(a.tratamiento) NOT LIKE '%bloqueo%' 

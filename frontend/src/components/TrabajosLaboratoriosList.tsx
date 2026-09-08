@@ -10,6 +10,7 @@ import TrabajosNoTerminadosModal from './TrabajosNoTerminadosModal';
 import UbicacionCubetasModal from './UbicacionCubetasModal';
 import TrabajosLaboratoriosForm from './TrabajosLaboratoriosForm';
 import Swal from 'sweetalert2';
+import { formatPaternoMaternoNombre } from '../utils/formatters';
 
 const TrabajosLaboratoriosList: React.FC = () => {
     const navigate = useNavigate();
@@ -86,13 +87,41 @@ const TrabajosLaboratoriosList: React.FC = () => {
     };
 
     const handleDelete = async (id: number) => {
-        if (window.confirm('¿Está seguro de eliminar este trabajo?')) {
+        const result = await Swal.fire({
+            title: '¿Está seguro de eliminar este trabajo de laboratorio?',
+            text: 'Esta acción no se puede deshacer.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar',
+            background: document.documentElement.classList.contains('dark') ? '#1f2937' : '#fff',
+            color: document.documentElement.classList.contains('dark') ? '#f3f4f6' : '#000',
+        });
+
+        if (result.isConfirmed) {
             try {
                 await api.delete(`/trabajos-laboratorios/${id}`);
+                await Swal.fire({
+                    icon: 'success',
+                    title: '¡Eliminado!',
+                    text: 'El trabajo de laboratorio ha sido eliminado correctamente.',
+                    showConfirmButton: false,
+                    timer: 1500,
+                    background: document.documentElement.classList.contains('dark') ? '#1f2937' : '#fff',
+                    color: document.documentElement.classList.contains('dark') ? '#f3f4f6' : '#000',
+                });
                 fetchTrabajos();
             } catch (error) {
                 console.error('Error deleting trabajo:', error);
-                alert('Error al eliminar');
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'No se pudo eliminar el trabajo de laboratorio.',
+                    background: document.documentElement.classList.contains('dark') ? '#1f2937' : '#fff',
+                    color: document.documentElement.classList.contains('dark') ? '#f3f4f6' : '#000',
+                });
             }
         }
     };
@@ -100,7 +129,7 @@ const TrabajosLaboratoriosList: React.FC = () => {
     // Filter Logic
     const filteredTrabajos = trabajos.filter(trabajo => {
         const term = searchTerm.toLowerCase();
-        const pacienteName = trabajo.paciente ? `${trabajo.paciente.nombre} ${trabajo.paciente.paterno}`.toLowerCase() : '';
+        const pacienteName = trabajo.paciente ? formatPaternoMaternoNombre(trabajo.paciente).toLowerCase() : '';
         const labName = trabajo.laboratorio?.laboratorio.toLowerCase() || '';
         return pacienteName.includes(term) || labName.includes(term);
     });
@@ -127,7 +156,7 @@ const TrabajosLaboratoriosList: React.FC = () => {
         const dataToExport = filteredTrabajos.map(t => ({
             ID: t.id,
             Laboratorio: t.laboratorio?.laboratorio || '-',
-            Paciente: t.paciente ? `${t.paciente.nombre} ${t.paciente.paterno}` : '-',
+            Paciente: t.paciente ? formatPaternoMaternoNombre(t.paciente) : '-',
             Trabajo: t.precioLaboratorio?.detalle || (t as any).trabajo,
             Piezas: t.pieza,
             Cantidad: t.cantidad,
@@ -280,7 +309,7 @@ const TrabajosLaboratoriosList: React.FC = () => {
                                 <td className="p-3 text-gray-700 dark:text-gray-300">{(currentPage - 1) * itemsPerPage + index + 1}</td>
                                 <td className="p-3 text-gray-700 dark:text-gray-300">{formatDate(trabajo.fecha)}</td>
                                 <td className="p-3 text-gray-700 dark:text-gray-300">
-                                    {trabajo.paciente ? `${trabajo.paciente.nombre} ${trabajo.paciente.paterno}` : '-'}
+                                    {trabajo.paciente ? formatPaternoMaternoNombre(trabajo.paciente) : '-'}
                                 </td>
                                 <td className="p-3 text-gray-700 dark:text-gray-300">
                                     {trabajo.laboratorio ? trabajo.laboratorio.laboratorio : '-'}

@@ -67,7 +67,7 @@ const PagosLaboratoriosForm: React.FC<PagosLaboratoriosFormProps> = ({ isOpen, o
     const fetchInitialData = async () => {
         try {
             const [trabajosRes, formasPagoRes] = await Promise.all([
-                api.get('/trabajos-laboratorios?pagado=no&limit=1000'),
+                api.get('/trabajos-laboratorios?limit=5000&estado=terminado'),
                 api.get('/forma-pago?limit=1000')
             ]);
 
@@ -138,7 +138,12 @@ const PagosLaboratoriosForm: React.FC<PagosLaboratoriosFormProps> = ({ isOpen, o
                 }
             }
 
-            setAllUnpaidWorks(allTrabajos);
+            const unpaidWorks = allTrabajos.filter((w: any) =>
+                (w.estado === 'terminado' && w.pagado !== 'si' && w.estado !== 'anulado') ||
+                (currentPaymentWorkId && w.id === currentPaymentWorkId)
+            );
+
+            setAllUnpaidWorks(unpaidWorks);
         } catch (error) {
             console.error('Error fetching initial data:', error);
             Swal.fire('Error', 'Error al cargar los datos iniciales', 'error');
@@ -157,16 +162,6 @@ const PagosLaboratoriosForm: React.FC<PagosLaboratoriosFormProps> = ({ isOpen, o
         return val !== undefined && val !== null ? Number(val) : null;
     };
 
-    const availableWorks = useMemo(() => {
-        return allUnpaidWorks.filter(work => {
-            const workLabId = getWorkLabId(work);
-            const workPatId = getWorkPatientId(work);
-            if (selectedLabId && workLabId !== Number(selectedLabId)) return false;
-            if (selectedPatientId && workPatId !== Number(selectedPatientId)) return false;
-            return (work.estado === 'terminado' && work.pagado !== 'si') || (isEdit && work.id === idTrabajosLaboratorios) || (initialWorkId && work.id === initialWorkId);
-        });
-    }, [allUnpaidWorks, selectedLabId, selectedPatientId, isEdit, idTrabajosLaboratorios, initialWorkId]);
-
     const labOptions = useMemo(() => {
         const uniqueLabsMap = new Map<number, string>();
         allUnpaidWorks.forEach(w => {
@@ -180,16 +175,15 @@ const PagosLaboratoriosForm: React.FC<PagosLaboratoriosFormProps> = ({ isOpen, o
         uniqueLabsMap.forEach((name, id) => {
             opts.push({ id, name });
         });
-        return opts;
+        return opts.sort((a, b) => a.name.localeCompare(b.name));
     }, [allUnpaidWorks]);
 
     const patientOptions: Option[] = useMemo(() => {
+        if (!selectedLabId) return [];
+
         const filteredByLab = allUnpaidWorks.filter(w => {
-            if (selectedLabId) {
-                const workLabId = getWorkLabId(w);
-                return workLabId === Number(selectedLabId);
-            }
-            return true;
+            const workLabId = getWorkLabId(w);
+            return workLabId === Number(selectedLabId);
         });
 
         const uniquePatientsMap = new Map<number, { fullName: string; ci?: string }>();
@@ -202,10 +196,7 @@ const PagosLaboratoriosForm: React.FC<PagosLaboratoriosFormProps> = ({ isOpen, o
             }
         });
 
-        const opts: Option[] = [
-            { id: '', label: '-- Todos los Pacientes --' }
-        ];
-
+        const opts: Option[] = [];
         uniquePatientsMap.forEach((info, patId) => {
             opts.push({
                 id: patId,
@@ -214,8 +205,20 @@ const PagosLaboratoriosForm: React.FC<PagosLaboratoriosFormProps> = ({ isOpen, o
             });
         });
 
-        return opts;
+        return opts.sort((a, b) => a.label.localeCompare(b.label));
     }, [allUnpaidWorks, selectedLabId]);
+
+    const availableWorks = useMemo(() => {
+        if (!selectedLabId || !selectedPatientId) return [];
+
+        return allUnpaidWorks.filter(work => {
+            const workLabId = getWorkLabId(work);
+            const workPatId = getWorkPatientId(work);
+            if (workLabId !== Number(selectedLabId)) return false;
+            if (workPatId !== Number(selectedPatientId)) return false;
+            return (work.estado === 'terminado' && work.pagado !== 'si') || (isEdit && work.id === idTrabajosLaboratorios) || (initialWorkId && work.id === initialWorkId);
+        });
+    }, [allUnpaidWorks, selectedLabId, selectedPatientId, isEdit, idTrabajosLaboratorios, initialWorkId]);
 
     const handleLabChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         const val = e.target.value ? Number(e.target.value) : '';
@@ -332,9 +335,10 @@ const PagosLaboratoriosForm: React.FC<PagosLaboratoriosFormProps> = ({ isOpen, o
                         <select
                             value={selectedLabId}
                             onChange={handleLabChange}
+                            required
                             className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-2 focus:outline-none focus:ring-blue-500 font-medium cursor-pointer"
                         >
-                            <option value="">-- Todos los laboratorios --</option>
+                            <option value="">-- Seleccione un Laboratorio --</option>
                             {labOptions.map((lab) => (
                                 <option key={lab.id} value={lab.id}>
                                     {lab.name}
@@ -353,7 +357,8 @@ const PagosLaboratoriosForm: React.FC<PagosLaboratoriosFormProps> = ({ isOpen, o
                                 setSelectedPatientId(val ? Number(val) : '');
                                 setIdTrabajosLaboratorios('');
                             }}
-                            placeholder="-- Todos los Pacientes --"
+                            disabled={!selectedLabId}
+                            placeholder={!selectedLabId ? '-- Seleccione primero un laboratorio --' : '-- Seleccione un Paciente --'}
                             searchPlaceholder="Buscar paciente por nombre o CI..."
                             icon={
                                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400">
@@ -366,20 +371,28 @@ const PagosLaboratoriosForm: React.FC<PagosLaboratoriosFormProps> = ({ isOpen, o
 
                     {/* Fila 3: Trabajo de Laboratorio */}
                     <div>
-                        <label className="block mb-1 font-bold text-sm text-gray-700 dark:text-gray-300">Trabajo de Laboratorio Peticionado:</label>
+                        <label className="block mb-1 font-bold text-sm text-gray-700 dark:text-gray-300">Trabajo de Laboratorio:</label>
                         <select
                             value={idTrabajosLaboratorios}
                             onChange={(e) => setIdTrabajosLaboratorios(Number(e.target.value) || '')}
                             required
-                            className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-2 focus:outline-none focus:ring-blue-500 font-medium cursor-pointer"
+                            disabled={!selectedLabId || !selectedPatientId}
+                            className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-2 focus:outline-none focus:ring-blue-500 font-medium cursor-pointer disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60"
                         >
-                            <option value="">-- Seleccione un Trabajo Pendiente --</option>
+                            <option value="">
+                                {!selectedLabId
+                                    ? '-- Seleccione primero un laboratorio --'
+                                    : !selectedPatientId
+                                    ? '-- Seleccione primero un paciente --'
+                                    : '-- Seleccione un Trabajo Pendiente --'}
+                            </option>
                             {availableWorks.map((work) => {
                                 const descripcion = work.precioLaboratorio?.detalle || work.observacion || 'Trabajo de laboratorio';
                                 const totalBs = Number(work.total).toFixed(2);
+                                const piezaText = work.pieza ? ` (Pieza: ${work.pieza})` : '';
                                 return (
                                     <option key={work.id} value={work.id}>
-                                        {descripcion} - Bs. {totalBs}
+                                        {descripcion}{piezaText} - Bs. {totalBs}
                                     </option>
                                 );
                             })}
