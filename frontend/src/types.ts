@@ -702,6 +702,7 @@ export interface Pedidos {
     Pagado: boolean;
     proveedor?: Proveedor;
     detalles?: PedidosDetalle[];
+    pago?: PagosPedidos;
 }
 
 export interface PagosPedidos {
