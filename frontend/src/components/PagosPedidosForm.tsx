@@ -4,6 +4,7 @@ import type { Pedidos } from '../types';
 import Swal from 'sweetalert2';
 import ManualModal, { type ManualSection } from './ManualModal';
 import FormaPagoForm from './FormaPagoForm';
+import SearchableSelect from './SearchableSelect';
 import { getLocalDateString } from '../utils/dateUtils';
 
 interface FormaPago {
@@ -125,14 +126,21 @@ const PagosPedidosForm: React.FC<PagosPedidosFormProps> = ({ isOpen, onClose, id
         fetchData();
     }, [isOpen, id, initialPedidoId, isEditMode]);
 
-    const handlePedidoChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        const pid = e.target.value;
+    const handlePedidoSelect = (selectedId: number | string) => {
+        const pid = String(selectedId);
         setIdPedido(pid);
         const selected = pedidos.find(p => p.id === Number(pid));
         if (selected) {
             setMonto(selected.Total.toString());
         }
     };
+
+    const pedidoOptions = pedidos.map(p => ({
+        id: p.id,
+        label: `#${p.id} - ${p.proveedor?.proveedor || 'Sin Proveedor'} - Total: Bs ${p.Total} ${p.Pagado ? '(Pagado)' : ''}`,
+        subLabel: p.Observaciones ? `Obs: ${p.Observaciones}` : undefined,
+        searchString: `${p.id} ${p.proveedor?.proveedor || ''} ${p.Observaciones || ''}`
+    }));
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -221,20 +229,15 @@ const PagosPedidosForm: React.FC<PagosPedidosFormProps> = ({ isOpen, onClose, id
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div>
                             <label className="block mb-1 font-bold text-sm text-gray-700 dark:text-gray-300">Pedido:</label>
-                            <select
+                            <SearchableSelect
+                                options={pedidoOptions}
                                 value={idPedido}
-                                onChange={handlePedidoChange}
-                                required
+                                onChange={handlePedidoSelect}
+                                placeholder="-- Seleccione un Pedido --"
+                                searchPlaceholder="Escriba para buscar por Proveedor, N° Pedido u observaciones..."
                                 disabled={isEditMode}
-                                className="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:outline-none focus:ring-blue-500 font-medium cursor-pointer disabled:bg-gray-100 dark:disabled:bg-gray-800"
-                            >
-                                <option value="">-- Seleccione un Pedido --</option>
-                                {pedidos.map(p => (
-                                    <option key={p.id} value={p.id}>
-                                        #{p.id} - {p.proveedor?.proveedor} - Total: Bs {p.Total} {p.Pagado ? '(Pagado)' : ''}
-                                    </option>
-                                ))}
-                            </select>
+                                required
+                            />
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

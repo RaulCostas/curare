@@ -18,6 +18,7 @@ import { formatDateUTC } from '../utils/formatters';
 import ManualModal, { type ManualSection } from './ManualModal';
 import ViewMaterialUtilizadoModal from './ViewMaterialUtilizadoModal';
 import Pagination from './Pagination';
+import { X } from 'lucide-react';
 
 const HistoriaClinicaList: React.FC<HistoriaClinicaListProps> = ({ historia, allHistoria, onDelete, onEdit, onNewHistoria, onPrint, onViewPlan, onViewHistorial, onReminder, onPlanTiempo }) => {
     const [searchTerm, setSearchTerm] = useState('');
@@ -102,9 +103,9 @@ const HistoriaClinicaList: React.FC<HistoriaClinicaListProps> = ({ historia, all
             </div>
 
             {/* Search Bar & Actions */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 border-b border-gray-200 dark:border-gray-700 pb-6">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full md:max-w-xl">
-                    <div className="relative flex-grow w-full">
+            <div className="flex flex-wrap justify-between items-center gap-4 mb-6 border-b border-gray-200 dark:border-gray-700 pb-6">
+                <div className="flex flex-wrap items-center gap-3 flex-1 min-w-[280px] md:max-w-2xl">
+                    <div className="relative flex-1 min-w-[200px]">
                         <input
                             type="text"
                             placeholder="Buscar por Pieza o Tratamiento..."
@@ -113,26 +114,23 @@ const HistoriaClinicaList: React.FC<HistoriaClinicaListProps> = ({ historia, all
                                 setSearchTerm(e.target.value);
                                 setCurrentPage(1);
                             }}
-                            className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 text-gray-800 dark:text-white bg-white dark:bg-gray-700 placeholder-gray-400 dark:placeholder-gray-300 text-sm"
+                            className="w-full pl-10 pr-9 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 text-gray-800 dark:text-white bg-white dark:bg-gray-700 placeholder-gray-400 dark:placeholder-gray-300 text-sm"
                         />
                         <svg className="w-5 h-5 text-gray-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                         </svg>
+                        {searchTerm && (
+                            <button
+                                type="button"
+                                onClick={() => { setSearchTerm(''); setCurrentPage(1); }}
+                                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 dark:text-gray-400 dark:hover:text-gray-200 transition-colors cursor-pointer bg-transparent border-0 flex items-center justify-center"
+                                title="Limpiar búsqueda"
+                            >
+                                <X size={16} />
+                            </button>
+                        )}
                     </div>
-                    {searchTerm && (
-                        <button
-                            type="button"
-                            onClick={() => { setSearchTerm(''); setCurrentPage(1); }}
-                            className="px-3.5 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 font-medium rounded-xl text-sm transition-colors flex items-center gap-1.5 shadow-sm whitespace-nowrap"
-                            title="Limpiar búsqueda"
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                            Limpiar
-                        </button>
-                    )}
-                    <label className="flex items-center gap-2 text-xs font-bold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 px-3 py-2 rounded-xl border border-blue-200 dark:border-blue-800 cursor-pointer whitespace-nowrap select-none hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors shadow-sm">
+                    <label className="flex items-center gap-2 text-xs font-bold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 px-3 py-2 rounded-xl border border-blue-200 dark:border-blue-800 cursor-pointer whitespace-nowrap select-none hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors shadow-sm shrink-0">
                         <input
                             type="checkbox"
                             checked={searchAllProformas}
@@ -146,7 +144,7 @@ const HistoriaClinicaList: React.FC<HistoriaClinicaListProps> = ({ historia, all
                     </label>
                 </div>
 
-                <div className="flex gap-3">
+                <div className="flex flex-wrap items-center gap-2.5 shrink-0">
                     <button
                         onClick={() => setShowManual(true)}
                         className="bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 p-1.5 rounded-full flex items-center justify-center w-[30px] h-[30px] text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
