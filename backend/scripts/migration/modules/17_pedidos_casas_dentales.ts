@@ -286,6 +286,9 @@ export async function migratePedidosCasasDentalesModule() {
     }
   }
 
+  // Sincronizar estado Pagado en pedidos
+  await dataSource.query(`UPDATE pedidos SET "Pagado" = true WHERE id IN (SELECT "idPedido" FROM pagos_pedidos);`);
+
   // Ajustar secuencia de ID de pagos_pedidos
   await dataSource.query(`SELECT setval('pagos_pedidos_id_seq', (SELECT MAX(id) FROM pagos_pedidos));`);
 

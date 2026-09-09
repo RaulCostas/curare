@@ -66,7 +66,7 @@ export class PedidosService {
 
     async findAll() {
         return this.pedidosRepository.find({
-            relations: ['proveedor', 'detalles', 'detalles.inventario'],
+            relations: ['proveedor', 'detalles', 'detalles.inventario', 'pago'],
             order: { fecha: 'DESC' }
         });
     }

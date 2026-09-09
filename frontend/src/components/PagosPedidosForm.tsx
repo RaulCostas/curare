@@ -113,7 +113,7 @@ const PagosPedidosForm: React.FC<PagosPedidosFormProps> = ({ isOpen, onClose, id
                     if (formasList.length > 0) {
                         setFormaPago(formasList[0].forma_pago);
                     }
-                    setPedidos(allPedidos.filter(p => !p.Pagado));
+                    setPedidos(allPedidos.filter(p => !p.Pagado && !p.pago));
                 }
 
             } catch (error) {

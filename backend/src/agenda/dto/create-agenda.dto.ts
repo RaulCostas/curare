@@ -23,17 +23,17 @@ export class CreateAgendaDto {
     @IsNumber()
     pacienteId?: number;
 
-    @IsNotEmpty()
+    @IsOptional()
     @IsNumber()
-    doctorId: number;
+    doctorId?: number;
 
     @IsOptional()
     @IsNumber()
     proformaId?: number;
 
-    @IsNotEmpty()
+    @IsOptional()
     @IsNumber()
-    usuarioId: number;
+    usuarioId?: number;
 
     @IsOptional()
     @IsString()
@@ -46,6 +46,10 @@ export class CreateAgendaDto {
     @IsOptional()
     @IsNumber()
     asistenteId?: number;
+
+    @IsOptional()
+    @IsNumber()
+    personalId?: number;
 
     @IsOptional()
     @IsString()

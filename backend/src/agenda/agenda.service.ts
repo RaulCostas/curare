@@ -14,8 +14,17 @@ export class AgendaService {
 
     async create(createDto: CreateAgendaDto): Promise<Agenda> {
         try {
-            const cita = this.agendaRepository.create(createDto);
-            return await this.agendaRepository.save(cita);
+            const { asistenteId, ...rest } = createDto as any;
+            const dataToSave: any = { ...rest };
+            if (asistenteId !== undefined) {
+                dataToSave.personalId = asistenteId;
+            }
+            if (!dataToSave.fechaAgendado) {
+                dataToSave.fechaAgendado = new Date();
+            }
+            const cita = this.agendaRepository.create(dataToSave);
+            const saved = await this.agendaRepository.save(cita);
+            return await this.findOne((saved as any).id);
         } catch (error) {
             console.error('Error creating agenda:', error);
             const detail = `DB Error: ${error.message} | Code: ${error.code} | Detail: ${error.detail || 'None'}`;
@@ -80,9 +89,15 @@ export class AgendaService {
     }
 
     async update(id: number, updateDto: UpdateAgendaDto): Promise<Agenda> {
-        const cita = await this.findOne(id);
-        this.agendaRepository.merge(cita, updateDto);
-        return await this.agendaRepository.save(cita);
+        await this.findOne(id); // Ensures entity exists, throws NotFoundException if not
+        const { asistenteId, ...rest } = updateDto as any;
+        const updateData: any = { ...rest };
+        if (asistenteId !== undefined) {
+            updateData.personalId = asistenteId;
+        }
+
+        await this.agendaRepository.update(id, updateData);
+        return await this.findOne(id);
     }
 
     async remove(id: number, userId: number): Promise<void> {

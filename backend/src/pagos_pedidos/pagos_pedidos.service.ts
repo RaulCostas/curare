@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between } from 'typeorm';
 import { PagosPedidos } from './entities/pagos_pedidos.entity';
@@ -18,6 +18,11 @@ export class PagosPedidosService {
         const pedido = await this.pedidosRepository.findOne({ where: { id: createDto.idPedido } });
         if (!pedido) {
             throw new NotFoundException(`Pedido ${createDto.idPedido} not found`);
+        }
+
+        const existingPago = await this.pagosPedidosRepository.findOne({ where: { idPedido: createDto.idPedido } });
+        if (existingPago) {
+            throw new BadRequestException(`El pedido #${createDto.idPedido} ya tiene un pago registrado (Pago #${existingPago.id}).`);
         }
 
         const pago = this.pagosPedidosRepository.create(createDto);

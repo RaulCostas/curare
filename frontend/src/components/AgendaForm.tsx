@@ -149,22 +149,23 @@ const AgendaForm: React.FC<AgendaFormProps> = ({
                 hora: initialData.hora,
                 duracion: initialData.duracion,
                 consultorio: initialData.consultorio,
-                pacienteId: initialData.pacienteId || 0,
-                doctorId: initialData.doctorId || 0,
-                proformaId: initialData.proformaId || 0,
+                pacienteId: initialData.pacienteId || (initialData as any).paciente?.id || 0,
+                doctorId: initialData.doctorId || (initialData as any).doctor?.id || 0,
+                proformaId: initialData.proformaId || (initialData as any).proforma?.id || 0,
                 estado: initialData.estado,
-                usuarioId: initialData.usuarioId || 0,
+                usuarioId: initialData.usuarioId || (initialData as any).usuario?.id || 0,
                 tratamiento: initialData.tratamiento || '',
-                asistenteId: (initialData as any).asistenteId || 0,
+                asistenteId: (initialData as any).asistenteId || (initialData as any).personalId || (initialData as any).personal?.id || 0,
                 motivoCancelacion: initialData.motivoCancelacion || ''
             });
 
-            if (!initialData.pacienteId || initialData.pacienteId === 0) {
+            const currentPacienteId = initialData.pacienteId || (initialData as any).paciente?.id || 0;
+            if (!currentPacienteId || currentPacienteId === 0) {
                 setIsNonPatientEvent(true);
             } else {
                 setIsNonPatientEvent(false);
-                fetchProformasByPaciente(initialData.pacienteId);
-                fetchHistoriaClinica(initialData.pacienteId);
+                fetchProformasByPaciente(currentPacienteId);
+                fetchHistoriaClinica(currentPacienteId);
             }
         }
     }, [initialData]);
@@ -327,6 +328,7 @@ const AgendaForm: React.FC<AgendaFormProps> = ({
             doctorId: formData.doctorId > 0 ? formData.doctorId : null,
             proformaId: formData.proformaId > 0 ? formData.proformaId : null,
             asistenteId: formData.asistenteId > 0 ? formData.asistenteId : null,
+            personalId: formData.asistenteId > 0 ? formData.asistenteId : null,
             tratamiento: formData.tratamiento || (isNonPatientEvent ? 'Bloqueo / Evento' : '')
         };
 
