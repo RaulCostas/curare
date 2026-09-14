@@ -223,10 +223,10 @@ export async function migratePedidosCasasDentalesModule() {
 
       const provId = await getOrCreateProviderId(casaName);
 
-      // Buscar pedido correspondiente por proveedor e importe cercano sin pago asignado aún
+      // Buscar pedido correspondiente por proveedor e importe cercano dentro de una ventana de fecha razonable (máx 90 días)
       const matchingPedidos = await dataSource.query(`
         SELECT id FROM pedidos 
-        WHERE idproveedor = $1 AND ABS("Total" - $2) < 0.1
+        WHERE idproveedor = $1 AND ABS("Total" - $2) < 0.1 AND ABS(fecha - $3::date) <= 90
         ORDER BY ABS(fecha - $3::date) ASC;
       `, [provId, monto, fecha]);
 
@@ -235,19 +235,6 @@ export async function migratePedidosCasasDentalesModule() {
         if (!usedPedidoIds.has(p.id)) {
           pedidoId = p.id;
           break;
-        }
-      }
-
-      if (!pedidoId) {
-        // Buscar cualquier pedido del mismo proveedor no asignado aún
-        const anyPedidos = await dataSource.query(`
-          SELECT id FROM pedidos WHERE idproveedor = $1 ORDER BY id DESC;
-        `, [provId]);
-        for (const p of anyPedidos) {
-          if (!usedPedidoIds.has(p.id)) {
-            pedidoId = p.id;
-            break;
-          }
         }
       }
 

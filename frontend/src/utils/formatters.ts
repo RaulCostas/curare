@@ -134,7 +134,8 @@ export const deduplicateHistoria = <T extends any>(historia: T[]): T[] => {
             continue;
         }
         
-        const key = `${h.proformaDetalleId || h.tratamiento}_${h.pieza || 'sin_pieza'}_${h.cantidad || 1}`;
+        const tratKey = (h.tratamiento || '').toString().trim().toLowerCase();
+        const key = `${h.proformaDetalleId || tratKey}_${h.pieza || 'sin_pieza'}_${h.cantidad || 1}_${tratKey}`;
         
         if (!seen.has(key)) {
             seen.add(key);
@@ -144,3 +145,40 @@ export const deduplicateHistoria = <T extends any>(historia: T[]): T[] => {
     
     return unique;
 };
+
+/**
+ * Busca el detalle de proforma correspondiente para una evolución de historia clínica.
+ * Prioriza concordancia de tratamiento si el ID enlazado no coincide en arancel.
+ */
+export const findMatchingProformaDetalle = (curr: any, detalles?: any[]): any => {
+    if (!detalles || !Array.isArray(detalles) || detalles.length === 0) return null;
+    const currDetId = curr.proformaDetalleId || (curr as any).proformaDetalle?.id;
+    let matchDetalle = currDetId ? detalles.find((d: any) => Number(d.id) === Number(currDetId)) : null;
+
+    if (matchDetalle && curr.tratamiento && matchDetalle.arancel?.detalle) {
+        const dName = matchDetalle.arancel.detalle.toLowerCase().trim();
+        const tName = curr.tratamiento.toLowerCase().trim();
+        if (dName !== tName && !dName.includes(tName) && !tName.includes(dName)) {
+            const betterMatch = detalles.find((d: any) =>
+                d.arancel && curr.tratamiento && (
+                    d.arancel.detalle.toLowerCase().trim() === tName ||
+                    d.arancel.detalle.toLowerCase().trim().includes(tName) ||
+                    tName.includes(d.arancel.detalle.toLowerCase().trim())
+                )
+            );
+            if (betterMatch) {
+                matchDetalle = betterMatch;
+            }
+        }
+    } else if (!matchDetalle) {
+        matchDetalle = detalles.find((d: any) =>
+            (d.arancel && d.arancel.detalle === curr.tratamiento) ||
+            (d.arancel && curr.tratamiento && (
+                d.arancel.detalle.toLowerCase().trim() === curr.tratamiento.toLowerCase().trim()
+            ))
+        );
+    }
+
+    return matchDetalle || null;
+};
+

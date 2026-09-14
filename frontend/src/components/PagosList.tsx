@@ -5,7 +5,7 @@ import type { Pago, Proforma, HistoriaClinica } from '../types';
 import Pagination from './Pagination';
 import jsPDF from 'jspdf';
 import { formatDate } from '../utils/dateUtils';
-import { formatCurrency, formatDateUTC, deduplicateHistoria } from '../utils/formatters';
+import { formatCurrency, formatDateUTC, deduplicateHistoria, findMatchingProformaDetalle } from '../utils/formatters';
 import ManualModal, { type ManualSection } from './ManualModal';
 import PagosForm from './PagosForm';
 
@@ -592,15 +592,7 @@ const PagosList: React.FC = () => {
                             let itemPrice = Number(curr.precio || 0);
 
                             if (selectedProforma && selectedProforma.detalles) {
-                                const currDetId = curr.proformaDetalleId || (curr as any).proformaDetalle?.id;
-                                const matchDetalle = currDetId
-                                    ? selectedProforma.detalles.find(d => Number(d.id) === Number(currDetId))
-                                    : selectedProforma.detalles.find(d =>
-                                        (d.arancel && d.arancel.detalle === curr.tratamiento) ||
-                                        (d.arancel && curr.tratamiento && (
-                                            d.arancel.detalle.toLowerCase().trim() === curr.tratamiento.toLowerCase().trim()
-                                        ))
-                                    );
+                                const matchDetalle = findMatchingProformaDetalle(curr, selectedProforma.detalles);
 
                                 if (matchDetalle && Number(matchDetalle.total || 0) >= 0 && Number(matchDetalle.cantidad || 1) > 0) {
                                     const unitNetPrice = Number(matchDetalle.total) / Number(matchDetalle.cantidad || 1);

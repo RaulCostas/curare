@@ -249,8 +249,105 @@ export class ProformasService {
   }
 
   async remove(id: number) {
-    const proforma = await this.findOne(id);
-    return this.proformaRepository.remove(proforma);
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      const proforma = await queryRunner.manager.findOne(Proforma, {
+        where: { id },
+        relations: ['detalles', 'imagenes'],
+      });
+
+      if (!proforma) {
+        throw new NotFoundException(`Proforma #${id} not found`);
+      }
+
+      // 1. Eliminar archivos de imagen físicos en disco si existen
+      if (proforma.imagenes && proforma.imagenes.length > 0) {
+        for (const img of proforma.imagenes) {
+          if (img.ruta && fs.existsSync(img.ruta)) {
+            try {
+              fs.unlinkSync(img.ruta);
+            } catch (e) {
+              console.error('Error deleting image file:', e);
+            }
+          }
+        }
+        await queryRunner.manager.delete(ProformaImagen, { proformaId: id });
+      }
+
+      const detalleIds = (proforma.detalles || []).map(d => d.id);
+
+      // 2. Desvincular referencias en proxima_cita e historia_clinica
+      if (detalleIds.length > 0) {
+        await queryRunner.manager.query(
+          `UPDATE proxima_cita SET proforma_id = NULL, proforma_detalle_id = NULL WHERE proforma_id = $1 OR proforma_detalle_id = ANY($2::int[])`,
+          [id, detalleIds]
+        );
+        await queryRunner.manager.query(
+          `UPDATE historia_clinica SET "proformaId" = NULL, "proformaDetalleId" = NULL WHERE "proformaId" = $1 OR "proformaDetalleId" = ANY($2::int[])`,
+          [id, detalleIds]
+        );
+      } else {
+        await queryRunner.manager.query(
+          `UPDATE proxima_cita SET proforma_id = NULL WHERE proforma_id = $1`,
+          [id]
+        );
+        await queryRunner.manager.query(
+          `UPDATE historia_clinica SET "proformaId" = NULL WHERE "proformaId" = $1`,
+          [id]
+        );
+      }
+
+      // 3. Desvincular citas de agenda
+      await queryRunner.manager.query(
+        `UPDATE agenda SET "proformaId" = NULL WHERE "proformaId" = $1`,
+        [id]
+      );
+
+      // 4. Desvincular pagos asociados (para no romper integridad de pagos existentes)
+      await queryRunner.manager.query(
+        `UPDATE pagos SET "proformaId" = NULL WHERE "proformaId" = $1`,
+        [id]
+      );
+
+      // 5. Eliminar recordatorios de plan asociados
+      await queryRunner.manager.query(
+        `DELETE FROM recordatorio_plan WHERE "proformaId" = $1`,
+        [id]
+      );
+
+      // 6. Eliminar secuencias de tratamiento asociadas
+      await queryRunner.manager.query(
+        `DELETE FROM secuencia_tratamiento WHERE "proformaId" = $1`,
+        [id]
+      );
+
+      // 7. Eliminar firmas digitales del presupuesto
+      await queryRunner.manager.query(
+        `DELETE FROM firmas_digitales WHERE "tipoDocumento" = 'presupuesto' AND "documentoId" = $1`,
+        [id]
+      );
+
+      // 8. Eliminar detalles del presupuesto
+      if (detalleIds.length > 0) {
+        await queryRunner.manager.delete(ProformaDetalle, { proforma: { id } });
+      }
+
+      // 9. Eliminar la proforma
+      await queryRunner.manager.delete(Proforma, { id });
+
+      await queryRunner.commitTransaction();
+      return { success: true, message: `Proforma #${id} eliminada correctamente` };
+    } catch (err) {
+      await queryRunner.rollbackTransaction();
+      console.error('Error deleting proforma:', err);
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      throw new NotFoundException(`Error eliminando proforma: ${msg}`);
+    } finally {
+      await queryRunner.release();
+    }
   }
 
   async approve(id: number, codigo: string) {

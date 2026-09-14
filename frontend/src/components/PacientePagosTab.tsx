@@ -3,7 +3,7 @@ import api from '../services/api';
 import Swal from 'sweetalert2';
 import type { Pago, Proforma, HistoriaClinica, Paciente } from '../types';
 import { formatDate } from '../utils/dateUtils';
-import { formatCurrency, formatDateUTC, deduplicateHistoria } from '../utils/formatters';
+import { formatCurrency, formatDateUTC, deduplicateHistoria, findMatchingProformaDetalle } from '../utils/formatters';
 import PagosForm from './PagosForm';
 import Pagination from './Pagination';
 import ManualModal, { type ManualSection } from './ManualModal';
@@ -196,15 +196,7 @@ const PacientePagosTab: React.FC<PacientePagosTabProps> = ({ pacienteId }) => {
                 let discountAmt = 0;
                 let discountPct = 0;
                 if (selectedProforma && selectedProforma.detalles) {
-                    const currDetId = curr.proformaDetalleId || (curr as any).proformaDetalle?.id;
-                    const matchDetalle = currDetId
-                        ? selectedProforma.detalles.find(d => Number(d.id) === Number(currDetId))
-                        : selectedProforma.detalles.find(d =>
-                            (d.arancel && d.arancel.detalle === curr.tratamiento) ||
-                            (d.arancel && curr.tratamiento && (
-                                d.arancel.detalle.toLowerCase().trim() === curr.tratamiento.toLowerCase().trim()
-                            ))
-                        );
+                    const matchDetalle = findMatchingProformaDetalle(curr, selectedProforma.detalles);
                     if (matchDetalle) {
                         if (Number(matchDetalle.total || 0) > 0 && Number(matchDetalle.cantidad || 1) > 0) {
                             const unitNetPrice = Number(matchDetalle.total) / Number(matchDetalle.cantidad || 1);
@@ -355,15 +347,7 @@ const PacientePagosTab: React.FC<PacientePagosTabProps> = ({ pacienteId }) => {
             filteredHistoria.forEach(curr => {
                 let itemPrice = Number(curr.precio || 0);
                 if (selectedProforma && selectedProforma.detalles) {
-                    const currDetId = curr.proformaDetalleId || (curr as any).proformaDetalle?.id;
-                    const matchDetalle = currDetId
-                        ? selectedProforma.detalles.find(d => Number(d.id) === Number(currDetId))
-                        : selectedProforma.detalles.find(d =>
-                            (d.arancel && d.arancel.detalle === curr.tratamiento) ||
-                            (d.arancel && curr.tratamiento && (
-                                d.arancel.detalle.toLowerCase().trim() === curr.tratamiento.toLowerCase().trim()
-                            ))
-                        );
+                    const matchDetalle = findMatchingProformaDetalle(curr, selectedProforma.detalles);
                     if (matchDetalle && Number(matchDetalle.total || 0) >= 0 && Number(matchDetalle.cantidad || 1) > 0) {
                         const unitNetPrice = Number(matchDetalle.total) / Number(matchDetalle.cantidad || 1);
                         itemPrice = unitNetPrice * Number(curr.cantidad || 1);
@@ -507,15 +491,7 @@ const PacientePagosTab: React.FC<PacientePagosTabProps> = ({ pacienteId }) => {
         relevantHistoria.forEach(curr => {
             let itemPrice = Number(curr.precio || 0);
             if (targetProforma && targetProforma.detalles) {
-                const currDetId = curr.proformaDetalleId || (curr as any).proformaDetalle?.id;
-                const matchDetalle = currDetId
-                    ? targetProforma.detalles.find(d => Number(d.id) === Number(currDetId))
-                    : targetProforma.detalles.find(d =>
-                        (d.arancel && d.arancel.detalle === curr.tratamiento) ||
-                        (d.arancel && curr.tratamiento && (
-                            d.arancel.detalle.toLowerCase().trim() === curr.tratamiento.toLowerCase().trim()
-                        ))
-                    );
+                const matchDetalle = findMatchingProformaDetalle(curr, targetProforma.detalles);
                 if (matchDetalle && Number(matchDetalle.total || 0) >= 0 && Number(matchDetalle.cantidad || 1) > 0) {
                     const unitNetPrice = Number(matchDetalle.total) / Number(matchDetalle.cantidad || 1);
                     itemPrice = unitNetPrice * Number(curr.cantidad || 1);
@@ -1083,15 +1059,7 @@ const PacientePagosTab: React.FC<PacientePagosTabProps> = ({ pacienteId }) => {
                             let itemPrice = Number(curr.precio || 0);
 
                             if (selectedProforma && selectedProforma.detalles && selectedProforma.detalles.length > 0) {
-                                const currDetId = curr.proformaDetalleId || (curr as any).proformaDetalle?.id;
-                                const matchDetalle = currDetId
-                                    ? selectedProforma.detalles.find((d: any) => Number(d.id) === Number(currDetId))
-                                    : selectedProforma.detalles.find((d: any) =>
-                                        (d.arancel && d.arancel.detalle === curr.tratamiento) ||
-                                        (d.arancel && curr.tratamiento && (
-                                            d.arancel.detalle.toLowerCase().trim() === curr.tratamiento.toLowerCase().trim()
-                                        ))
-                                    );
+                                const matchDetalle = findMatchingProformaDetalle(curr, selectedProforma.detalles);
 
                                 if (matchDetalle && Number(matchDetalle.total || 0) >= 0 && Number(matchDetalle.cantidad || 1) > 0) {
                                     const unitNetPrice = Number(matchDetalle.total) / Number(matchDetalle.cantidad || 1);
