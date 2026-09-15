@@ -16,7 +16,8 @@ const EgresoInventarioForm: React.FC<EgresoInventarioFormProps> = ({ inventario,
         fecha: egresoToEdit ? egresoToEdit.fecha : getLocalDateString(),
         cantidad: egresoToEdit ? egresoToEdit.cantidad : 0,
         consultorio: egresoToEdit ? egresoToEdit.consultorio : '',
-        fecha_vencimiento: egresoToEdit ? egresoToEdit.fecha_vencimiento || '' : ''
+        fecha_vencimiento: egresoToEdit ? egresoToEdit.fecha_vencimiento || '' : '',
+        observaciones: egresoToEdit ? egresoToEdit.observaciones || '' : ''
     });
     const [availableDates, setAvailableDates] = useState<{ fecha: string; stock: number }[]>([]);
 
@@ -148,6 +149,16 @@ const EgresoInventarioForm: React.FC<EgresoInventarioFormProps> = ({ inventario,
                                 <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
                             </div>
                         </div>
+                    </div>
+                    <div>
+                        <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Observaciones</label>
+                        <textarea
+                            value={formData.observaciones}
+                            onChange={(e) => setFormData({ ...formData, observaciones: e.target.value })}
+                            placeholder="Detalles específicos sobre el egreso de material (opcional)..."
+                            rows={3}
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3498db] transition duration-200 text-gray-900 dark:text-white bg-white dark:bg-gray-700 text-sm"
+                        />
                     </div>
                     <div className="flex flex-wrap justify-end gap-2 mt-4 sm:mt-6">
                         <button type="button" onClick={onClose} className="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-3 sm:px-4 rounded-lg shadow-md transition-all transform hover:-translate-y-0.5 flex items-center gap-2 text-sm">

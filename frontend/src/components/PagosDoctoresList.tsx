@@ -875,7 +875,7 @@ const PagosDoctoresList = () => {
                                                             {item.descuento ? `${formatCurrency(item.descuento)}%` : '0%'}
                                                         </td>
                                                         <td className="px-4 py-4 whitespace-nowrap text-right text-xs font-bold text-green-600 dark:text-green-400">
-                                                            {formatCurrency(item.precio || 0)}
+                                                            {formatCurrency(item.total != null ? item.total : item.subTotal != null ? item.subTotal : item.precio || 0)}
                                                         </td>
                                                     </tr>
                                                 ))

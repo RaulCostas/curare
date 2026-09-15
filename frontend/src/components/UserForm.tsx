@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import api from '../services/api';
 import Swal from 'sweetalert2';
-import type { CreateUserDto } from '../types';
+import type { CreateUserDto, Doctor } from '../types';
 import ManualModal, { type ManualSection } from './ManualModal';
 
 interface UserFormProps {
@@ -19,13 +19,19 @@ const UserForm: React.FC<UserFormProps> = ({ isOpen, onClose, id, onSaveSuccess 
         estado: 'Activo',
         recepcionista: false,
         codigo_proforma: undefined,
+        doctorId: undefined,
     });
+    const [doctors, setDoctors] = useState<Doctor[]>([]);
     const [showManual, setShowManual] = useState(false);
 
     const manualSections: ManualSection[] = [
         {
             title: 'Gestión de Usuarios',
             content: 'Cree y administre cuentas de usuario del sistema. Configure permisos, roles y acceso a diferentes módulos de la aplicación.'
+        },
+        {
+            title: 'Vinculación con Doctor',
+            content: 'Si este usuario pertenece a un Doctor, vincúlelo aquí. Esto garantiza que en el módulo Trabajos Realizados solo pueda visualizar y acceder a sus propios pacientes y pagos correspondientes.'
         },
         {
             title: 'Recepcionista y Código Proforma',
@@ -37,8 +43,18 @@ const UserForm: React.FC<UserFormProps> = ({ isOpen, onClose, id, onSaveSuccess 
         }
     ];
 
+    const fetchDoctors = async () => {
+        try {
+            const res = await api.get('/doctors', { params: { limit: 1000 } });
+            setDoctors(res.data.data || res.data || []);
+        } catch (error) {
+            console.error('Error fetching doctors:', error);
+        }
+    };
+
     useEffect(() => {
         if (isOpen) {
+            fetchDoctors();
             if (id) {
                 fetchUser(id);
             } else {
@@ -49,7 +65,8 @@ const UserForm: React.FC<UserFormProps> = ({ isOpen, onClose, id, onSaveSuccess 
                     estado: 'Activo',
                     recepcionista: false,
                     codigo_proforma: undefined,
-                    foto: ''
+                    foto: '',
+                    doctorId: undefined
                 });
             }
         }
@@ -58,8 +75,17 @@ const UserForm: React.FC<UserFormProps> = ({ isOpen, onClose, id, onSaveSuccess 
     const fetchUser = async (userId: number) => {
         try {
             const response = await api.get(`/users/${userId}`);
-            const { name, email, estado, foto, recepcionista, codigo_proforma } = response.data;
-            setFormData({ name, email, estado, foto, recepcionista, codigo_proforma, password: '' });
+            const { name, email, estado, foto, recepcionista, codigo_proforma, doctorId } = response.data;
+            setFormData({
+                name,
+                email,
+                estado,
+                foto,
+                recepcionista,
+                codigo_proforma,
+                doctorId: doctorId || null,
+                password: ''
+            });
         } catch (error) {
             console.error('Error fetching user:', error);
         }
@@ -72,16 +98,37 @@ const UserForm: React.FC<UserFormProps> = ({ isOpen, onClose, id, onSaveSuccess 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
+            const payload: any = {
+                name: formData.name,
+                email: formData.email,
+                estado: formData.estado,
+                foto: formData.foto,
+                recepcionista: formData.recepcionista,
+                codigo_proforma: formData.codigo_proforma,
+                doctorId: formData.doctorId ? Number(formData.doctorId) : null,
+            };
+
+            if (formData.password) {
+                payload.password = formData.password;
+            }
+
             if (id) {
-                let patchPayload: Partial<CreateUserDto>;
-                if (!formData.password) {
-                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                    const { password: _pw, ...rest } = formData;
-                    patchPayload = rest;
-                } else {
-                    patchPayload = { ...formData };
+                await api.patch(`/users/${id}`, payload);
+
+                // Si el usuario editado es el usuario en sesión activa, sincronizar localStorage
+                const userStr = localStorage.getItem('user');
+                if (userStr) {
+                    try {
+                        const curUser = JSON.parse(userStr);
+                        if (curUser.id === id) {
+                            curUser.doctorId = payload.doctorId;
+                            localStorage.setItem('user', JSON.stringify(curUser));
+                        }
+                    } catch (e) {
+                        console.error('Error syncing localStorage user:', e);
+                    }
                 }
-                await api.patch(`/users/${id}`, patchPayload);
+
                 await Swal.fire({
                     icon: 'success',
                     title: 'Usuario Actualizado',
@@ -90,7 +137,8 @@ const UserForm: React.FC<UserFormProps> = ({ isOpen, onClose, id, onSaveSuccess 
                     showConfirmButton: false
                 });
             } else {
-                await api.post('/users', formData);
+                payload.password = formData.password;
+                await api.post('/users', payload);
                 await Swal.fire({
                     icon: 'success',
                     title: 'Usuario Creado',
@@ -277,6 +325,29 @@ const UserForm: React.FC<UserFormProps> = ({ isOpen, onClose, id, onSaveSuccess 
                                 />
                             </div>
                         </div>
+                    </div>
+
+                    <div>
+                        <label className="block mb-1 font-bold text-sm text-gray-700 dark:text-gray-300">Doctor Vinculado (Opcional):</label>
+                        <div className="relative">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
+                            <select
+                                name="doctorId"
+                                value={formData.doctorId || ''}
+                                onChange={(e) => setFormData({ ...formData, doctorId: e.target.value ? Number(e.target.value) : null })}
+                                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium cursor-pointer"
+                            >
+                                <option value="">-- Ninguno (Usuario General / Administrador) --</option>
+                                {doctors.map((doc) => (
+                                    <option key={doc.id} value={doc.id}>
+                                        Dr(a). {doc.nombre} {doc.paterno} {doc.materno} {doc.especialidad?.especialidad ? `(${doc.especialidad.especialidad})` : ''}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Si vincula este usuario a un doctor, en el módulo Trabajos Realizados solo podrá ver sus propios registros.</p>
                     </div>
 
                     <div>

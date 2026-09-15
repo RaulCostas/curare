@@ -48,6 +48,10 @@ export class CreatePedidoDto {
     @IsBoolean()
     Pagado?: boolean;
 
+    @IsOptional()
+    @IsString()
+    estado?: string;
+
     @IsArray()
     @ValidateNested({ each: true })
     @Type(() => CreatePedidoDetalleDto)

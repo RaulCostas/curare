@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsOptional, IsNumber, IsString, IsDateString } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsNumber, IsString, IsDateString, Min } from 'class-validator';
 
 export class CreateHistoriaClinicaDto {
     @IsNotEmpty()
@@ -37,8 +37,9 @@ export class CreateHistoriaClinicaDto {
     @IsNumber()
     personalId?: number;
 
-    @IsNotEmpty()
-    @IsNumber()
+    @IsNotEmpty({ message: 'El campo hoja es obligatorio' })
+    @IsNumber({}, { message: 'El número de hoja debe ser un número válido' })
+    @Min(1, { message: 'El número de hoja debe ser mayor a 0' })
     hoja: number;
 
     @IsOptional()

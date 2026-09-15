@@ -43,6 +43,36 @@ export class HistoriaClinicaController {
         return this.historiaClinicaService.findCancelados();
     }
 
+    @Get('trabajos-realizados/no-pagados')
+    findTrabajosNoPagados(
+        @Query('doctorId') doctorId: string,
+        @Query('page') page?: string,
+        @Query('limit') limit?: string,
+        @Query('search') search?: string,
+    ) {
+        return this.historiaClinicaService.findTrabajosNoPagados(
+            +doctorId,
+            page ? +page : 1,
+            limit ? +limit : 10,
+            search
+        );
+    }
+
+    @Get('trabajos-realizados/pagados')
+    findTrabajosPagados(
+        @Query('doctorId') doctorId: string,
+        @Query('page') page?: string,
+        @Query('limit') limit?: string,
+        @Query('search') search?: string,
+    ) {
+        return this.historiaClinicaService.findTrabajosPagados(
+            +doctorId,
+            page ? +page : 1,
+            limit ? +limit : 10,
+            search
+        );
+    }
+
     @Get(':id')
     findOne(@Param('id') id: string) {
         return this.historiaClinicaService.findOne(+id);

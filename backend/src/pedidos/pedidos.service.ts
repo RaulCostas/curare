@@ -23,35 +23,40 @@ export class PedidosService {
 
         try {
             const { detalles, ...pedidoData } = createPedidoDto;
+            const pedidoEstado = pedidoData.estado || 'Pendiente';
+            const isReceived = pedidoEstado.toLowerCase() === 'recibido';
 
             // 1. Save Pedido Master
             const pedido = this.pedidosRepository.create({
                 ...pedidoData,
-                Pagado: false
+                estado: pedidoEstado,
+                Pagado: pedidoData.Pagado ?? false
             });
             const savedPedido = await queryRunner.manager.save(Pedidos, pedido);
 
-            // 2. Save Detalles and Update Stock
+            // 2. Save Detalles and Update Stock if Received
             for (const detalleDto of detalles) {
-                // Create detalle with initial remaining quantity
+                // Create detalle with remaining quantity if received, else 0
                 const detalle = queryRunner.manager.create(PedidosDetalle, {
                     ...detalleDto,
-                    cantidad_restante: detalleDto.cantidad, // Initialize remaining stock
+                    cantidad_restante: isReceived ? detalleDto.cantidad : 0,
                     idpedidos: savedPedido.id
                 });
                 await queryRunner.manager.save(PedidosDetalle, detalle);
 
-                // Update Inventario
-                const inventario = await queryRunner.manager.findOne(Inventario, {
-                    where: { id: detalleDto.idinventario }
-                });
+                // Update Inventario only if pedido is Recibido
+                if (isReceived) {
+                    const inventario = await queryRunner.manager.findOne(Inventario, {
+                        where: { id: detalleDto.idinventario }
+                    });
 
-                if (!inventario) {
-                    throw new NotFoundException(`Inventario with ID ${detalleDto.idinventario} not found`);
+                    if (!inventario) {
+                        throw new NotFoundException(`Inventario with ID ${detalleDto.idinventario} not found`);
+                    }
+
+                    inventario.cantidad_existente += detalleDto.cantidad;
+                    await queryRunner.manager.save(Inventario, inventario);
                 }
-
-                inventario.cantidad_existente += detalleDto.cantidad;
-                await queryRunner.manager.save(Inventario, inventario);
             }
 
             await queryRunner.commitTransaction();
@@ -98,20 +103,19 @@ export class PedidosService {
                 throw new NotFoundException(`Pedido with ID ${id} not found`);
             }
 
-            // 2. Revert Stock (Subtract what was added)
-            // Note: If we are implementing batch logic, reverting is tricky if some was used.
-            // Assumption: Creating/Editing Pedidos is for INPUT. If we edit an input that was already used, it creates inconsistency.
-            // For now, we revert the full amount to keeps Global/Local sync, but if stock < 0, it might error.
-            // Ideally validation should check if 'cantidad_restante' < 'cantidad' (meaning used) before allowing reduce.
-            // But user just asks for "Show quantity... and deduct". I will allow revert for now but warn/log if needed.
+            const oldEstado = existingPedido.estado || 'Pendiente';
+            const wasReceived = oldEstado.toLowerCase() === 'recibido';
 
-            for (const oldDetalle of existingPedido.detalles) {
-                const inventario = await queryRunner.manager.findOne(Inventario, {
-                    where: { id: oldDetalle.idinventario }
-                });
-                if (inventario) {
-                    inventario.cantidad_existente -= oldDetalle.cantidad;
-                    await queryRunner.manager.save(Inventario, inventario);
+            // 2. Revert Stock (Subtract what was added) ONLY if it was previously Recibido
+            if (wasReceived) {
+                for (const oldDetalle of existingPedido.detalles) {
+                    const inventario = await queryRunner.manager.findOne(Inventario, {
+                        where: { id: oldDetalle.idinventario }
+                    });
+                    if (inventario) {
+                        inventario.cantidad_existente -= oldDetalle.cantidad;
+                        await queryRunner.manager.save(Inventario, inventario);
+                    }
                 }
             }
 
@@ -120,10 +124,13 @@ export class PedidosService {
 
             // 4. Update Master Data
             const { detalles, ...pedidoData } = updatePedidoDto;
+            const newEstado = pedidoData.estado || oldEstado;
+            const isNowReceived = newEstado.toLowerCase() === 'recibido';
 
             const pedidoToUpdate = await queryRunner.manager.preload(Pedidos, {
                 id: id,
-                ...pedidoData
+                ...pedidoData,
+                estado: newEstado
             });
 
             if (!pedidoToUpdate) {
@@ -132,27 +139,29 @@ export class PedidosService {
 
             await queryRunner.manager.save(Pedidos, pedidoToUpdate);
 
-            // 5. Insert New Details and Apply Stock
+            // 5. Insert New Details and Apply Stock IF now Recibido
             for (const detalleDto of (detalles || [])) {
                 // Create detalle
                 const detalle = queryRunner.manager.create(PedidosDetalle, {
                     ...detalleDto,
-                    cantidad_restante: detalleDto.cantidad, // Initialize remaining stock
+                    cantidad_restante: isNowReceived ? detalleDto.cantidad : 0,
                     idpedidos: id
                 });
                 await queryRunner.manager.save(PedidosDetalle, detalle);
 
-                // Update Inventario
-                const inventario = await queryRunner.manager.findOne(Inventario, {
-                    where: { id: detalleDto.idinventario }
-                });
+                // Update Inventario only if new state is Recibido
+                if (isNowReceived) {
+                    const inventario = await queryRunner.manager.findOne(Inventario, {
+                        where: { id: detalleDto.idinventario }
+                    });
 
-                if (!inventario) {
-                    throw new NotFoundException(`Inventario with ID ${detalleDto.idinventario} not found`);
+                    if (!inventario) {
+                        throw new NotFoundException(`Inventario with ID ${detalleDto.idinventario} not found`);
+                    }
+
+                    inventario.cantidad_existente += detalleDto.cantidad;
+                    await queryRunner.manager.save(Inventario, inventario);
                 }
-
-                inventario.cantidad_existente += detalleDto.cantidad;
-                await queryRunner.manager.save(Inventario, inventario);
             }
 
             await queryRunner.commitTransaction();
@@ -182,20 +191,25 @@ export class PedidosService {
                 throw new NotFoundException(`Pedido with ID ${id} not found`);
             }
 
-            for (const oldDetalle of existingPedido.detalles) {
-                const inventario = await queryRunner.manager.findOne(Inventario, {
-                    where: { id: oldDetalle.idinventario }
-                });
-                if (inventario) {
-                    inventario.cantidad_existente -= oldDetalle.cantidad;
-                    await queryRunner.manager.save(Inventario, inventario);
+            const wasReceived = (existingPedido.estado || '').toLowerCase() === 'recibido';
+
+            // Only revert stock if the pedido was in Recibido state
+            if (wasReceived) {
+                for (const oldDetalle of existingPedido.detalles) {
+                    const inventario = await queryRunner.manager.findOne(Inventario, {
+                        where: { id: oldDetalle.idinventario }
+                    });
+                    if (inventario) {
+                        inventario.cantidad_existente -= oldDetalle.cantidad;
+                        await queryRunner.manager.save(Inventario, inventario);
+                    }
                 }
             }
 
             await queryRunner.manager.remove(Pedidos, existingPedido);
 
             await queryRunner.commitTransaction();
-            return { message: `Pedido #${id} deleted and stock reverted` };
+            return { message: `Pedido #${id} deleted and stock handled` };
 
         } catch (err) {
             await queryRunner.rollbackTransaction();
@@ -208,11 +222,13 @@ export class PedidosService {
     async findExpirationDates(inventarioId: number) {
         const result = await this.dataSource
             .createQueryBuilder(PedidosDetalle, 'detalle')
+            .innerJoin('detalle.pedido', 'pedido')
             .select('detalle.fecha_vencimiento', 'fecha')
             .addSelect('SUM(detalle.cantidad_restante)', 'stock')
             .where('detalle.idinventario = :inventarioId', { inventarioId })
             .andWhere('detalle.fecha_vencimiento IS NOT NULL')
             .andWhere('detalle.cantidad_restante > 0') // Only show batches with stock
+            .andWhere("LOWER(pedido.estado) = 'recibido'")
             .groupBy('detalle.fecha_vencimiento')
             .orderBy('detalle.fecha_vencimiento', 'ASC')
             .getRawMany();

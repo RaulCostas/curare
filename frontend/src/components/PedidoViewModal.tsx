@@ -212,7 +212,8 @@ const PedidoViewModal: React.FC<Props> = ({ isOpen, onClose, pedidoId }) => {
                         <div class="info-item"><span class="label">Fecha:</span> ${formatDate(pedido.fecha)}</div>
                     </div>
                     <div>
-                        <div class="info-item"><span class="label">Pagado:</span> ${pedido.Pagado ? 'SI' : 'NO'}</div>
+                        <div class="info-item"><span class="label">Estado Pedido:</span> ${(pedido.estado || 'Pendiente').toUpperCase()}</div>
+                        <div class="info-item"><span class="label">Estado Pago:</span> ${pedido.Pagado ? 'PAGADO' : 'PENDIENTE'}</div>
                     </div>
                 </div>
                 
@@ -315,7 +316,7 @@ const PedidoViewModal: React.FC<Props> = ({ isOpen, onClose, pedidoId }) => {
                                     pedido && (
                                         <div className="space-y-6">
                                             {/* Pedido Info */}
-                                            <div className="bg-blue-50 dark:bg-gray-700 p-4 rounded-xl border border-blue-100 dark:border-gray-600 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-blue-900 dark:text-gray-200 shadow-sm">
+                                            <div className="bg-blue-50 dark:bg-gray-700 p-4 rounded-xl border border-blue-100 dark:border-gray-600 grid grid-cols-2 md:grid-cols-5 gap-4 text-sm text-blue-900 dark:text-gray-200 shadow-sm">
                                                 <div>
                                                     <span className="font-bold block text-xs uppercase text-blue-500 dark:text-gray-400">Proveedor</span>
                                                     <span className="font-semibold text-base">{pedido.proveedor?.proveedor}</span>
@@ -329,8 +330,20 @@ const PedidoViewModal: React.FC<Props> = ({ isOpen, onClose, pedidoId }) => {
                                                     <span className="font-bold text-base text-blue-600 dark:text-blue-400">Bs {formatNumberBs(pedido.Total)}</span>
                                                 </div>
                                                 <div>
-                                                    <span className="font-bold block text-xs uppercase text-blue-500 dark:text-gray-400">Estado</span>
-                                                    <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-bold ${pedido.Pagado ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300'}`}>
+                                                    <span className="font-bold block text-xs uppercase text-blue-500 dark:text-gray-400">Estado Pedido</span>
+                                                    <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                                                        (pedido.estado || '').toLowerCase() === 'recibido'
+                                                            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
+                                                            : (pedido.estado || '').toLowerCase() === 'cancelado'
+                                                            ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
+                                                            : 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300'
+                                                    }`}>
+                                                        {(pedido.estado || 'Pendiente').toUpperCase()}
+                                                    </span>
+                                                </div>
+                                                <div>
+                                                    <span className="font-bold block text-xs uppercase text-blue-500 dark:text-gray-400">Estado Pago</span>
+                                                    <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-bold ${pedido.Pagado ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-300' : 'bg-slate-200 text-slate-700 dark:bg-slate-600 dark:text-slate-200'}`}>
                                                         {pedido.Pagado ? 'PAGADO' : 'PENDIENTE'}
                                                     </span>
                                                 </div>

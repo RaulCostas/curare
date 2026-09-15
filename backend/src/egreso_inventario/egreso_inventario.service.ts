@@ -208,6 +208,7 @@ export class EgresoInventarioService {
             egreso.cantidad = updateEgresoDto.cantidad;
             egreso.consultorio = updateEgresoDto.consultorio;
             egreso.fecha_vencimiento = updateEgresoDto.fecha_vencimiento;
+            egreso.observaciones = updateEgresoDto.observaciones;
 
             await queryRunner.manager.save(Inventario, inventario);
             await queryRunner.manager.save(EgresoInventario, egreso);

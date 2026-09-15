@@ -33,9 +33,35 @@ export class AuthService {
                 email: user.email,
                 permisos: user.permisos,
                 recepcionista: user.recepcionista,
-                foto: user.foto
+                foto: user.foto,
+                doctorId: user.doctorId,
+                doctor: user.doctor
             },
         };
+    }
+
+    async verifyPassword(emailOrId: string | number, pass: string): Promise<{ valid: boolean }> {
+        let user: any = null;
+        if (typeof emailOrId === 'number' || (!isNaN(Number(emailOrId)) && typeof emailOrId !== 'string')) {
+            user = await this.usersService.findOne(Number(emailOrId));
+        } else if (typeof emailOrId === 'string' && emailOrId.includes('@')) {
+            user = await this.usersService.findOneByEmail(emailOrId);
+        } else if (!isNaN(Number(emailOrId))) {
+            user = await this.usersService.findOne(Number(emailOrId));
+        } else {
+            user = await this.usersService.findOneByEmail(String(emailOrId));
+        }
+
+        if (!user) {
+            throw new UnauthorizedException('Usuario no encontrado');
+        }
+
+        const isMatch = await bcrypt.compare(pass, user.password);
+        if (!isMatch) {
+            throw new UnauthorizedException('Contraseña incorrecta');
+        }
+
+        return { valid: true };
     }
 
     async forgotPassword(email: string): Promise<{ message: string }> {

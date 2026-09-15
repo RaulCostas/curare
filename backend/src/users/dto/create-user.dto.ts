@@ -6,5 +6,6 @@ export class CreateUserDto {
     foto?: string;
     recepcionista?: boolean;
     codigo_proforma?: number;
+    doctorId?: number;
     permisos?: string[];
 }

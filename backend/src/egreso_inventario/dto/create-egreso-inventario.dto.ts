@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsNumber, IsString } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsString, IsOptional } from 'class-validator';
 
 export class CreateEgresoInventarioDto {
     @IsNotEmpty()
@@ -20,4 +20,8 @@ export class CreateEgresoInventarioDto {
     @IsNotEmpty()
     @IsString()
     fecha_vencimiento: string;
+
+    @IsOptional()
+    @IsString()
+    observaciones?: string;
 }

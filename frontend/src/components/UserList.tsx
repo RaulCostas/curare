@@ -177,6 +177,7 @@ const UserList: React.FC = () => {
                 'ID': user.id,
                 'Nombre': user.name,
                 'Email': user.email,
+                'Doctor Vinculado': user.doctor ? `Dr(a). ${user.doctor.nombre} ${user.doctor.paterno}` : '',
                 'Estado': user.estado,
                 'Recepcionista': user.recepcionista ? 'Si' : 'No',
                 'Código Proforma': user.codigo_proforma || ''
@@ -206,6 +207,7 @@ const UserList: React.FC = () => {
             const tableData = users.map(user => [
                 user.id,
                 user.name,
+                user.doctor ? `Dr(a). ${user.doctor.nombre} ${user.doctor.paterno}` : 'General',
                 user.email,
                 user.estado,
                 user.recepcionista ? 'Sí' : 'No',
@@ -213,7 +215,7 @@ const UserList: React.FC = () => {
             ]);
 
             autoTable(doc, {
-                head: [['ID', 'Nombre', 'Email', 'Estado', 'Recep.', 'Cod. Prof.']],
+                head: [['ID', 'Nombre', 'Doctor', 'Email', 'Estado', 'Recep.', 'Cod. Prof.']],
                 body: tableData,
                 startY: 35,
             });
@@ -363,7 +365,14 @@ const UserList: React.FC = () => {
                                         </div>
                                     )}
                                 </td>
-                                <td className="p-3 text-gray-700 dark:text-gray-300">{user.name}</td>
+                                <td className="p-3 text-gray-700 dark:text-gray-300">
+                                    <div className="font-semibold">{user.name}</div>
+                                    {user.doctor && (
+                                        <span className="inline-flex items-center gap-1 text-xs text-indigo-600 dark:text-indigo-400 font-medium bg-indigo-50 dark:bg-indigo-900/30 px-2 py-0.5 rounded-md mt-0.5">
+                                            🩺 Dr(a). {user.doctor.nombre} {user.doctor.paterno}
+                                        </span>
+                                    )}
+                                </td>
                                 <td className="p-3 text-gray-700 dark:text-gray-300">{user.email}</td>
                                 <td className="p-3 text-gray-700 dark:text-gray-300">
                                     <span

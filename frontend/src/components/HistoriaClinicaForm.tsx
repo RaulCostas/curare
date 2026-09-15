@@ -48,7 +48,7 @@ const HistoriaClinicaForm: React.FC<HistoriaClinicaFormProps> = ({
         control: false,
         pagado: 'NO',
         precio: 0,
-        hoja: 0
+        hoja: '' as unknown as number
     });
 
     const [historiaClinica, setHistoriaClinica] = useState<HistoriaClinica[]>([]);
@@ -158,7 +158,7 @@ const HistoriaClinicaForm: React.FC<HistoriaClinicaFormProps> = ({
                 control: historiaToEdit.control || false,
                 pagado: historiaToEdit.pagado,
                 precio: initialPrice,
-                hoja: historiaToEdit.hoja || 0
+                hoja: (historiaToEdit.hoja && historiaToEdit.hoja > 0) ? historiaToEdit.hoja : ('' as unknown as number)
             });
         } else {
             resetForm();
@@ -218,9 +218,11 @@ const HistoriaClinicaForm: React.FC<HistoriaClinicaFormProps> = ({
 
     const fetchEspecialidades = async () => {
         try {
-            const response = await api.get('/especialidad?limit=100');
-            const activeEspecialidades = (response.data.data || []).filter((esp: any) => esp.estado === 'activo');
-            setEspecialidades(activeEspecialidades);
+            const response = await api.get('/especialidades');
+            const sorted = (response.data || []).sort((a: any, b: any) =>
+                (a.especialidad || '').localeCompare(b.especialidad || '', 'es', { sensitivity: 'base' })
+            );
+            setEspecialidades(sorted);
         } catch (error) {
             console.error('Error fetching especialidades:', error);
         }
@@ -228,8 +230,11 @@ const HistoriaClinicaForm: React.FC<HistoriaClinicaFormProps> = ({
 
     const fetchTreatments = async () => {
         try {
-            const response = await api.get('/arancel?limit=1000');
-            setAllTreatments(response.data.data || []);
+            const response = await api.get('/arancel?limit=2000');
+            const list = Array.isArray(response.data?.data) ? response.data.data : (Array.isArray(response.data) ? response.data : []);
+            const active = list.filter((a: any) => !a.estado || a.estado.toLowerCase() === 'activo');
+            active.sort((a: any, b: any) => (a.detalle || '').localeCompare(b.detalle || '', 'es', { sensitivity: 'base' }));
+            setAllTreatments(active);
         } catch (error) {
             console.error('Error fetching treatments:', error);
         }
@@ -279,24 +284,23 @@ const HistoriaClinicaForm: React.FC<HistoriaClinicaFormProps> = ({
                 }
             }
         } else if (name === 'cantidad') {
-            const newQuantity = Number(value);
+            const newQuantity = Math.max(1, Number(value));
             let newPrice = formData.precio;
 
-            if (formData.proformaId && currentProformaDetails.length > 0) {
-                const detail = currentProformaDetails.find(d =>
-                    (formData.proformaDetalleId && d.id === formData.proformaDetalleId) ||
-                    (d.arancel?.detalle === formData.tratamiento)
-                );
-
+            if (formData.proformaDetalleId) {
+                // Find original unit price from proforma details
+                const currentProforma = proformas.find(p => p.id === formData.proformaId);
+                const detail = currentProforma?.detalles?.find(d => d.id === formData.proformaDetalleId);
                 if (detail) {
                     const unitPrice = Number(detail.precioUnitario) || 0;
                     const desc = Number(detail.descuento) || 0;
                     const subTotal = unitPrice * newQuantity;
-                    const calcPrice = desc > 0 ? subTotal * (1 - desc / 100) : subTotal;
-                    newPrice = Math.round(calcPrice * 100) / 100;
+                    newPrice = desc > 0 ? subTotal * (1 - desc / 100) : subTotal;
+                    newPrice = Math.round(newPrice * 100) / 100;
                 }
-            } else if (allTreatments.length > 0) {
-                const arancel = allTreatments.find(a => a.detalle === formData.tratamiento);
+            } else if (formData.tratamiento) {
+                // Direct treatment selection (Arancel)
+                const arancel = allTreatments.find(a => (a.detalle || '').toUpperCase() === formData.tratamiento.toUpperCase());
                 if (arancel) {
                     newPrice = Number(arancel.precio1) * newQuantity;
                 }
@@ -322,10 +326,15 @@ const HistoriaClinicaForm: React.FC<HistoriaClinicaFormProps> = ({
                 control: checked,
                 ...(checked ? { estadoTratamiento: 'no terminado' } : {})
             }));
+        } else if (name === 'hoja') {
+            setFormData(prev => ({
+                ...prev,
+                hoja: value === '' ? ('' as unknown as number) : Math.max(1, parseInt(value, 10) || 1)
+            }));
         } else {
             setFormData(prev => ({
                 ...prev,
-                [name]: type === 'checkbox' ? checked : (name.includes('Id') && name !== 'proformaId' ? Number(value) : (name === 'cantidad' || name === 'precio' ? Number(value) : value))
+                [name]: type === 'checkbox' ? checked : (name.includes('Id') && name !== 'proformaId' ? Number(value) : (name === 'precio' ? Number(value) : value))
             }));
         }
     };
@@ -349,17 +358,29 @@ const HistoriaClinicaForm: React.FC<HistoriaClinicaFormProps> = ({
             control: false,
             pagado: 'NO',
             precio: 0,
-            hoja: 0
+            hoja: '' as unknown as number
         });
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
-        // ... (same as before)
         e.preventDefault();
         try {
+            const numHoja = parseInt(String(formData.hoja), 10);
+            if (!numHoja || isNaN(numHoja) || numHoja <= 0) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Campo Obligatorio',
+                    text: 'El campo # de Hoja es obligatorio y debe ser mayor a 0',
+                    background: document.documentElement.classList.contains('dark') ? '#1f2937' : '#fff',
+                    color: document.documentElement.classList.contains('dark') ? '#f3f4f6' : '#000',
+                });
+                return;
+            }
+
             const parsedPrecio = parseFloat(String(formData.precio).replace(',', '.'));
             const payload = {
                 ...formData,
+                hoja: numHoja,
                 precio: isNaN(parsedPrecio) ? 0 : parsedPrecio,
                 pacienteId,
                 especialidadId: formData.especialidadId || null,
@@ -682,9 +703,9 @@ const HistoriaClinicaForm: React.FC<HistoriaClinicaFormProps> = ({
                             <input
                                 type="number"
                                 name="hoja"
-                                value={formData.hoja}
+                                value={formData.hoja === 0 ? '' : formData.hoja}
                                 onChange={handleChange}
-                                min="0"
+                                min="1"
                                 placeholder="Ej. 15"
                                 className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 font-medium outline-none transition-all shadow-sm"
                                 required

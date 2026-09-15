@@ -432,36 +432,6 @@ const Home: React.FC = () => {
                 </div>
             )}
 
-            {/* Low Stock Alert Section */}
-            {hasAccess('dashboard_stock_minimo') && lowStockItems.length > 0 && (
-                <div className="mb-8 bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 p-6 rounded-r-lg shadow-sm">
-                    <h2 className="text-xl font-bold text-red-700 dark:text-red-400 mb-4 flex items-center gap-2">
-                        <span>⚠️</span> Alerta de Stock Bajo
-                    </h2>
-                    <div className="space-y-3">
-                        {lowStockItems.map(item => (
-                            <div
-                                key={item.id}
-                                className="flex justify-between items-center bg-white dark:bg-gray-700 p-4 rounded-lg shadow-sm border border-gray-100 dark:border-gray-600"
-                            >
-                                <div>
-                                    <h3 className="font-semibold text-gray-800 dark:text-white mb-1">{item.descripcion}</h3>
-                                    <p className="text-sm text-gray-500 dark:text-gray-300">
-                                        Cantidad: <span className="font-bold text-red-500 dark:text-red-400">{item.cantidad_existente}</span> | Mínimo Requerido: {item.stock_minimo}
-                                    </p>
-                                    <p className="text-xs text-gray-400 dark:text-gray-400 mt-1">
-                                        Especialidad: {item.especialidad?.especialidad} | Grupo: {item.grupoInventario?.grupo}
-                                    </p>
-                                </div>
-                                <div className="text-2xl text-red-500 dark:text-red-400">
-                                    📉
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
-
             {/* Expenses Due Today Section */}
             {hasAccess('dashboard_gastos_vencidos') && dueGastos.length > 0 && (
                 <div className="mb-8 bg-pink-50 dark:bg-pink-900/20 border-l-4 border-pink-500 p-6 rounded-r-lg shadow-sm">
@@ -597,7 +567,6 @@ const Home: React.FC = () => {
                 </div>
             )}
 
-
             {/* Alertas Trabajos Laboratorio (Terminado Sin Cita) */}
             {hasAccess('dashboard_trabajos_pendientes') && labAlerts.length > 0 && (
                 <div className="mb-8 bg-gray-100 dark:bg-gray-700/50 border-l-4 border-gray-500 p-6 rounded-r-lg shadow-sm">
@@ -624,6 +593,36 @@ const Home: React.FC = () => {
                                 </div>
                                 <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                                     Terminado el: {formatDate(work.fecha_terminado)}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Low Stock Alert Section */}
+            {hasAccess('dashboard_stock_minimo') && lowStockItems.length > 0 && (
+                <div className="mb-8 bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 p-6 rounded-r-lg shadow-sm">
+                    <h2 className="text-xl font-bold text-red-700 dark:text-red-400 mb-4 flex items-center gap-2">
+                        <span>⚠️</span> Alerta de Stock Bajo
+                    </h2>
+                    <div className="space-y-3">
+                        {lowStockItems.map(item => (
+                            <div
+                                key={item.id}
+                                className="flex justify-between items-center bg-white dark:bg-gray-700 p-4 rounded-lg shadow-sm border border-gray-100 dark:border-gray-600"
+                            >
+                                <div>
+                                    <h3 className="font-semibold text-gray-800 dark:text-white mb-1">{item.descripcion}</h3>
+                                    <p className="text-sm text-gray-500 dark:text-gray-300">
+                                        Cantidad: <span className="font-bold text-red-500 dark:text-red-400">{item.cantidad_existente}</span> | Mínimo Requerido: {item.stock_minimo}
+                                    </p>
+                                    <p className="text-xs text-gray-400 dark:text-gray-400 mt-1">
+                                        Especialidad: {item.especialidad?.especialidad} | Grupo: {item.grupoInventario?.grupo}
+                                    </p>
+                                </div>
+                                <div className="text-2xl text-red-500 dark:text-red-400">
+                                    📉
                                 </div>
                             </div>
                         ))}

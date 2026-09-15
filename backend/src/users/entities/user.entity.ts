@@ -1,4 +1,5 @@
-import { Entity, Column, PrimaryGeneratedColumn, OneToMany } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, OneToMany, ManyToOne, JoinColumn } from 'typeorm';
+import { Doctor } from '../../doctors/entities/doctor.entity';
 
 @Entity()
 export class User {
@@ -28,6 +29,13 @@ export class User {
 
     @Column({ nullable: true, type: 'int' })
     codigo_proforma: number;
+
+    @Column({ nullable: true })
+    doctorId: number;
+
+    @ManyToOne(() => Doctor, { nullable: true })
+    @JoinColumn({ name: 'doctorId' })
+    doctor: Doctor;
 
     @OneToMany('Propuesta', (propuesta: any) => propuesta.usuario)
     propuestas: any[];

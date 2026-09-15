@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import api from '../services/api';
 import type { Inventario } from '../types';
+import SearchableSelect, { type Option } from './SearchableSelect';
 import Swal from 'sweetalert2';
 import { getLocalDateString } from '../utils/dateUtils';
 
@@ -57,6 +58,18 @@ const MaterialUtilizadoModal: React.FC<MaterialUtilizadoModalProps> = ({
             console.error('Error fetching inventarios:', error);
         }
     };
+
+    // Ordenar opciones de material alfabéticamente (ABC) y mostrar únicamente el nombre del ítem
+    const materialOptions: Option[] = useMemo(() => {
+        return inventarios
+            .filter(inv => !inv.estado || inv.estado.toLowerCase() === 'activo')
+            .sort((a, b) => (a.descripcion || '').localeCompare(b.descripcion || '', 'es', { sensitivity: 'base' }))
+            .map(inv => ({
+                id: inv.id,
+                label: inv.descripcion,
+                searchString: inv.descripcion
+            }));
+    }, [inventarios]);
 
     const resetForm = () => {
         setDetalles([]);
@@ -258,25 +271,14 @@ const MaterialUtilizadoModal: React.FC<MaterialUtilizadoModalProps> = ({
                                 <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1.5">
                                     Material
                                 </label>
-                                <div className="relative">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
-                                    </svg>
-                                    <select
-                                        value={currentItem.inventarioId}
-                                        onChange={(e) => setCurrentItem({ ...currentItem, inventarioId: Number(e.target.value) })}
-                                        className="w-full pl-10 px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 font-medium cursor-pointer text-sm outline-none transition-all"
-                                    >
-                                        <option value={0}>-- Seleccione Material --</option>
-                                        {inventarios
-                                            .filter(inv => !inv.estado || inv.estado.toLowerCase() === 'activo')
-                                            .map(inv => (
-                                                <option key={inv.id} value={inv.id}>
-                                                    {inv.descripcion} {inv.grupoInventario?.grupo ? `(${inv.grupoInventario.grupo})` : ''}
-                                                </option>
-                                            ))}
-                                    </select>
-                                </div>
+                                <SearchableSelect
+                                    options={materialOptions}
+                                    value={currentItem.inventarioId}
+                                    onChange={(val) => setCurrentItem({ ...currentItem, inventarioId: Number(val) })}
+                                    placeholder="-- Seleccione o busque un Material --"
+                                    searchPlaceholder="Buscar material por nombre o grupo..."
+                                    className="text-sm"
+                                />
                             </div>
                             <div>
                                 <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1.5">

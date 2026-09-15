@@ -46,17 +46,20 @@ export interface User {
     recepcionista: boolean;
     codigo_proforma?: number;
     permisos?: string[]; // Array of denied module IDs
+    doctorId?: number | null;
+    doctor?: Doctor | null;
 }
 
 export interface CreateUserDto {
     name: string;
     email: string;
-    password: string;
+    password?: string;
     estado: string;
     foto?: string;
     recepcionista?: boolean;
     codigo_proforma?: number;
     permisos?: string[];
+    doctorId?: number | null;
 }
 
 
@@ -81,6 +84,7 @@ export interface EgresoInventario {
     cantidad: number;
     consultorio: string;
     fecha_vencimiento: string;
+    observaciones?: string;
 }
 
 export interface Doctor {
@@ -700,6 +704,7 @@ export interface Pedidos {
     Total: number;
     Observaciones: string;
     Pagado: boolean;
+    estado?: string;
     proveedor?: Proveedor;
     detalles?: PedidosDetalle[];
     pago?: PagosPedidos;

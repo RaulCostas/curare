@@ -25,6 +25,9 @@ export class EgresoInventario {
     @Column()
     fecha_vencimiento: string;
 
+    @Column({ type: 'text', nullable: true })
+    observaciones?: string;
+
     @CreateDateColumn({ name: 'created_at' })
     createdAt: Date;
 

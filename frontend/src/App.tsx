@@ -44,6 +44,7 @@ import { CorreosProvider } from './context/CorreosContext';
 import DeudasLaboratorios from './components/DeudasLaboratorios';
 import DeudasPedidos from './components/DeudasPedidos';
 import PagosDoctoresList from './components/PagosDoctoresList';
+import TrabajosRealizadosList from './components/TrabajosRealizadosList';
 
 import ProtectedRoute from './components/ProtectedRoute';
 import HojaDiaria from './components/HojaDiaria';
@@ -138,6 +139,7 @@ function App() {
                                 <Route element={<ProtectedRoute moduleId="doctores" />}>
                                     <Route path="/doctors" element={<DoctorList />} />
                                     <Route path="/pagos-doctores" element={<PagosDoctoresList />} />
+                                    <Route path="/trabajos-realizados" element={<TrabajosRealizadosList />} />
                                 </Route>
                                 <Route element={<ProtectedRoute moduleId="config-especialidad" />}>
                                     <Route path="/especialidad" element={<EspecialidadList />} />

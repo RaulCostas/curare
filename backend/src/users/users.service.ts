@@ -38,13 +38,17 @@ export class UsersService {
   }
 
   async findAll(): Promise<User[]> {
-    const queryBuilder = this.usersRepository.createQueryBuilder('user');
+    const queryBuilder = this.usersRepository.createQueryBuilder('user')
+      .leftJoinAndSelect('user.doctor', 'doctor');
     queryBuilder.orderBy('user.name', 'ASC');
     return queryBuilder.getMany();
   }
 
   async findOne(id: number): Promise<User> {
-    const user = await this.usersRepository.findOneBy({ id });
+    const user = await this.usersRepository.findOne({
+      where: { id },
+      relations: ['doctor']
+    });
     if (!user) {
       throw new NotFoundException(`User with ID ${id} not found`);
     }
@@ -52,7 +56,10 @@ export class UsersService {
   }
 
   async findOneByEmail(email: string): Promise<User | null> {
-    return this.usersRepository.findOneBy({ email });
+    return this.usersRepository.findOne({
+      where: { email },
+      relations: ['doctor']
+    });
   }
 
   async update(id: number, updateUserDto: UpdateUserDto): Promise<User> {
@@ -71,6 +78,18 @@ export class UsersService {
       const salt = await bcrypt.genSalt();
       updateUserDto.password = await bcrypt.hash(updateUserDto.password, salt);
     }
+
+    if ('doctorId' in updateUserDto) {
+      if (updateUserDto.doctorId && Number(updateUserDto.doctorId) > 0) {
+        user.doctorId = Number(updateUserDto.doctorId);
+        user.doctor = null as any;
+      } else {
+        user.doctorId = null as any;
+        user.doctor = null as any;
+      }
+      delete updateUserDto.doctorId;
+    }
+
     Object.assign(user, updateUserDto);
     return this.usersRepository.save(user);
   }

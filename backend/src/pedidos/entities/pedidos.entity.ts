@@ -33,6 +33,9 @@ export class Pedidos {
     @Column({ default: false })
     Pagado: boolean;
 
+    @Column({ default: 'Pendiente', length: 50 })
+    estado: string;
+
     @OneToMany(() => PedidosDetalle, (detalle) => detalle.pedido, { cascade: true })
     detalles: PedidosDetalle[];
 

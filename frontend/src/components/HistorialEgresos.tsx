@@ -84,6 +84,7 @@ const HistorialEgresos: React.FC<HistorialEgresosProps> = ({ inventario, onClose
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Cantidad</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Consultorio</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Vencimiento</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Observaciones</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Acciones</th>
                             </tr>
                         </thead>
@@ -92,9 +93,12 @@ const HistorialEgresos: React.FC<HistorialEgresosProps> = ({ inventario, onClose
                                 egresos.map((egreso) => (
                                     <tr key={egreso.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">{formatDate(egreso.fecha)}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">{egreso.cantidad}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{egreso.consultorio}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-blue-600 dark:text-blue-400">{egreso.cantidad}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">{egreso.consultorio}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{formatDate(egreso.fecha_vencimiento)}</td>
+                                        <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-300 max-w-xs truncate" title={egreso.observaciones || ''}>
+                                            {egreso.observaciones || '-'}
+                                        </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                             <div className="flex items-center gap-2">
                                                 <button
@@ -131,7 +135,7 @@ const HistorialEgresos: React.FC<HistorialEgresosProps> = ({ inventario, onClose
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan={5} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">No hay egresos en este rango de fechas.</td>
+                                    <td colSpan={6} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">No hay egresos en este rango de fechas.</td>
                                 </tr>
                             )}
                         </tbody>

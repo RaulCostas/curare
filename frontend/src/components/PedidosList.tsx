@@ -26,6 +26,7 @@ const PedidosList: React.FC = () => {
 
     // Pagination & Search State
     const [searchTerm, setSearchTerm] = useState('');
+    const [estadoFilter, setEstadoFilter] = useState<string>('todos');
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 10;
 
@@ -39,20 +40,20 @@ const PedidosList: React.FC = () => {
 
     const manualSections: ManualSection[] = [
         {
-            title: 'Pedidos de Inventario',
-            content: 'Gestión de pedidos de suministros e insumos a proveedores.'
+            title: 'Pedidos e Inventario',
+            content: 'Gestión de compras e insumos. Separa la orden de compra del ingreso físico a almacén.'
         },
         {
-            title: 'Nuevo Pedido',
-            content: 'Al crear un pedido, el sistema actualizará automáticamente el stock de los productos recibidos.'
+            title: 'Estados del Pedido',
+            content: '• Pendiente: Pedido solicitado al proveedor. No suma inventario.\n• Recibido: Productos recibidos y verificados. Suma stock real al inventario.\n• Cancelado: Orden cancelada sin efecto.'
         },
         {
-            title: 'Pagos',
-            content: 'Puede registrar pagos parciales o totales de un pedido usando el botón verde "Pagar" (billete).'
+            title: 'Pagos y Liquidación',
+            content: 'El campo "Estado Pago" (PAGADO / PENDIENTE) indica la liquidación financiera con el proveedor.'
         },
         {
             title: 'Eliminación',
-            content: 'Si elimina un pedido, el sistema revertirá (restará) el stock agregado por ese pedido.'
+            content: 'Si elimina un pedido ya recibido, el sistema revertirá el stock correspondiente.'
         }
     ];
 
@@ -82,7 +83,7 @@ const PedidosList: React.FC = () => {
     const handleDelete = async (id: number) => {
         const result = await Swal.fire({
             title: '¿Eliminar pedido?',
-            text: "Esta acción eliminará el pedido y revertirá el stock. ¿Está seguro?",
+            text: "Esta acción eliminará el pedido y revertirá el stock si fue recibido. ¿Está seguro?",
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#d33',
@@ -115,15 +116,16 @@ const PedidosList: React.FC = () => {
 
     const exportToExcel = () => {
         try {
-            const excelData = pedidos.map(p => ({
+            const excelData = filteredPedidos.map(p => ({
                 'ID': p.id,
                 'Fecha': formatDate(p.fecha),
                 'Proveedor': p.proveedor?.proveedor || '',
                 'Sub Total': p.Sub_Total,
                 'Descuento': p.Descuento,
                 'Total': p.Total,
-                'Observaciones': p.Observaciones,
-                'Pagado': p.Pagado ? 'SI' : 'NO'
+                'Estado Pedido': (p.estado || 'Pendiente').toUpperCase(),
+                'Estado Pago': p.Pagado ? 'PAGADO' : 'PENDIENTE',
+                'Observaciones': p.Observaciones || ''
             }));
             const ws = XLSX.utils.json_to_sheet(excelData);
             const wb = XLSX.utils.book_new();
@@ -214,17 +216,18 @@ const PedidosList: React.FC = () => {
                 `Bs ${formatNumberBs(p.Sub_Total)}`,
                 `Bs ${formatNumberBs(p.Descuento)}`,
                 `Bs ${formatNumberBs(p.Total)}`,
+                (p.estado || 'Pendiente').toUpperCase(),
                 p.Pagado ? 'SI' : 'NO'
             ]);
 
             autoTable(doc, {
-                head: [['#', 'Fecha', 'Proveedor', 'Sub Total', 'Descuento', 'Total', 'Pagado']],
+                head: [['#', 'Fecha', 'Proveedor', 'Sub Total', 'Descuento', 'Total', 'Estado Pedido', 'Pagado']],
                 body: tableRows,
                 startY: currentY,
                 theme: 'plain',
                 margin: { left: 15, right: 15 },
                 styles: {
-                    fontSize: 9,
+                    fontSize: 8.5,
                     cellPadding: 3,
                     lineColor: [221, 221, 221],
                     lineWidth: 0.1,
@@ -372,6 +375,7 @@ const PedidosList: React.FC = () => {
                             <th>Sub Total</th>
                             <th>Descuento</th>
                             <th>Total</th>
+                            <th>Estado Pedido</th>
                             <th>Pagado</th>
                         </tr>
                     </thead>
@@ -384,6 +388,7 @@ const PedidosList: React.FC = () => {
                                 <td>${formatNumberBs(p.Sub_Total)}</td>
                                 <td>${formatNumberBs(p.Descuento)}</td>
                                 <td>${formatNumberBs(p.Total)}</td>
+                                <td>${(p.estado || 'Pendiente').toUpperCase()}</td>
                                 <td>${p.Pagado ? 'SI' : 'NO'}</td>
                             </tr>
                         `).join('')}
@@ -433,10 +438,11 @@ const PedidosList: React.FC = () => {
     };
 
     // Filter & Pagination logic
-    const filteredPedidos = pedidos.filter(p =>
-        searchTerm === '' ||
-        p.proveedor?.proveedor.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredPedidos = pedidos.filter(p => {
+        const matchesSearch = searchTerm === '' || p.proveedor?.proveedor.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesEstado = estadoFilter === 'todos' || (p.estado || 'Pendiente').toLowerCase() === estadoFilter.toLowerCase();
+        return matchesSearch && matchesEstado;
+    });
 
     const indexOfLastItem = currentPage * itemsPerPage;
     const indexOfFirstItem = indexOfLastItem - itemsPerPage;
@@ -493,16 +499,16 @@ const PedidosList: React.FC = () => {
                 </div>
             </div>
 
-            {/* Search Bar & Action Links */}
+            {/* Search Bar & Filters */}
             <div className="mb-6 flex flex-wrap gap-4 items-center justify-between bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
-                <div className="flex items-center gap-2 flex-grow max-w-md">
+                <div className="flex items-center gap-3 flex-grow max-w-xl">
                     <div className="relative flex-grow">
                         <input
                             type="text"
                             placeholder="Buscar por proveedor..."
                             value={searchTerm}
                             onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
-                            className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                            className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm"
                         />
                         <svg
                             xmlns="http://www.w3.org/2000/svg"
@@ -519,10 +525,22 @@ const PedidosList: React.FC = () => {
                             />
                         </svg>
                     </div>
-                    {searchTerm && (
+
+                    <select
+                        value={estadoFilter}
+                        onChange={(e) => { setEstadoFilter(e.target.value); setCurrentPage(1); }}
+                        className="px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none font-medium cursor-pointer"
+                    >
+                        <option value="todos">Todos los Estados</option>
+                        <option value="pendiente">🟡 Pendientes</option>
+                        <option value="recibido">🟢 Recibidos</option>
+                        <option value="cancelado">🔴 Cancelados</option>
+                    </select>
+
+                    {(searchTerm || estadoFilter !== 'todos') && (
                         <button
                             type="button"
-                            onClick={() => { setSearchTerm(''); setCurrentPage(1); }}
+                            onClick={() => { setSearchTerm(''); setEstadoFilter('todos'); setCurrentPage(1); }}
                             className="px-3 py-2 bg-gray-500 hover:bg-gray-600 text-white font-bold rounded-lg shadow-sm transition-all text-xs flex items-center gap-1 shrink-0"
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
@@ -552,94 +570,109 @@ const PedidosList: React.FC = () => {
                 <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                     <thead className="bg-gray-50 dark:bg-gray-700">
                         <tr>
-                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">#</th>
-                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Fecha</th>
-                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Proveedor</th>
-                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Sub Total</th>
-                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Descuento</th>
-                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Total (Bs)</th>
-                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Estado</th>
-                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Acciones</th>
+                            <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">#</th>
+                            <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Fecha</th>
+                            <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Proveedor</th>
+                            <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Sub Total</th>
+                            <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Descuento</th>
+                            <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Total (Bs)</th>
+                            <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Estado Pedido</th>
+                            <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Estado Pago</th>
+                            <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Acciones</th>
                         </tr>
                     </thead>
                     <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                        {currentItems.map((pedido, index) => (
-                            <tr key={pedido.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                                <td className="p-3 text-gray-800 dark:text-gray-300 font-medium">{indexOfFirstItem + index + 1}</td>
-                                <td className="p-3 text-gray-800 dark:text-gray-300">{formatDate(pedido.fecha)}</td>
-                                <td className="p-3 text-gray-800 dark:text-gray-300 font-semibold">{pedido.proveedor?.proveedor || '-'}</td>
-                                <td className="p-3 text-gray-800 dark:text-gray-300">{formatNumberBs(pedido.Sub_Total)}</td>
-                                <td className="p-3 text-gray-800 dark:text-gray-300">{formatNumberBs(pedido.Descuento)}</td>
-                                <td className="p-3 text-gray-900 dark:text-white font-bold">{formatNumberBs(pedido.Total)}</td>
-                                <td className="p-3">
-                                    <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${pedido.Pagado ? 'bg-green-100 text-green-800 dark:bg-green-900/60 dark:text-green-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300'}`}>
-                                        {pedido.Pagado ? 'PAGADO' : 'PENDIENTE'}
-                                    </span>
-                                </td>
-                                <td className="p-3 flex gap-2">
-                                    <button
-                                        onClick={() => {
-                                            setSelectedPedidoId(pedido.id);
-                                            setIsViewModalOpen(true);
-                                        }}
-                                        className="p-2 bg-[#3498db] text-white rounded-lg hover:bg-blue-600 shadow-md transition-all transform hover:-translate-y-0.5 flex items-center justify-center"
-                                        title="Ver Detalles"
-                                    >
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                                            <circle cx="12" cy="12" r="3"></circle>
-                                        </svg>
-                                    </button>
-
-                                    <button
-                                        onClick={() => handlePagar(pedido.id)}
-                                        disabled={pedido.Pagado}
-                                        className={`p-2 text-white rounded-lg flex items-center justify-center ${pedido.Pagado ? 'bg-gray-500 opacity-50 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700 cursor-pointer shadow-md transition-all transform hover:-translate-y-0.5'}`}
-                                        title={pedido.Pagado ? "Pedido ya pagado" : "Pagar Pedido"}
-                                    >
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                            <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
-                                            <line x1="1" y1="10" x2="23" y2="10"></line>
-                                        </svg>
-                                    </button>
-
-                                    {pedido.Pagado ? (
-                                        <span
-                                            className="p-2 bg-gray-500 text-white rounded-lg opacity-50 cursor-not-allowed flex items-center justify-center"
-                                            title="No se puede editar un pedido pagado"
-                                        >
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 20 20" fill="currentColor">
-                                                <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-                                            </svg>
+                        {currentItems.map((pedido, index) => {
+                            const pedEstado = (pedido.estado || 'Pendiente').toLowerCase();
+                            return (
+                                <tr key={pedido.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                                    <td className="p-3 text-gray-800 dark:text-gray-300 font-medium">{indexOfFirstItem + index + 1}</td>
+                                    <td className="p-3 text-gray-800 dark:text-gray-300">{formatDate(pedido.fecha)}</td>
+                                    <td className="p-3 text-gray-800 dark:text-gray-300 font-semibold">{pedido.proveedor?.proveedor || '-'}</td>
+                                    <td className="p-3 text-gray-800 dark:text-gray-300">{formatNumberBs(pedido.Sub_Total)}</td>
+                                    <td className="p-3 text-gray-800 dark:text-gray-300">{formatNumberBs(pedido.Descuento)}</td>
+                                    <td className="p-3 text-gray-900 dark:text-white font-bold">{formatNumberBs(pedido.Total)}</td>
+                                    <td className="p-3">
+                                        <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
+                                            pedEstado === 'recibido'
+                                                ? 'bg-green-100 text-green-800 dark:bg-green-900/60 dark:text-green-300'
+                                                : pedEstado === 'cancelado'
+                                                ? 'bg-red-100 text-red-800 dark:bg-red-900/60 dark:text-red-300'
+                                                : 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300'
+                                        }`}>
+                                            {(pedido.estado || 'Pendiente').toUpperCase()}
                                         </span>
-                                    ) : (
+                                    </td>
+                                    <td className="p-3">
+                                        <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${pedido.Pagado ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300' : 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300'}`}>
+                                            {pedido.Pagado ? 'PAGADO' : 'PENDIENTE'}
+                                        </span>
+                                    </td>
+                                    <td className="p-3 flex gap-2">
                                         <button
                                             onClick={() => {
-                                                setSelectedFormPedidoId(pedido.id);
-                                                setIsFormOpen(true);
+                                                setSelectedPedidoId(pedido.id);
+                                                setIsViewModalOpen(true);
                                             }}
-                                            className="p-2 bg-[#ffc107] text-white rounded-lg hover:bg-yellow-600 shadow-md transition-all transform hover:-translate-y-0.5 flex items-center justify-center"
-                                            title="Editar"
+                                            className="p-2 bg-[#3498db] text-white rounded-lg hover:bg-blue-600 shadow-md transition-all transform hover:-translate-y-0.5 flex items-center justify-center"
+                                            title="Ver Detalles"
                                         >
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 20 20" fill="currentColor">
-                                                <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                                <circle cx="12" cy="12" r="3"></circle>
                                             </svg>
                                         </button>
-                                    )}
 
-                                    <button
-                                        onClick={() => handleDelete(pedido.id)}
-                                        disabled={pedido.Pagado}
-                                        className={`p-2 text-white rounded-lg flex items-center justify-center ${pedido.Pagado ? 'bg-gray-500 opacity-50 cursor-not-allowed' : 'bg-[#dc3545] hover:bg-red-700 cursor-pointer shadow-md transition-all transform hover:-translate-y-0.5'}`}
-                                        title={pedido.Pagado ? "No se puede eliminar un pedido pagado" : "Eliminar"}
-                                    >
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 20 20" fill="currentColor">
-                                            <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-                                        </svg>
-                                    </button>
-                                </td>
-                            </tr>
-                        ))}
+                                        <button
+                                            onClick={() => handlePagar(pedido.id)}
+                                            disabled={pedido.Pagado}
+                                            className={`p-2 text-white rounded-lg flex items-center justify-center ${pedido.Pagado ? 'bg-gray-500 opacity-50 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700 cursor-pointer shadow-md transition-all transform hover:-translate-y-0.5'}`}
+                                            title={pedido.Pagado ? "Pedido ya pagado" : "Pagar Pedido"}
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
+                                                <line x1="1" y1="10" x2="23" y2="10"></line>
+                                            </svg>
+                                        </button>
+
+                                        {pedido.Pagado ? (
+                                            <span
+                                                className="p-2 bg-gray-500 text-white rounded-lg opacity-50 cursor-not-allowed flex items-center justify-center"
+                                                title="No se puede editar un pedido pagado"
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                                                </svg>
+                                            </span>
+                                        ) : (
+                                            <button
+                                                onClick={() => {
+                                                    setSelectedFormPedidoId(pedido.id);
+                                                    setIsFormOpen(true);
+                                                }}
+                                                className="p-2 bg-[#ffc107] text-white rounded-lg hover:bg-yellow-600 shadow-md transition-all transform hover:-translate-y-0.5 flex items-center justify-center"
+                                                title="Editar Pedido"
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                                                </svg>
+                                            </button>
+                                        )}
+
+                                        <button
+                                            onClick={() => handleDelete(pedido.id)}
+                                            disabled={pedido.Pagado}
+                                            className={`p-2 text-white rounded-lg flex items-center justify-center ${pedido.Pagado ? 'bg-gray-500 opacity-50 cursor-not-allowed' : 'bg-[#dc3545] hover:bg-red-700 cursor-pointer shadow-md transition-all transform hover:-translate-y-0.5'}`}
+                                            title={pedido.Pagado ? "No se puede eliminar un pedido pagado" : "Eliminar"}
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 20 20" fill="currentColor">
+                                                <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                                            </svg>
+                                        </button>
+                                    </td>
+                                </tr>
+                            );
+                        })}
                     </tbody>
                 </table>
             </div>
