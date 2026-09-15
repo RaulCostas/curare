@@ -267,10 +267,13 @@ export class PacientesService {
                     hc."estadoPresupuesto",
                     hc."estadoTratamiento",
                     hc."doctorId",
-                    hc."especialidadId",
+                    COALESCE(a_dir."idEspecialidad", a_pd."idEspecialidad", hc."especialidadId") AS "especialidadId",
                     hc.tratamiento,
                     hc.fecha
                 FROM historia_clinica hc
+                LEFT JOIN arancel a_dir ON a_dir.id = hc."arancelId"
+                LEFT JOIN proforma_detalle pd ON pd.id = hc."proformaDetalleId"
+                LEFT JOIN arancel a_pd ON a_pd.id = pd."arancelId"
                 WHERE hc."proformaId" IS NOT NULL
                 ORDER BY hc."pacienteId", hc."proformaId", hc.fecha DESC, hc.id DESC
             ),

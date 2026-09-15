@@ -112,7 +112,7 @@ export class PacientesDeudoresService implements OnModuleInit {
                 SELECT 
                     hc."proformaId",
                     hc.fecha AS ultima_cita,
-                    hc."especialidadId",
+                    COALESCE(a_dir."idEspecialidad", a_pd."idEspecialidad", hc."especialidadId") AS "especialidadId",
                     hc.tratamiento,
                     hc."estadoPresupuesto",
                     ROW_NUMBER() OVER (
@@ -120,6 +120,9 @@ export class PacientesDeudoresService implements OnModuleInit {
                         ORDER BY hc.fecha DESC, hc.id DESC
                     ) AS rn
                 FROM historia_clinica hc
+                LEFT JOIN arancel a_dir ON a_dir.id = hc."arancelId"
+                LEFT JOIN proforma_detalle pd ON pd.id = hc."proformaDetalleId"
+                LEFT JOIN arancel a_pd ON a_pd.id = pd."arancelId"
                 INNER JOIN target_proformas tp ON tp.id = hc."proformaId"
             )
             SELECT 

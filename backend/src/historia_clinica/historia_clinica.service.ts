@@ -35,7 +35,7 @@ export class HistoriaClinicaService {
 
     async findAll(): Promise<HistoriaClinica[]> {
         return await this.historiaClinicaRepository.find({
-            relations: ['paciente', 'doctor', 'especialidad', 'proforma', 'proformaDetalle'],
+            relations: ['paciente', 'doctor', 'especialidad', 'proforma', 'proformaDetalle', 'arancel', 'arancel.especialidad', 'proformaDetalle.arancel', 'proformaDetalle.arancel.especialidad'],
             order: { fecha: 'DESC' }
         });
     }
@@ -43,7 +43,7 @@ export class HistoriaClinicaService {
     async findAllByPaciente(pacienteId: number): Promise<HistoriaClinica[]> {
         return await this.historiaClinicaRepository.find({
             where: { pacienteId },
-            relations: ['paciente', 'doctor', 'especialidad', 'proforma', 'proformaDetalle'],
+            relations: ['paciente', 'doctor', 'especialidad', 'proforma', 'proformaDetalle', 'arancel', 'arancel.especialidad', 'proformaDetalle.arancel', 'proformaDetalle.arancel.especialidad'],
             order: { fecha: 'DESC' }
         });
     }
@@ -55,7 +55,7 @@ export class HistoriaClinicaService {
                 pagado: 'NO',
                 estadoTratamiento: 'terminado'
             },
-            relations: ['paciente', 'doctor', 'especialidad', 'proforma', 'proformaDetalle', 'proformaDetalle.arancel'],
+            relations: ['paciente', 'doctor', 'especialidad', 'proforma', 'proformaDetalle', 'proformaDetalle.arancel', 'arancel', 'arancel.especialidad', 'proformaDetalle.arancel.especialidad'],
             order: { fecha: 'ASC' }
         });
 
@@ -301,7 +301,7 @@ export class HistoriaClinicaService {
     async findOne(id: number): Promise<HistoriaClinica> {
         const historia = await this.historiaClinicaRepository.findOne({
             where: { id },
-            relations: ['paciente', 'doctor', 'especialidad', 'proforma', 'proformaDetalle']
+            relations: ['paciente', 'doctor', 'especialidad', 'proforma', 'proformaDetalle', 'arancel', 'arancel.especialidad', 'proformaDetalle.arancel', 'proformaDetalle.arancel.especialidad']
         });
         if (!historia) {
             throw new NotFoundException(`Historia Clínica #${id} not found`);

@@ -101,6 +101,15 @@ const TrabajosRealizadosList: React.FC = () => {
             } else {
                 fetchPagados();
             }
+        } else {
+            setNoPagados([]);
+            setPagados([]);
+            setTotalPages(1);
+            setTotalRecords(0);
+            setSumTotalNoPagados(0);
+            setSumTotalNetoPagados(0);
+            setSumCostoLabPagados(0);
+            setSumSubTotalPagados(0);
         }
     }, [selectedDoctorId, activeTab, currentPage, searchTerm]);
 
@@ -129,11 +138,9 @@ const TrabajosRealizadosList: React.FC = () => {
                 }
             }
 
-            // Si no tiene doctor vinculado (Administrador), seleccionamos el primer doctor de la lista
-            if (active.length > 0 && !selectedDoctorId) {
-                setSelectedDoctorId(active[0].id);
-                setSelectedDoctor(active[0]);
-            }
+            // Si no tiene doctor vinculado (Administrador/Recepción), dejamos el selector vacío
+            setSelectedDoctorId(0);
+            setSelectedDoctor(null);
         } catch (error) {
             console.error('Error fetching doctors:', error);
         }
@@ -141,7 +148,7 @@ const TrabajosRealizadosList: React.FC = () => {
 
     const handleDoctorChange = (idVal: number | string) => {
         if (isDoctorLocked) return; // Bloqueado para doctores
-        const idNum = Number(idVal);
+        const idNum = Number(idVal) || 0;
         setSelectedDoctorId(idNum);
         const doc = doctors.find(d => d.id === idNum) || null;
         setSelectedDoctor(doc);
@@ -219,6 +226,7 @@ const TrabajosRealizadosList: React.FC = () => {
     };
 
     const exportToExcel = () => {
+        if (!selectedDoctorId) return;
         try {
             const docName = selectedDoctor ? `${selectedDoctor.paterno}_${selectedDoctor.nombre}` : 'Doctor';
             let excelData: any[] = [];
@@ -261,6 +269,7 @@ const TrabajosRealizadosList: React.FC = () => {
     };
 
     const exportToPDF = () => {
+        if (!selectedDoctorId) return;
         try {
             const doc = new jsPDF('landscape');
             const docName = selectedDoctor ? `Dr(a). ${selectedDoctor.paterno} ${selectedDoctor.nombre}` : '';
@@ -547,7 +556,9 @@ const TrabajosRealizadosList: React.FC = () => {
 
                     {noPagados.length === 0 && !loading && (
                         <p className="text-center mt-5 text-gray-500 dark:text-gray-400">
-                            {searchTerm ? 'No se encontraron resultados' : 'No hay trabajos pendientes de pago para el doctor seleccionado'}
+                            {searchTerm 
+                                ? 'No se encontraron resultados' 
+                                : (selectedDoctorId ? 'No hay trabajos pendientes de pago para el doctor seleccionado' : 'Por favor, seleccione un doctor para consultar sus trabajos realizados')}
                         </p>
                     )}
                 </>
@@ -641,7 +652,9 @@ const TrabajosRealizadosList: React.FC = () => {
 
                     {pagados.length === 0 && !loading && (
                         <p className="text-center mt-5 text-gray-500 dark:text-gray-400">
-                            {searchTerm ? 'No se encontraron resultados' : 'No hay registros de trabajos pagados para el doctor seleccionado'}
+                            {searchTerm 
+                                ? 'No se encontraron resultados' 
+                                : (selectedDoctorId ? 'No hay registros de trabajos pagados para el doctor seleccionado' : 'Por favor, seleccione un doctor para consultar sus trabajos realizados')}
                         </p>
                     )}
                 </>

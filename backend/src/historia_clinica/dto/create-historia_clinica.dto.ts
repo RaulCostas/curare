@@ -19,6 +19,10 @@ export class CreateHistoriaClinicaDto {
 
     @IsOptional()
     @IsNumber()
+    arancelId?: number;
+
+    @IsOptional()
+    @IsNumber()
     proformaDetalleId?: number;
 
     @IsOptional()

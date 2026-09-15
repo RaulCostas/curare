@@ -2,6 +2,7 @@ import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn, CreateDa
 import { Paciente } from '../../pacientes/entities/paciente.entity';
 import { Doctor } from '../../doctors/entities/doctor.entity';
 import { Especialidad } from '../../especialidad/entities/especialidad.entity';
+import { Arancel } from '../../arancel/entities/arancel.entity';
 import { Proforma } from '../../proformas/entities/proforma.entity';
 import { ProformaDetalle } from '../../proformas/entities/proforma-detalle.entity';
 import { PagosDetalleDoctores } from '../../pagos_doctores/entities/pagos-detalle-doctores.entity';
@@ -38,6 +39,13 @@ export class HistoriaClinica {
 
     @Column({ type: 'int', default: 1 })
     cantidad: number;
+
+    @Column({ nullable: true })
+    arancelId: number;
+
+    @ManyToOne(() => Arancel, { nullable: true })
+    @JoinColumn({ name: 'arancelId' })
+    arancel: Arancel;
 
     @Column({ nullable: true })
     proformaDetalleId: number;

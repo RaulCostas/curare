@@ -277,6 +277,8 @@ export interface HistoriaClinica {
     fecha: string;
     pieza?: string;
     cantidad: number;
+    arancelId?: number;
+    arancel?: Arancel;
     proformaDetalleId?: number;
     proformaDetalle?: ProformaDetalle;
     tratamiento?: string;
@@ -526,6 +528,8 @@ export interface HistoriaClinica {
     fecha: string;
     pieza?: string;
     cantidad: number;
+    arancelId?: number;
+    arancel?: Arancel;
     proformaDetalleId?: number;
     proformaDetalle?: ProformaDetalle;
     tratamiento?: string;

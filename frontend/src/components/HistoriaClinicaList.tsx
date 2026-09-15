@@ -251,7 +251,7 @@ const HistoriaClinicaList: React.FC<HistoriaClinicaListProps> = ({ historia, all
                                 <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 max-w-xs truncate" title={item.observaciones}>{item.observaciones || '-'}</td>
                                 <td className="px-4 py-3 whitespace-nowrap text-center text-sm text-gray-600 dark:text-gray-300">{item.cantidad}</td>
                                 <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">
-                                    {item.especialidad ? item.especialidad.especialidad : '-'}
+                                    {item.arancel?.especialidad?.especialidad || item.proformaDetalle?.arancel?.especialidad?.especialidad || item.especialidad?.especialidad || '-'}
                                 </td>
                                 <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">
                                     {item.doctor ? `${item.doctor.paterno} ${item.doctor.nombre}` : '-'}

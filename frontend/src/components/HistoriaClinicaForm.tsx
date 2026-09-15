@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import api from '../services/api';
-import type { Doctor, Especialidad, Proforma, Arancel, HistoriaClinica, Personal } from '../types';
+import type { Doctor, Proforma, Arancel, HistoriaClinica, Personal } from '../types';
 import Swal from 'sweetalert2';
 import ManualModal, { type ManualSection } from './ManualModal';
 import { getLocalDateString } from '../utils/dateUtils';
@@ -36,7 +36,7 @@ const HistoriaClinicaForm: React.FC<HistoriaClinicaFormProps> = ({
         pieza: '',
         cantidad: 1,
         observaciones: '',
-        especialidadId: 0,
+        arancelId: 0,
         doctorId: 0,
         personalId: 0,
         estadoTratamiento: 'no terminado',
@@ -55,7 +55,6 @@ const HistoriaClinicaForm: React.FC<HistoriaClinicaFormProps> = ({
 
     const [doctors, setDoctors] = useState<Doctor[]>([]);
     const [asistentes, setAsistentes] = useState<Personal[]>([]);
-    const [especialidades, setEspecialidades] = useState<Especialidad[]>([]);
     const [allTreatments, setAllTreatments] = useState<Arancel[]>([]);
     const [showManual, setShowManual] = useState(false);
 
@@ -83,7 +82,6 @@ const HistoriaClinicaForm: React.FC<HistoriaClinicaFormProps> = ({
         if (pacienteId) {
             fetchDoctors();
             fetchAsistentes();
-            fetchEspecialidades();
             fetchTreatments();
             fetchHistory();
         }
@@ -103,6 +101,7 @@ const HistoriaClinicaForm: React.FC<HistoriaClinicaFormProps> = ({
                 ...prev,
                 proformaId: selectedProformaId,
                 proformaDetalleId: 0,
+                arancelId: 0,
                 tratamiento: '',
                 precio: 0
             }));
@@ -115,6 +114,7 @@ const HistoriaClinicaForm: React.FC<HistoriaClinicaFormProps> = ({
         if (historiaToEdit) {
             let initialPrice = historiaToEdit.precio || 0;
             let initialProformaDetalleId = historiaToEdit.proformaDetalleId || 0;
+            let initialArancelId = historiaToEdit.arancelId || 0;
 
             // Resolve initial details if needed
             // If price is 0 and we have a proforma selected, try to find the price
@@ -136,8 +136,15 @@ const HistoriaClinicaForm: React.FC<HistoriaClinicaFormProps> = ({
                         const calcPrice = desc > 0 ? subTotal * (1 - desc / 100) : (Number(detail.total) || subTotal);
                         initialPrice = Math.round(calcPrice * 100) / 100;
                         initialProformaDetalleId = detail.id;
+                        if (!initialArancelId && detail.arancelId) {
+                            initialArancelId = detail.arancelId;
+                        }
                     }
                 }
+            }
+
+            if (!initialArancelId && historiaToEdit.proformaDetalle?.arancelId) {
+                initialArancelId = historiaToEdit.proformaDetalle.arancelId;
             }
 
             setFormData({
@@ -146,7 +153,7 @@ const HistoriaClinicaForm: React.FC<HistoriaClinicaFormProps> = ({
                 pieza: historiaToEdit.pieza || '',
                 cantidad: historiaToEdit.cantidad,
                 observaciones: historiaToEdit.observaciones || '',
-                especialidadId: historiaToEdit.especialidadId || 0,
+                arancelId: initialArancelId,
                 doctorId: historiaToEdit.doctorId || 0,
                 personalId: historiaToEdit.personalId || 0,
                 estadoTratamiento: historiaToEdit.estadoTratamiento,
@@ -216,18 +223,6 @@ const HistoriaClinicaForm: React.FC<HistoriaClinicaFormProps> = ({
         }
     };
 
-    const fetchEspecialidades = async () => {
-        try {
-            const response = await api.get('/especialidades');
-            const sorted = (response.data || []).sort((a: any, b: any) =>
-                (a.especialidad || '').localeCompare(b.especialidad || '', 'es', { sensitivity: 'base' })
-            );
-            setEspecialidades(sorted);
-        } catch (error) {
-            console.error('Error fetching especialidades:', error);
-        }
-    };
-
     const fetchTreatments = async () => {
         try {
             const response = await api.get('/arancel?limit=2000');
@@ -268,7 +263,8 @@ const HistoriaClinicaForm: React.FC<HistoriaClinicaFormProps> = ({
                         pieza: detail.piezas || '',
                         cantidad: detail.cantidad,
                         precio: Math.round(calcPrice * 100) / 100,
-                        proformaDetalleId: detail.id
+                        proformaDetalleId: detail.id,
+                        arancelId: detail.arancelId || detail.arancel?.id || 0
                     }));
                 }
             } else {
@@ -279,7 +275,8 @@ const HistoriaClinicaForm: React.FC<HistoriaClinicaFormProps> = ({
                         ...prev,
                         tratamiento: arancel.detalle,
                         precio: Number(arancel.precio1) * formData.cantidad,
-                        proformaDetalleId: 0
+                        proformaDetalleId: 0,
+                        arancelId: arancel.id
                     }));
                 }
             }
@@ -317,6 +314,7 @@ const HistoriaClinicaForm: React.FC<HistoriaClinicaFormProps> = ({
                 ...prev,
                 proformaId: Number(value),
                 proformaDetalleId: 0,
+                arancelId: 0,
                 tratamiento: '',
                 precio: 0
             }));
@@ -346,7 +344,7 @@ const HistoriaClinicaForm: React.FC<HistoriaClinicaFormProps> = ({
             pieza: '',
             cantidad: 1,
             observaciones: '',
-            especialidadId: 0,
+            arancelId: 0,
             doctorId: 0,
             personalId: 0,
             estadoTratamiento: 'no terminado',
@@ -383,7 +381,7 @@ const HistoriaClinicaForm: React.FC<HistoriaClinicaFormProps> = ({
                 hoja: numHoja,
                 precio: isNaN(parsedPrecio) ? 0 : parsedPrecio,
                 pacienteId,
-                especialidadId: formData.especialidadId || null,
+                arancelId: formData.arancelId || null,
                 doctorId: formData.doctorId || null,
                 personalId: formData.personalId || null,
                 proformaId: formData.proformaId || null,
@@ -613,29 +611,6 @@ const HistoriaClinicaForm: React.FC<HistoriaClinicaFormProps> = ({
                         <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 pl-1">Ej. 1. Número de piezas o sesiones realizadas.</p>
                     </div>
 
-                    {/* Especialidad */}
-                    <div>
-                        <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Especialidad</label>
-                        <div className="relative">
-                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
-                                </svg>
-                            </div>
-                            <select
-                                name="especialidadId"
-                                value={formData.especialidadId}
-                                onChange={handleChange}
-                                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 font-medium outline-none transition-all shadow-sm cursor-pointer"
-                            >
-                                <option value={0}>-- Seleccione --</option>
-                                {especialidades.map(e => (
-                                    <option key={e.id} value={e.id}>{e.especialidad}</option>
-                                ))}
-                            </select>
-                        </div>
-                        <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 pl-1">Ej. Operatoria, Endodoncia, Ortodoncia...</p>
-                    </div>
 
                     {/* Doctor */}
                     <div>

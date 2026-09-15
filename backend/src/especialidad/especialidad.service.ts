@@ -22,58 +22,56 @@ export class EspecialidadService {
     }
 
     async getStatistics(year: number, month: number, status: string): Promise<any[]> {
-        const query = this.especialidadRepository.createQueryBuilder('especialidad')
-            .leftJoin('historia_clinica', 'hc', 'hc.especialidadId = especialidad.id AND hc.estadoTratamiento = :estadoTrat', { estadoTrat: 'terminado' })
-            .leftJoin('doctor', 'd', 'hc.doctorId = d.id')
-            .select([
-                'especialidad.id AS "id"',
-                'especialidad.especialidad AS "nombre"', // It's called 'especialidad' in entity
-                'COALESCE(SUM(hc.cantidad), 0) AS "cantidad"'
-            ])
-            .groupBy('especialidad.id')
-            .addGroupBy('especialidad.especialidad')
-            .orderBy('"cantidad"', 'DESC');
+        const queryParams: any[] = ['terminado'];
+        let paramIdx = 2;
 
-        // Date Filter
-        let dateCondition = 'hc.estadoTratamiento = :estadoTrat';
-        const params: any = { estadoTrat: 'terminado' };
-
+        let dateFilters = '';
         if (year) {
-            dateCondition += ' AND EXTRACT(YEAR FROM hc.fecha) = :year';
-            params.year = year;
+            dateFilters += ` AND EXTRACT(YEAR FROM hc.fecha) = $${paramIdx++}`;
+            queryParams.push(year);
         }
         if (month) {
-            dateCondition += ' AND EXTRACT(MONTH FROM hc.fecha) = :month';
-            params.month = month;
+            dateFilters += ` AND EXTRACT(MONTH FROM hc.fecha) = $${paramIdx++}`;
+            queryParams.push(month);
         }
 
-        const qb = this.especialidadRepository.createQueryBuilder('especialidad')
-            .leftJoin(
-                'historia_clinica',
-                'hc',
-                `hc.especialidadId = especialidad.id AND ${dateCondition}`,
-                params
-            )
-            .leftJoin('doctor', 'd', 'hc.doctorId = d.id')
-            .select([
-                'especialidad.id AS "id"',
-                'especialidad.especialidad AS "nombre"',
-                'COALESCE(SUM(hc.cantidad), 0) AS "cantidad"'
-            ])
-            .groupBy('especialidad.id')
-            .addGroupBy('especialidad.especialidad')
-            .orderBy('"cantidad"', 'DESC');
-
+        let doctorJoinCondition = '';
         if (status && status !== 'ambos') {
-            qb.where('d.estado = :status', { status: status.toLowerCase() });
+            doctorJoinCondition = `AND LOWER(d.estado) = $${paramIdx++}`;
+            queryParams.push(status.toLowerCase());
         }
 
-        const rawResults = await qb.getRawMany();
+        const query = `
+            SELECT 
+                e.id AS "id",
+                e.especialidad AS "nombre",
+                COALESCE(SUM(hc.cantidad), 0)::int AS "cantidad"
+            FROM especialidad e
+            LEFT JOIN (
+                SELECT 
+                    hc.id,
+                    hc.fecha,
+                    hc.cantidad,
+                    hc."doctorId",
+                    COALESCE(a_dir."idEspecialidad", a_pd."idEspecialidad", hc."especialidadId") AS matched_especialidad_id
+                FROM historia_clinica hc
+                LEFT JOIN arancel a_dir ON a_dir.id = hc."arancelId"
+                LEFT JOIN proforma_detalle pd ON pd.id = hc."proformaDetalleId"
+                LEFT JOIN arancel a_pd ON a_pd.id = pd."arancelId"
+                WHERE hc."estadoTratamiento" = $1
+                ${dateFilters}
+            ) hc ON hc.matched_especialidad_id = e.id
+            LEFT JOIN doctor d ON hc."doctorId" = d.id ${doctorJoinCondition}
+            GROUP BY e.id, e.especialidad
+            ORDER BY "cantidad" DESC;
+        `;
+
+        const rawResults = await this.especialidadRepository.query(query, queryParams);
 
         return rawResults.map(r => ({
-            id: r.id,
+            id: Number(r.id),
             nombre: r.nombre,
-            cantidad: parseInt(r.cantidad)
+            cantidad: parseInt(r.cantidad, 10) || 0
         }));
     }
 
