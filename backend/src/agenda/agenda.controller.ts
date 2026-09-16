@@ -48,6 +48,11 @@ export class AgendaController {
         return this.agendaService.update(+id, updateDto);
     }
 
+    @Post(':id/recordatorio')
+    async enviarRecordatorio(@Param('id') id: string) {
+        return await this.agendaService.enviarRecordatorio(+id);
+    }
+
     @Delete('all/records')
     deleteAll() {
         return this.agendaService.deleteAll();

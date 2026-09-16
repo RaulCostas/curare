@@ -1,15 +1,18 @@
-import { Injectable, NotFoundException, InternalServerErrorException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, InternalServerErrorException, BadRequestException, Inject, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Agenda } from './entities/agenda.entity';
 import { CreateAgendaDto } from './dto/create-agenda.dto';
 import { UpdateAgendaDto } from './dto/update-agenda.dto';
+import { ChatbotService } from '../chatbot/chatbot.service';
 
 @Injectable()
 export class AgendaService {
     constructor(
         @InjectRepository(Agenda)
         private readonly agendaRepository: Repository<Agenda>,
+        @Inject(forwardRef(() => ChatbotService))
+        private readonly chatbotService: ChatbotService,
     ) { }
 
     async create(createDto: CreateAgendaDto): Promise<Agenda> {
@@ -115,6 +118,93 @@ export class AgendaService {
             relations: ['paciente', 'doctor', 'proforma', 'usuario', 'personal'],
             order: { fecha: 'ASC', hora: 'ASC' }
         });
+    }
+
+    private formatFechaTexto(fechaStr: string): string {
+        if (!fechaStr) return '';
+        try {
+            // fechaStr usually in 'YYYY-MM-DD'
+            const parts = String(fechaStr).split('T')[0].split('-');
+            if (parts.length === 3) {
+                const year = parseInt(parts[0], 10);
+                const month = parseInt(parts[1], 10);
+                const day = parseInt(parts[2], 10);
+                const date = new Date(year, month - 1, day);
+                const dias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+                const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+                const diaSemana = dias[date.getDay()];
+                const diaNum = date.getDate();
+                const mesNom = meses[date.getMonth()];
+                return `${diaSemana} ${diaNum} de ${mesNom}`;
+            }
+            return fechaStr;
+        } catch {
+            return fechaStr;
+        }
+    }
+
+    private formatHoraTexto(horaStr: string): string {
+        if (!horaStr) return '';
+        try {
+            const parts = String(horaStr).split(':');
+            let hours = parseInt(parts[0], 10);
+            const minutes = parts[1] || '00';
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12;
+            hours = hours ? hours : 12;
+            return `${hours}:${minutes} ${ampm}`;
+        } catch {
+            return horaStr;
+        }
+    }
+
+    async enviarRecordatorio(id: number): Promise<{ success: boolean; message: string }> {
+        const cita = await this.findOne(id);
+        if (!cita) {
+            throw new NotFoundException(`Cita #${id} no encontrada`);
+        }
+        if (!cita.paciente) {
+            throw new BadRequestException('La cita no tiene un paciente asignado');
+        }
+
+        const celular = cita.paciente.celular || cita.paciente.telefono;
+        if (!celular) {
+            throw new BadRequestException(`El paciente ${cita.paciente.nombre} no tiene número de celular registrado`);
+        }
+
+        let cleanPhone = celular.replace(/\D/g, '');
+        if (cleanPhone.length === 8) {
+            cleanPhone = '591' + cleanPhone;
+        }
+        const jid = `${cleanPhone}@s.whatsapp.net`;
+
+        const fechaFormatted = this.formatFechaTexto(cita.fecha);
+        const horaFormatted = this.formatHoraTexto(cita.hora);
+        const duracionFormatted = `${cita.duracion || 30} minutos`;
+        const pacienteNombre = `${cita.paciente.nombre || ''} ${cita.paciente.paterno || ''}`.trim();
+
+        const mensaje = 
+`👋 ¡Hola ${pacienteNombre}!
+
+Te recordamos tu cita en CURARE Centro Dental:
+
+📅 Fecha: ${fechaFormatted}
+⏰ Hora: ${horaFormatted}
+⏱️ Duración: ${duracionFormatted}
+
+Por favor responde con una LETRA:
+
+A ✅ Confirmar Cita
+B ❌ Cancelar Cita
+
+📌 Por favor guarda nuestro número para recibir tus recordatorios.`;
+
+        await this.chatbotService.sendAgendaMenu(jid, mensaje, cita.id);
+
+        return {
+            success: true,
+            message: `Recordatorio enviado a ${pacienteNombre} (${celular})`,
+        };
     }
 
     async deleteAll(): Promise<{ message: string; deletedCount: number }> {

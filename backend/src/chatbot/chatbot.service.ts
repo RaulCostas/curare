@@ -841,10 +841,12 @@ export class ChatbotService implements OnModuleInit, OnModuleDestroy {
         }
     }
 
-    async sendAgendaMenu(jid: string, mensajeIntro: string, citaId: number): Promise<void> {
+    async sendAgendaMenu(jid: string, mensajeTexto: string, citaId: number): Promise<void> {
         const session = this.getSession();
-        const menuTexto = `${mensajeIntro}\n\nPor favor responde con una LETRA:\n*A* ✅ Confirmar Cita\n*B* ❌ Cancelar Cita\n\n📌 Por favor guarda nuestro número para recibir tus recordatorios.`;
-        await this.sendMessage(jid, menuTexto);
+        if (session.status !== 'connected' || !session.sock) {
+            throw new Error('El chatbot no está conectado a WhatsApp');
+        }
+        await this.sendMessage(jid, mensajeTexto);
         session.userSessions.set(jid, {
             type: 'waiting_agenda_response' as any,
             timestamp: Date.now(),
