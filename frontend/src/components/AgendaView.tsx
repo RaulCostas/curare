@@ -286,17 +286,55 @@ const AgendaView: React.FC<AgendaViewProps> = ({ defaultPacienteId, isEmbedded =
         }
     };
 
-    const handleEnviarRecordatorioIndividual = async (id: number, e: React.MouseEvent) => {
+    const formatRecordatorioTimestamp = (dateStr?: string | null) => {
+        if (!dateStr) return '';
+        try {
+            const date = new Date(dateStr);
+            const hoy = new Date();
+            const esHoy = date.toDateString() === hoy.toDateString();
+            const timeStr = date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', hour12: true });
+            if (esHoy) {
+                return `hoy a las ${timeStr}`;
+            }
+            const dia = String(date.getDate()).padStart(2, '0');
+            const mes = String(date.getMonth() + 1).padStart(2, '0');
+            return `el ${dia}/${mes} a las ${timeStr}`;
+        } catch {
+            return String(dateStr);
+        }
+    };
+
+    const handleEnviarRecordatorioIndividual = async (appointment: Agenda, e: React.MouseEvent) => {
         e.stopPropagation();
 
+        if (appointment.estado?.toLowerCase().trim() === 'confirmado') {
+            Swal.fire({
+                title: 'Cita ya confirmada',
+                text: 'Esta cita ya ha sido confirmada. No es necesario enviar otro recordatorio.',
+                icon: 'info',
+                confirmButtonColor: '#10b981',
+                background: document.documentElement.classList.contains('dark') ? '#1f2937' : '#fff',
+                color: document.documentElement.classList.contains('dark') ? '#f3f4f6' : '#000',
+            });
+            return;
+        }
+
         try {
+            const sentDate = appointment.fechaRecordatorioEnviado || (appointment as any).fecha_recordatorio_enviado;
+            const lastSentText = sentDate ? formatRecordatorioTimestamp(sentDate) : '';
+
             const result = await Swal.fire({
-                title: '¿Enviar recordatorio?',
-                text: 'Se enviará un recordatorio de cita individual a través de WhatsApp.',
+                title: lastSentText ? '¿Reenviar recordatorio?' : '¿Enviar recordatorio?',
+                html: lastSentText 
+                    ? `Ya se envió un recordatorio a este paciente <b>${lastSentText}</b>.<br><br>¿Deseas reenviarlo a través de WhatsApp?`
+                    : 'Se enviará un recordatorio de cita individual a través de WhatsApp.',
                 icon: 'question',
                 showCancelButton: true,
-                confirmButtonText: 'Sí, enviar',
-                cancelButtonText: 'Cancelar'
+                confirmButtonText: lastSentText ? 'Sí, reenviar' : 'Sí, enviar',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#10b981',
+                background: document.documentElement.classList.contains('dark') ? '#1f2937' : '#fff',
+                color: document.documentElement.classList.contains('dark') ? '#f3f4f6' : '#000',
             });
 
             if (!result.isConfirmed) return;
@@ -312,7 +350,7 @@ const AgendaView: React.FC<AgendaViewProps> = ({ defaultPacienteId, isEmbedded =
                 color: document.documentElement.classList.contains('dark') ? '#f3f4f6' : '#000',
             });
 
-            const response = await api.post(`/agenda/${id}/recordatorio`);
+            const response = await api.post(`/agenda/${appointment.id}/recordatorio`);
 
             if (response.data.success) {
                 Swal.fire({
@@ -326,11 +364,26 @@ const AgendaView: React.FC<AgendaViewProps> = ({ defaultPacienteId, isEmbedded =
                 });
                 fetchAppointments();
             } else {
-                Swal.fire('Error', response.data.message || 'No se pudo enviar el recordatorio', 'error');
+                Swal.fire({
+                    title: 'No se pudo enviar',
+                    text: response.data.message || 'No se pudo enviar el recordatorio',
+                    icon: 'warning',
+                    confirmButtonColor: '#3b82f6',
+                    background: document.documentElement.classList.contains('dark') ? '#1f2937' : '#fff',
+                    color: document.documentElement.classList.contains('dark') ? '#f3f4f6' : '#000',
+                });
             }
         } catch (error: any) {
             console.error('Error sending individual reminder:', error);
-            Swal.fire('Error', error.response?.data?.message || 'Error al conectar con el servidor', 'error');
+            const msg = error.response?.data?.message || error.message || 'Error al conectar con el servidor';
+            Swal.fire({
+                title: 'No se pudo enviar',
+                text: Array.isArray(msg) ? msg.join(', ') : msg,
+                icon: 'warning',
+                confirmButtonColor: '#3b82f6',
+                background: document.documentElement.classList.contains('dark') ? '#1f2937' : '#fff',
+                color: document.documentElement.classList.contains('dark') ? '#f3f4f6' : '#000',
+            });
         }
     };
 
@@ -1235,17 +1288,52 @@ const AgendaView: React.FC<AgendaViewProps> = ({ defaultPacienteId, isEmbedded =
                                                                             BLOQUEO
                                                                         </span>
                                                                     )}
-                                                                    {(appointment.paciente || appointment.pacienteId) && (appointment.fecha || currentDate) >= getLocalDateString() && (
-                                                                        <button
-                                                                            onClick={(e) => handleEnviarRecordatorioIndividual(appointment.id, e)}
-                                                                            className="ml-0.5 flex-shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white p-0.5 rounded-full transition-all shadow-xs flex items-center justify-center border border-white/30 no-print"
-                                                                            title="Enviar recordatorio por WhatsApp"
-                                                                        >
-                                                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                                                                            </svg>
-                                                                        </button>
-                                                                    )}
+                                                                    {(appointment.paciente || appointment.pacienteId) && (appointment.fecha || currentDate) >= getLocalDateString() && (() => {
+                                                                        const isConfirmado = appointment.estado?.toLowerCase().trim() === 'confirmado';
+                                                                        const sentDate = appointment.fechaRecordatorioEnviado || (appointment as any).fecha_recordatorio_enviado;
+                                                                        const isSent = Boolean(sentDate);
+                                                                        const lastSentText = isSent ? formatRecordatorioTimestamp(sentDate) : '';
+
+                                                                        if (isConfirmado) {
+                                                                            return (
+                                                                                <span
+                                                                                    className="ml-0.5 flex-shrink-0 p-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center justify-center cursor-not-allowed opacity-80 no-print"
+                                                                                    title="Cita ya confirmada (Recordatorio bloqueado)"
+                                                                                >
+                                                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-2.5 w-2.5" viewBox="0 0 20 20" fill="currentColor">
+                                                                                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                                                                    </svg>
+                                                                                </span>
+                                                                            );
+                                                                        }
+
+                                                                        return (
+                                                                            <button
+                                                                                onClick={(e) => handleEnviarRecordatorioIndividual(appointment, e)}
+                                                                                className={`ml-0.5 flex-shrink-0 p-0.5 rounded-full transition-all shadow-xs flex items-center justify-center border no-print ${
+                                                                                    isSent
+                                                                                        ? 'bg-sky-600 hover:bg-sky-700 text-white border-sky-300 ring-1 ring-sky-300/60'
+                                                                                        : 'bg-emerald-600 hover:bg-emerald-700 text-white border-white/30'
+                                                                                }`}
+                                                                                title={
+                                                                                    isSent
+                                                                                        ? `Recordatorio enviado ${lastSentText}. Clic para reenviar.`
+                                                                                        : 'Enviar recordatorio por WhatsApp'
+                                                                                }
+                                                                            >
+                                                                                {isSent ? (
+                                                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-2.5 w-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+                                                                                        <path d="M18 6L7 17l-5-5" />
+                                                                                        <path d="M22 10l-7.5 7.5-1.5-1.5" />
+                                                                                    </svg>
+                                                                                ) : (
+                                                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                                                                                    </svg>
+                                                                                )}
+                                                                            </button>
+                                                                        );
+                                                                    })()}
                                                                 </div>
                                                             </div>
                                                         )}

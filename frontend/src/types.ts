@@ -357,6 +357,8 @@ export interface Agenda {
     asistenteId?: number;
     asistente?: Personal;
     motivoCancelacion?: string;
+    fechaRecordatorioEnviado?: string | null;
+    fecha_recordatorio_enviado?: string | null;
 }
 
 export interface GastoFijo {
@@ -603,6 +605,8 @@ export interface Agenda {
     asistenteId?: number;
     asistente?: Personal;
     motivoCancelacion?: string;
+    fechaRecordatorioEnviado?: string | null;
+    fecha_recordatorio_enviado?: string | null;
 }
 
 export interface GastoFijo {

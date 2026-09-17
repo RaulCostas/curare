@@ -22,6 +22,8 @@ backups/
 *.sql
 *.sql.gz
 !backend/scripts/create_estudios_complementarios_table.sql
+!backend/scripts/migration_inventario_linea_blanca_2026.sql
+!backend/scripts/add_fecha_recordatorio_enviado_to_agenda.sql
 
 # Uploads
 uploads/

@@ -75,6 +75,9 @@ export class Agenda {
     @Column({ type: 'text', nullable: true })
     motivoCancelacion: string;
 
+    @Column({ name: 'fecha_recordatorio_enviado', type: 'timestamp', nullable: true })
+    fechaRecordatorioEnviado: Date | null;
+
     @UpdateDateColumn()
     updatedAt: Date;
 }

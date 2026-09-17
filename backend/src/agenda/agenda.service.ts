@@ -167,6 +167,10 @@ export class AgendaService {
             throw new BadRequestException('La cita no tiene un paciente asignado');
         }
 
+        if (cita.estado && cita.estado.toLowerCase().trim() === 'confirmado') {
+            throw new BadRequestException('Esta cita ya se encuentra confirmada.');
+        }
+
         const celular = cita.paciente.celular || cita.paciente.telefono;
         if (!celular) {
             throw new BadRequestException(`El paciente ${cita.paciente.nombre} no tiene número de celular registrado`);
@@ -184,9 +188,8 @@ export class AgendaService {
         const pacienteNombre = `${cita.paciente.nombre || ''} ${cita.paciente.paterno || ''}`.trim();
 
         const mensaje = 
-`👋 ¡Hola ${pacienteNombre}!
-
-Te recordamos tu cita en CURARE Centro Dental:
+`🦷 *Recordatorio de Cita - CURARE CENTRO DENTAL*
+Estimado(a) *${pacienteNombre}*, le recordamos su cita programada para el:
 
 📅 Fecha: ${fechaFormatted}
 ⏰ Hora: ${horaFormatted}
@@ -199,12 +202,22 @@ B ❌ Cancelar Cita
 
 📌 Por favor guarda nuestro número para recibir tus recordatorios.`;
 
-        await this.chatbotService.sendAgendaMenu(jid, mensaje, cita.id);
+        try {
+            await this.chatbotService.sendAgendaMenu(jid, mensaje, cita.id);
 
-        return {
-            success: true,
-            message: `Recordatorio enviado a ${pacienteNombre} (${celular})`,
-        };
+            // Guardar la fecha y hora del envío del recordatorio
+            await this.agendaRepository.update(cita.id, {
+                fechaRecordatorioEnviado: new Date(),
+            });
+
+            return {
+                success: true,
+                message: `Recordatorio enviado a ${pacienteNombre} (${celular})`,
+            };
+        } catch (err: any) {
+            const errorMsg = err.message || 'El chatbot no está conectado a WhatsApp';
+            throw new BadRequestException(errorMsg);
+        }
     }
 
     async deleteAll(): Promise<{ message: string; deletedCount: number }> {

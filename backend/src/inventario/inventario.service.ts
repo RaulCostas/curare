@@ -59,6 +59,7 @@ export class InventarioService {
         }
 
         const [data, total] = await queryBuilder
+            .orderBy('inventario.descripcion', 'ASC')
             .skip((page - 1) * limit)
             .take(limit)
             .getManyAndCount();
@@ -84,6 +85,7 @@ export class InventarioService {
             .leftJoinAndSelect('inventario.grupoInventario', 'grupoInventario')
             .where('inventario.cantidad_existente < inventario.stock_minimo')
             .andWhere('inventario.estado = :estado', { estado: 'Activo' }) // Optional: Only active items
+            .orderBy('inventario.descripcion', 'ASC')
             .getMany();
     }
 
