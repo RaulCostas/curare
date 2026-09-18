@@ -24,6 +24,7 @@ import { DatosCentroDentalService } from '../datos_centro_dental/datos_centro_de
 import pino from 'pino';
 import * as fs from 'fs';
 import * as path from 'path';
+import { BIRTHDAY_IMAGE_BASE64 } from './assets/birthday-image.asset';
 
 // @ts-ignore
 import { decryptPollVote } from '@whiskeysockets/baileys/lib/Utils/process-message.js';
@@ -743,11 +744,48 @@ export class ChatbotService implements OnModuleInit, OnModuleDestroy {
             celular = `591${celular}`;
         }
         const jid = `${celular}@s.whatsapp.net`;
-        const nombreCompleto = [paciente.nombre, paciente.paterno, paciente.materno].filter(Boolean).join(' ');
-        const text = `¡Feliz cumpleaños ${nombreCompleto}!\n\nTodo el equipo de Curare Centro Dental le enviamos nuestros mejores deseos, que tenga un día hermoso.\nGracias por confiar en nosotros para cuidar su sonrisa.\nQue este nuevo año de vida esté lleno de salud, alegría y razones para seguir sonriendo.`;
+        const primerNombre = (paciente.nombre || '').trim();
+        const text = `¡Feliz cumpleaños ${primerNombre}!\n\nTodo el equipo de Curare Centro Dental le enviamos nuestros mejores deseos, que tenga un día hermoso.\nGracias por confiar en nosotros para cuidar su sonrisa.\nQue este nuevo año de vida esté lleno de salud, alegría y razones para seguir sonriendo.`;
 
         try {
-            await this.sendMedia(jid, 'cumpleanos.jpg', text);
+            let imageBuffer: Buffer | null = null;
+            const possibleDirs = [
+                path.join(process.cwd(), 'uploads'),
+                path.join(process.cwd(), 'backend', 'uploads'),
+                path.join(__dirname, '..', '..', 'uploads'),
+                path.join(__dirname, '..', 'uploads'),
+                path.join(__dirname, 'uploads'),
+            ];
+            const candidateNames = ['cumpleanos.jpeg', 'cumpleanos.jpg', 'cumpleanos.png', 'cumpleanos.webp'];
+
+            for (const dir of possibleDirs) {
+                for (const cand of candidateNames) {
+                    const p = path.join(dir, cand);
+                    if (fs.existsSync(p)) {
+                        imageBuffer = fs.readFileSync(p);
+                        console.log(`[Chatbot] Imagen de cumpleaños cargada desde archivo de disco: ${p}`);
+                        break;
+                    }
+                }
+                if (imageBuffer) break;
+            }
+
+            if (!imageBuffer && BIRTHDAY_IMAGE_BASE64) {
+                console.log(`[Chatbot] Imagen de cumpleaños cargada desde asset embebido en código`);
+                imageBuffer = Buffer.from(BIRTHDAY_IMAGE_BASE64, 'base64');
+            }
+
+            if (imageBuffer) {
+                console.log(`[Chatbot] Enviando imagen de cumpleaños (${imageBuffer.length} bytes) con caption a ${jid}`);
+                await this.sendMessage(jid, {
+                    image: imageBuffer,
+                    caption: text,
+                    mimetype: 'image/jpeg'
+                });
+            } else {
+                console.warn(`[Chatbot] No se pudo obtener buffer de imagen de cumpleaños, enviando texto`);
+                await this.sendMessage(jid, text);
+            }
         } catch (error) {
             console.error(`[Chatbot] Error enviando imagen de cumpleaños:`, error);
             await this.sendMessage(jid, text);
@@ -803,6 +841,8 @@ export class ChatbotService implements OnModuleInit, OnModuleDestroy {
             path.join(process.cwd(), 'uploads'),
             path.join(process.cwd(), 'backend', 'uploads'),
             path.join(__dirname, '..', '..', 'uploads'),
+            path.join(__dirname, '..', 'uploads'),
+            path.join(__dirname, 'uploads'),
         ];
 
         let foundPath: string | null = null;
@@ -828,6 +868,16 @@ export class ChatbotService implements OnModuleInit, OnModuleDestroy {
         }
 
         if (!foundPath) {
+            if (filename.toLowerCase().includes('cumplean') && BIRTHDAY_IMAGE_BASE64) {
+                console.log(`[Chatbot] sendMedia: Usando asset embebido para ${filename}`);
+                const buffer = Buffer.from(BIRTHDAY_IMAGE_BASE64, 'base64');
+                await this.sendMessage(jid, {
+                    image: buffer,
+                    caption: caption || '',
+                    mimetype: 'image/jpeg'
+                });
+                return;
+            }
             throw new Error(`El archivo ${filename} no fue encontrado en el servidor.`);
         }
 
@@ -837,7 +887,8 @@ export class ChatbotService implements OnModuleInit, OnModuleDestroy {
         if (['.jpg', '.jpeg', '.png', '.webp'].includes(resolvedExt)) {
             await this.sendMessage(jid, {
                 image: buffer,
-                caption: caption || ''
+                caption: caption || '',
+                mimetype: 'image/jpeg'
             });
         } else {
             let mimetype = 'application/pdf';
