@@ -30,11 +30,13 @@ export class DoctorsController {
         @Query('search') search?: string,
         @Query('page') page?: string,
         @Query('limit') limit?: string,
+        @Query('estado') estado?: string,
     ) {
         return this.doctorsService.findAll(
             search,
             page ? +page : 1,
-            limit ? +limit : 5
+            limit ? +limit : 5,
+            estado
         );
     }
 

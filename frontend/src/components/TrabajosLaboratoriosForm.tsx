@@ -38,9 +38,8 @@ const TrabajosLaboratoriosForm: React.FC<TrabajosLaboratoriosFormProps> = ({ isO
         pagado: 'no',
         precio_unitario: 0,
         total: 0,
-        resaltar: 'no',
-        idCubeta: 0,
-        fecha_terminado: ''
+        fecha_terminado: undefined,
+        idCubeta: undefined
     };
 
     const [formData, setFormData] = useState<Partial<TrabajoLaboratorio>>(initialFormData);
@@ -52,110 +51,109 @@ const TrabajosLaboratoriosForm: React.FC<TrabajosLaboratoriosFormProps> = ({ isO
 
     const manualSections: ManualSection[] = [
         {
-            title: 'Trabajos de Laboratorio',
-            content: 'Registre los trabajos enviados a laboratorios externos. Especifique el tipo de trabajo, piezas dentales, fechas y estado del trabajo.'
+            title: 'Descripción General',
+            content: 'Este formulario permite registrar o editar los trabajos que se envían a los laboratorios dentales externos, asociándolos a un paciente, laboratorio, trabajo y cubeta.'
         },
         {
-            title: 'Cubetas',
-            content: 'Asocie una cubeta al trabajo para rastrear su ubicación. El sistema actualiza automáticamente el estado de la cubeta cuando el trabajo se envía o regresa.'
-        },
-        {
-            title: 'Estados del Trabajo',
-            content: 'Los trabajos pueden estar: No Terminado, Terminado, o Entregado. El sistema rastrea las fechas de cada cambio de estado.'
+            title: 'Campos Principales',
+            content: '• Paciente: Seleccione el paciente para el cual se realiza el trabajo dental.\n• Laboratorio: Seleccione la empresa o profesional de laboratorio encargado.\n• Trabajo / Precio: Seleccione el ítem tarifario del laboratorio.\n• Pieza Dental: Indique el número o descripción de la pieza dental (ej: 11, 21).\n• Cantidad: Cantidad de piezas o prótesis a elaborar.\n• Color: Guía de color requerida (ej: A2, A3).\n• Cubeta: Cubeta de impresión asignada (opcional).'
         }
     ];
 
     useEffect(() => {
-        if (isOpen) {
-            const initForm = async () => {
-                await fetchDropdowns();
-                if (isEditing && id) {
-                    await fetchTrabajo(id.toString());
-                } else {
-                    setFormData(initialFormData);
-                }
-            };
-            initForm();
-        }
-    }, [isOpen, id, isEditing]);
+        fetchDropdowns();
+    }, []);
 
     useEffect(() => {
-        const total = (Number(formData.cantidad) || 0) * (Number(formData.precio_unitario) || 0);
-        setFormData(prev => ({ ...prev, total }));
-    }, [formData.cantidad, formData.precio_unitario]);
+        if (isEditing && id) {
+            fetchTrabajo(id);
+        } else {
+            setFormData(initialFormData);
+        }
+    }, [id, isEditing]);
 
     const fetchDropdowns = async () => {
         try {
-            const [pacResponse, labRes, preciosRes, cubetasRes] = await Promise.all([
-                api.get('/pacientes?limit=50000'),
-                api.get('/laboratorios?limit=1000'),
-                api.get('/precios-laboratorios?limit=1000'),
-                api.get('/cubetas?limit=1000')
+            const [resPac, resLab, resPre, resCub] = await Promise.all([
+                api.get('/pacientes?estado=activo&limit=100000'),
+                api.get('/laboratorios?estado=activo&limit=1000'),
+                api.get('/precios-laboratorios?limit=10000'),
+                api.get('/cubetas')
             ]);
-
-            const allPacientes = Array.isArray(pacResponse.data.data) ? pacResponse.data.data : (Array.isArray(pacResponse.data) ? pacResponse.data : []);
-            setPacientes(allPacientes);
-
-            const allLabs = Array.isArray(labRes.data.data) ? labRes.data.data : (Array.isArray(labRes.data) ? labRes.data : []);
-            setLaboratorios(allLabs);
-
-            setPreciosLaboratorio(Array.isArray(preciosRes.data.data) ? preciosRes.data.data : (Array.isArray(preciosRes.data) ? preciosRes.data : []));
-            setCubetas(Array.isArray(cubetasRes.data.data) ? cubetasRes.data.data : (Array.isArray(cubetasRes.data) ? cubetasRes.data : []));
+            setPacientes(resPac.data.data || resPac.data || []);
+            const labsRaw = resLab.data.data || resLab.data || [];
+            const activeLabs = labsRaw
+                .filter((l: any) => !l.estado || l.estado.toLowerCase() === 'activo')
+                .sort((a: any, b: any) => (a.laboratorio || '').localeCompare(b.laboratorio || '', 'es', { sensitivity: 'base' }));
+            setLaboratorios(activeLabs);
+            setPreciosLaboratorio(resPre.data.data || resPre.data || []);
+            setCubetas(resCub.data.data || resCub.data || []);
         } catch (error) {
             console.error('Error fetching dropdowns:', error);
         }
     };
 
-    const fetchTrabajo = async (workId: string) => {
+    const fetchTrabajo = async (trabajoId: number) => {
         try {
-            const response = await api.get(`/trabajos-laboratorios/${workId}`);
-            const data = response.data;
-            const pacId = Number(data.idPaciente || data.pacienteId || data.idpaciente || data.paciente?.id || 0);
-
-            if (data.paciente) {
-                setPacientes(prev => {
-                    if (!prev.some(p => p.id === data.paciente.id)) {
-                        return [data.paciente, ...prev];
-                    }
-                    return prev;
-                });
-            }
-
+            const res = await api.get(`/trabajos-laboratorios/${trabajoId}`);
+            const data = res.data;
             setFormData({
                 ...data,
-                idPaciente: pacId,
-                idLaboratorio: Number(data.idLaboratorio || data.laboratorioId || data.idlaboratorio || data.laboratorio?.id || 0),
-                idprecios_laboratorios: Number(data.idprecios_laboratorios || data.precioLaboratorioId || data.precioLaboratorio?.id || 0),
-                idCubeta: data.idCubeta ? Number(data.idCubeta) : (data.cubeta?.id ? Number(data.cubeta.id) : 0),
-                precio_unitario: Number(data.precio_unitario || (data.precioLaboratorio ? data.precioLaboratorio.precio : 0)),
-                cantidad: Number(data.cantidad || 1),
-                total: Number(data.total || 0)
+                idLaboratorio: data.idLaboratorio || (data.laboratorio?.id ?? 0),
+                idPaciente: data.idPaciente || (data.paciente?.id ?? 0),
+                idprecios_laboratorios: data.idprecios_laboratorios || (data.precioLaboratorio?.id ?? 0),
+                idCubeta: data.idCubeta || (data.cubeta?.id ?? undefined)
             });
         } catch (error) {
             console.error('Error fetching trabajo:', error);
         }
     };
 
-    const numericFields = ['idLaboratorio', 'idPaciente', 'idprecios_laboratorios', 'idCubeta', 'cantidad', 'precio_unitario', 'total'];
-
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
-        setFormData(prev => ({
-            ...prev,
-            [name]: numericFields.includes(name) ? Number(value) : value
-        }));
+        const numericFields = ['idLaboratorio', 'idPaciente', 'idprecios_laboratorios', 'cantidad', 'precio_unitario', 'total'];
+
+        setFormData(prev => {
+            const updated = {
+                ...prev,
+                [name]: numericFields.includes(name) ? (value === '' ? '' : Number(value)) : value
+            };
+
+            // If laboratorio changed, reset trabajo/precio
+            if (name === 'idLaboratorio') {
+                const newLabId = Number(value || 0);
+                if (newLabId !== Number(prev.idLaboratorio || 0)) {
+                    updated.idprecios_laboratorios = 0;
+                    updated.precio_unitario = 0;
+                    updated.total = 0;
+                }
+            }
+
+            if (name === 'cantidad' || name === 'precio_unitario') {
+                const cant = name === 'cantidad' ? Number(value || 0) : Number(prev.cantidad || 0);
+                const precio = name === 'precio_unitario' ? Number(value || 0) : Number(prev.precio_unitario || 0);
+                updated.total = cant * precio;
+            }
+
+            return updated;
+        });
     };
 
     const handlePrecioSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
         const precioId = Number(e.target.value);
-        const selectedPrecio = preciosLaboratorio.find(p => p.id === precioId);
+        const selected = preciosLaboratorio.find(p => p.id === precioId);
 
-        setFormData(prev => ({
-            ...prev,
-            idprecios_laboratorios: precioId,
-            precio_unitario: selectedPrecio ? Number(selectedPrecio.precio) : 0,
-            idLaboratorio: selectedPrecio ? selectedPrecio.idLaboratorio : prev.idLaboratorio
-        }));
+        setFormData(prev => {
+            const precioUnitario = selected ? Number(selected.precio) : 0;
+            const cant = Number(prev.cantidad || 1);
+            return {
+                ...prev,
+                idprecios_laboratorios: precioId,
+                precio_unitario: precioUnitario,
+                total: cant * precioUnitario,
+                idLaboratorio: selected ? selected.idLaboratorio : prev.idLaboratorio
+            };
+        });
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -332,22 +330,25 @@ const TrabajosLaboratoriosForm: React.FC<TrabajosLaboratoriosFormProps> = ({ isO
                                 </div>
                                 <select
                                     name="idprecios_laboratorios"
-                                    value={formData.idprecios_laboratorios}
+                                    value={formData.idprecios_laboratorios || 0}
                                     onChange={handlePrecioSelect}
                                     required
-                                    className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 text-gray-800 dark:text-white bg-white dark:bg-gray-700 placeholder-gray-400 dark:placeholder-gray-300 text-sm font-medium cursor-pointer"
+                                    disabled={!Number(formData.idLaboratorio || 0)}
+                                    className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 text-gray-800 dark:text-white bg-white dark:bg-gray-700 placeholder-gray-400 dark:placeholder-gray-300 text-sm font-medium cursor-pointer disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed disabled:text-gray-400"
                                 >
-                                    <option value={0}>Seleccione Trabajo</option>
-                                    {preciosLaboratorio
-                                        .filter(p => {
-                                            const labId = Number(formData.idLaboratorio || 0);
-                                            return labId === 0 || p.idLaboratorio === labId;
-                                        })
-                                        .map(p => (
-                                            <option key={p.id} value={p.id}>
-                                                {p.detalle} - Bs {Number(p.precio).toFixed(2)}
-                                            </option>
-                                        ))}
+                                    <option value={0}>
+                                        {!Number(formData.idLaboratorio || 0)
+                                            ? '-- Seleccione primero un laboratorio --'
+                                            : '-- Seleccione Trabajo --'}
+                                    </option>
+                                    {Number(formData.idLaboratorio || 0) > 0 &&
+                                        preciosLaboratorio
+                                            .filter(p => p.idLaboratorio === Number(formData.idLaboratorio))
+                                            .map(p => (
+                                                <option key={p.id} value={p.id}>
+                                                    {p.detalle} - Bs {Number(p.precio).toFixed(2)}
+                                                </option>
+                                            ))}
                                 </select>
                             </div>
                         </div>

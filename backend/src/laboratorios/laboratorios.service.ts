@@ -16,9 +16,15 @@ export class LaboratoriosService {
         return this.laboratoriosRepository.save(createLaboratorioDto);
     }
 
-    async findAll(page: number = 1, limit: number = 10, search?: string) {
+    async findAll(page: number = 1, limit: number = 10, search?: string, estado?: string) {
         const skip = (page - 1) * limit;
-        const where = search ? { laboratorio: ILike(`%${search}%`) } : {};
+        const where: any = {};
+        if (search) {
+            where.laboratorio = ILike(`%${search}%`);
+        }
+        if (estado) {
+            where.estado = ILike(estado);
+        }
 
         const [data, total] = await this.laboratoriosRepository.findAndCount({
             where,

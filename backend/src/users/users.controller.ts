@@ -14,8 +14,8 @@ export class UsersController {
   }
 
   @Get()
-  findAll() {
-    return this.usersService.findAll();
+  findAll(@Query('estado') estado?: string) {
+    return this.usersService.findAll(estado);
   }
 
   @Get('recepcionistas')

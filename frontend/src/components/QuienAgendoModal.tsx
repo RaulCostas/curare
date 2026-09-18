@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../services/api';
 import type { Paciente, User, Agenda } from '../types';
 import { formatPaternoMaternoNombre } from '../utils/formatters';
+import SearchableSelect, { type Option } from './SearchableSelect';
 
 interface QuienAgendoModalProps {
     isOpen: boolean;
@@ -39,9 +40,10 @@ const QuienAgendoModal: React.FC<QuienAgendoModalProps> = ({ isOpen, onClose }) 
 
     const fetchPacientes = async () => {
         try {
-            const response = await api.get('/pacientes?estado=activo&limit=2000');
+            const response = await api.get('/pacientes?limit=100000');
             const data = Array.isArray(response.data.data) ? response.data.data : response.data;
-            setPacientes(data);
+            const activePacientes = (data || []).filter((p: any) => !p.estado || p.estado.toLowerCase() === 'activo');
+            setPacientes(activePacientes);
         } catch (error) {
             console.error('Error fetching pacientes:', error);
         }
@@ -50,8 +52,9 @@ const QuienAgendoModal: React.FC<QuienAgendoModalProps> = ({ isOpen, onClose }) 
     const fetchUsuarios = async () => {
         try {
             const response = await api.get('/users?estado=activo&limit=1000');
-            const data = Array.isArray(response.data.data) ? response.data.data : response.data;
-            setUsuarios(data);
+            const data = Array.isArray(response.data.data) ? response.data.data : (Array.isArray(response.data) ? response.data : []);
+            const activeUsuarios = data.filter((u: any) => !u.estado || u.estado.toLowerCase() === 'activo');
+            setUsuarios(activeUsuarios);
         } catch (error) {
             console.error('Error fetching usuarios:', error);
         }
@@ -117,6 +120,22 @@ const QuienAgendoModal: React.FC<QuienAgendoModalProps> = ({ isOpen, onClose }) 
 
     if (!isOpen) return null;
 
+    const patientOptions: Option[] = [
+        { id: '', label: 'Todos los pacientes', searchString: 'todos los pacientes' },
+        ...pacientes
+            .map(p => {
+                const paternoMaternoNombre = [p.paterno, p.materno, p.nombre].filter(Boolean).join(' ');
+                const nombrePaternoMaterno = [p.nombre, p.paterno, p.materno].filter(Boolean).join(' ');
+                return {
+                    id: p.id,
+                    label: paternoMaternoNombre,
+                    subLabel: p.ci ? `CI: ${p.ci}` : undefined,
+                    searchString: `${nombrePaternoMaterno} ${p.ci || ''}`
+                };
+            })
+            .sort((a, b) => a.label.localeCompare(b.label, 'es', { sensitivity: 'base' }))
+    ];
+
     return (
         <div className="fixed inset-0 z-[9999] overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
             <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
@@ -124,8 +143,8 @@ const QuienAgendoModal: React.FC<QuienAgendoModalProps> = ({ isOpen, onClose }) 
 
                 <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
 
-                <div className="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-3xl sm:w-full">
-                    <div className="bg-white dark:bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                <div className="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-visible shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-3xl sm:w-full">
+                    <div className="bg-white dark:bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4 rounded-t-lg">
                         <div className="sm:flex sm:items-start">
                             <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
                                 <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-white mb-4" id="modal-title">
@@ -183,31 +202,24 @@ const QuienAgendoModal: React.FC<QuienAgendoModalProps> = ({ isOpen, onClose }) 
                                         </div>
 
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                            {/* Patient Dropdown */}
+                                            {/* Patient SearchableSelect */}
                                             <div>
                                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                                     Paciente
                                                 </label>
-                                                <div className="relative">
-                                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                <SearchableSelect
+                                                    options={patientOptions}
+                                                    value={pacienteId || ''}
+                                                    onChange={(val) => setPacienteId(val ? Number(val) : undefined)}
+                                                    placeholder="Todos los pacientes"
+                                                    searchPlaceholder="Buscar por Nombre, Apellido o CI..."
+                                                    icon={
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400">
                                                             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                                                             <circle cx="12" cy="7" r="4"></circle>
                                                         </svg>
-                                                    </div>
-                                                    <select
-                                                        value={pacienteId || ''}
-                                                        onChange={(e) => setPacienteId(e.target.value ? Number(e.target.value) : undefined)}
-                                                        className="w-full pl-10 pr-3 py-2 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                    >
-                                                        <option value="">Todos los pacientes</option>
-                                                        {pacientes.map((p) => (
-                                                            <option key={p.id} value={p.id}>
-                                                                {formatPaternoMaternoNombre(p)}
-                                                            </option>
-                                                        ))}
-                                                    </select>
-                                                </div>
+                                                    }
+                                                />
                                             </div>
 
                                             {/* User Dropdown */}
@@ -318,7 +330,7 @@ const QuienAgendoModal: React.FC<QuienAgendoModalProps> = ({ isOpen, onClose }) 
                         </div>
                     </div>
 
-                    <div className="bg-gray-50 dark:bg-gray-700 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse gap-3">
+                    <div className="bg-gray-50 dark:bg-gray-700 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse gap-3 rounded-b-lg">
                         {!showResults ? (
                             <>
                                 <button

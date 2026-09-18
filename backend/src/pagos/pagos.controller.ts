@@ -77,7 +77,7 @@ export class PagosController {
                 document: pdfBuffer,
                 mimetype: 'application/pdf',
                 fileName: `Historial_Pagos.pdf`,
-                caption: `Hola ${patientEntity.nombre}, adjunto encontrará su historial de pagos.`
+                caption: `Estimado(a) ${patientEntity.nombre}, adjunto encontrará su historial de pagos.`
             });
 
             return { success: true, message: 'Enviado correctamente' };
@@ -114,7 +114,7 @@ export class PagosController {
                 document: pdfBuffer,
                 mimetype: 'application/pdf',
                 fileName: `Recibo_Pago_${pago.recibo || pago.id}.pdf`,
-                caption: `Hola ${paciente.nombre}, le enviamos adjunto su recibo de pago ${reciboNum} por un monto de ${montoStr}. ¡Gracias por su preferencia!`
+                caption: `Estimado(a) ${paciente.nombre}, le enviamos adjunto su recibo de pago ${reciboNum} por un monto de ${montoStr}. ¡Gracias por su preferencia!`
             });
 
             return { success: true, message: 'Recibo enviado por WhatsApp correctamente' };

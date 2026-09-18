@@ -22,8 +22,9 @@ export class LaboratoriosController {
         @Query('page') page: number = 1,
         @Query('limit') limit: number = 10,
         @Query('search') search?: string,
+        @Query('estado') estado?: string,
     ) {
-        return this.laboratoriosService.findAll(page, limit, search);
+        return this.laboratoriosService.findAll(page, limit, search, estado);
     }
 
     @Get(':id')

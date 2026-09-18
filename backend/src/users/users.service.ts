@@ -37,9 +37,12 @@ export class UsersService {
     return this.usersRepository.save(user);
   }
 
-  async findAll(): Promise<User[]> {
+  async findAll(estado?: string): Promise<User[]> {
     const queryBuilder = this.usersRepository.createQueryBuilder('user')
       .leftJoinAndSelect('user.doctor', 'doctor');
+    if (estado) {
+      queryBuilder.andWhere('LOWER(user.estado) = LOWER(:estado)', { estado });
+    }
     queryBuilder.orderBy('user.name', 'ASC');
     return queryBuilder.getMany();
   }

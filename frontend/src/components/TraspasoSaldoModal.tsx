@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import api from '../services/api';
 import type { Paciente, Proforma } from '../types';
 import SearchableSelect, { type Option } from './SearchableSelect';
@@ -25,10 +25,9 @@ const TraspasoSaldoModal: React.FC<Props> = ({
 }) => {
     const [transferType, setTransferType] = useState<'same' | 'other'>('same');
 
-    // Paciente Destino - backend driven search results
+    // Paciente Destino
     const [pacientes, setPacientes] = useState<Paciente[]>([]);
     const [loadingPacientes, setLoadingPacientes] = useState(false);
-    const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const [targetPacienteId, setTargetPacienteId] = useState<number>(0);
     const [targetProformaId, setTargetProformaId] = useState<number>(0);
@@ -41,43 +40,29 @@ const TraspasoSaldoModal: React.FC<Props> = ({
         if (isOpen) {
             setAmount(maxAmount);
             setTransferType('same');
-            setPacientes([]);
             setTargetPacienteId(0);
             setTargetProformaId(0);
             fetchTargetProformas(sourcePacienteId);
+            fetchAllPacientes();
         }
     }, [isOpen, maxAmount, sourcePacienteId]);
 
-    const searchPacientes = useCallback(async (term: string) => {
-        if (!term.trim()) {
-            setPacientes([]);
-            return;
-        }
+    const fetchAllPacientes = async () => {
         setLoadingPacientes(true);
         try {
-            const res = await api.get(`/pacientes?search=${encodeURIComponent(term)}&limit=20`);
+            const res = await api.get('/pacientes?estado=activo&limit=100000');
             const rawList = Array.isArray(res.data?.data)
                 ? res.data.data
                 : (Array.isArray(res.data) ? res.data : []);
             // Exclude source patient
-            const filtered = rawList.filter((p: any) =>
-                p.id !== sourcePacienteId &&
-                (!p.estado || p.estado.toLowerCase() === 'activo')
-            );
+            const filtered = rawList.filter((p: any) => p.id !== sourcePacienteId);
             setPacientes(filtered);
         } catch (err) {
-            console.error('Error searching pacientes:', err);
+            console.error('Error fetching all pacientes:', err);
             setPacientes([]);
         } finally {
             setLoadingPacientes(false);
         }
-    }, [sourcePacienteId]);
-
-    const handleSearchChange = (term: string) => {
-        if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
-        searchDebounceRef.current = setTimeout(() => {
-            searchPacientes(term);
-        }, 300);
     };
 
     const fetchTargetProformas = async (pacId: number) => {
@@ -101,7 +86,6 @@ const TraspasoSaldoModal: React.FC<Props> = ({
         setTransferType(type);
         setTargetProformaId(0);
         setTargetPacienteId(0);
-        setPacientes([]);
         if (type === 'same') {
             fetchTargetProformas(sourcePacienteId);
         } else {
@@ -117,13 +101,20 @@ const TraspasoSaldoModal: React.FC<Props> = ({
         else setTargetProformas([]);
     };
 
-    // Patient options built from backend search results
+    // Patient options with full search capabilities (paterno, materno, nombre, CI)
     const patientOptions: Option[] = useMemo(() => {
-        return pacientes.map(p => ({
-            id: p.id,
-            label: [p.paterno, p.materno, p.nombre].filter(Boolean).join(' '),
-            subLabel: p.ci ? `CI: ${p.ci}` : undefined,
-        }));
+        return pacientes
+            .map(p => {
+                const paternoMaternoNombre = [p.paterno, p.materno, p.nombre].filter(Boolean).join(' ');
+                const nombrePaternoMaterno = [p.nombre, p.paterno, p.materno].filter(Boolean).join(' ');
+                return {
+                    id: p.id,
+                    label: paternoMaternoNombre,
+                    subLabel: p.ci ? `CI: ${p.ci}` : undefined,
+                    searchString: `${nombrePaternoMaterno} ${p.ci || ''}`
+                };
+            })
+            .sort((a, b) => a.label.localeCompare(b.label, 'es', { sensitivity: 'base' }));
     }, [pacientes]);
 
     const fireSwal = (options: any) => {
@@ -277,7 +268,6 @@ const TraspasoSaldoModal: React.FC<Props> = ({
                                 onChange={handleTargetPacienteChange}
                                 placeholder="-- Busque y seleccione un Paciente --"
                                 searchPlaceholder="Escriba Apellido, Nombre o CI..."
-                                onSearchChange={handleSearchChange}
                                 loading={loadingPacientes}
                                 required
                                 icon={

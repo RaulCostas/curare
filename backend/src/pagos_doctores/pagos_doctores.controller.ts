@@ -83,7 +83,7 @@ export class PagosDoctoresController {
             const pdfBuffer = await this.pdfService.generatePagoDoctorPdf(pago);
 
             // Send message with PDF
-            const message = `Hola Dr. ${pago.doctor.nombre} ${pago.doctor.paterno}, le enviamos el recibo de pago correspondiente.`;
+            const message = `Estimado(a) Dr(a). ${pago.doctor.nombre} ${pago.doctor.paterno}, le enviamos el recibo de pago correspondiente.`;
 
             await this.chatbotService.sendMessage(jid, {
                 document: pdfBuffer,

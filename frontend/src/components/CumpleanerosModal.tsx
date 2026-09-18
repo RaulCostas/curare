@@ -42,7 +42,7 @@ const CumpleanerosModal: React.FC<CumpleanerosModalProps> = ({ isOpen, onClose }
         try {
             // Fetch both Pacientes and Personal filtered by month
             const [pacientesRes, personalRes] = await Promise.all([
-                api.get(`/pacientes?estado=activo&limit=3000&mesCumpleanos=${mes}`),
+                api.get(`/pacientes?estado=activo&limit=100000&mesCumpleanos=${mes}`),
                 api.get(`/personal?estado=activo&limit=1000&mesCumpleanos=${mes}`)
             ]);
             

@@ -3,6 +3,7 @@ import api from '../services/api';
 import type { Personal, Paciente } from '../types';
 import Swal from 'sweetalert2';
 import ManualModal, { type ManualSection } from './ManualModal';
+import SearchableSelect, { type Option } from './SearchableSelect';
 import { getLocalDateString } from '../utils/dateUtils';
 
 interface CalificacionFormProps {
@@ -39,8 +40,8 @@ const CalificacionForm: React.FC<CalificacionFormProps> = ({ isOpen, onClose, id
             content: 'Indique el consultorio (1-5) donde se brindó el servicio y la fecha de la evaluación para análisis estadístico.'
         },
         {
-            title: 'Observaciones',
-            content: 'Agregue comentarios adicionales para proporcionar contexto sobre la calificación y mejorar el servicio.'
+            title: 'Campos Obligatorios',
+            content: 'Personal, Paciente, Consultorio y Fecha son obligatorios. Las observaciones son opcionales pero recomendadas.'
         }
     ];
 
@@ -49,7 +50,19 @@ const CalificacionForm: React.FC<CalificacionFormProps> = ({ isOpen, onClose, id
 
         fetchPersonal();
         fetchPacientes();
-        getCurrentUser();
+
+        const userStr = localStorage.getItem('user');
+        if (userStr) {
+            try {
+                const user = JSON.parse(userStr);
+                if (user.id) {
+                    setFormData(prev => ({ ...prev, evaluadorId: user.id }));
+                }
+            } catch (e) {
+                console.error("Error parsing user from localStorage:", e);
+            }
+        }
+
         if (isEditing && id) {
             fetchCalificacion(id);
         } else {
@@ -91,14 +104,10 @@ const CalificacionForm: React.FC<CalificacionFormProps> = ({ isOpen, onClose, id
 
     const fetchPacientes = async () => {
         try {
-            const response = await api.get('/pacientes?limit=1000');
-            const activePacientes = (response.data.data || []).filter((p: any) => p.estado === 'activo');
-            const sortedPacientes = activePacientes.sort((a: any, b: any) => {
-                const nameA = `${a.paterno || ''} ${a.materno || ''} ${a.nombre || ''}`.trim().toLowerCase();
-                const nameB = `${b.paterno || ''} ${b.materno || ''} ${b.nombre || ''}`.trim().toLowerCase();
-                return nameA.localeCompare(nameB);
-            });
-            setPacientes(sortedPacientes);
+            const response = await api.get('/pacientes?limit=100000');
+            const data = Array.isArray(response.data.data) ? response.data.data : (Array.isArray(response.data) ? response.data : []);
+            const activePacientes = data.filter((p: any) => !p.estado || p.estado.toLowerCase() === 'activo');
+            setPacientes(activePacientes);
         } catch (error) {
             console.error('Error fetching pacientes:', error);
         }
@@ -186,6 +195,19 @@ const CalificacionForm: React.FC<CalificacionFormProps> = ({ isOpen, onClose, id
         }));
     };
 
+    const patientOptions: Option[] = (pacientes || [])
+        .map(p => {
+            const paternoMaternoNombre = [p.paterno, p.materno, p.nombre].filter(Boolean).join(' ');
+            const nombrePaternoMaterno = [p.nombre, p.paterno, p.materno].filter(Boolean).join(' ');
+            return {
+                id: p.id,
+                label: paternoMaternoNombre,
+                subLabel: p.ci ? `CI: ${p.ci}` : undefined,
+                searchString: `${nombrePaternoMaterno} ${p.ci || ''}`
+            };
+        })
+        .sort((a, b) => a.label.localeCompare(b.label, 'es', { sensitivity: 'base' }));
+
     if (!isOpen) return null;
 
     return (
@@ -249,25 +271,25 @@ const CalificacionForm: React.FC<CalificacionFormProps> = ({ isOpen, onClose, id
 
                         <div>
                             <label className="block mb-1 font-bold text-sm text-gray-700 dark:text-gray-300">Paciente:</label>
-                            <div className="relative">
-                                <select
-                                    name="pacienteId"
-                                    value={formData.pacienteId}
-                                    onChange={handleChange}
-                                    required
-                                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 font-medium cursor-pointer"
-                                >
-                                    <option value={0}>-- Seleccione Paciente --</option>
-                                    {pacientes.map(p => (
-                                        <option key={p.id} value={p.id}>
-                                            {`${p.paterno} ${p.materno} ${p.nombre}`.trim()}
-                                        </option>
-                                    ))}
-                                </select>
-                                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-gray-400 absolute left-3 top-3 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                                </svg>
-                            </div>
+                            <SearchableSelect
+                                options={patientOptions}
+                                value={formData.pacienteId || ''}
+                                onChange={(val) => {
+                                    const pacId = Number(val) || 0;
+                                    setFormData(prev => ({
+                                        ...prev,
+                                        pacienteId: pacId
+                                    }));
+                                }}
+                                placeholder="-- Seleccione Paciente --"
+                                searchPlaceholder="Buscar por Nombre, Apellido o CI..."
+                                required
+                                icon={
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                                    </svg>
+                                }
+                            />
                         </div>
                     </div>
 

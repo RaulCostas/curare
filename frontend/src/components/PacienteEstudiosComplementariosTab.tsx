@@ -185,7 +185,7 @@ const PacienteEstudiosComplementariosTab: React.FC<PacienteEstudiosComplementari
         let ordenUrl = estudio.orden_estudio_url ? resolveFileUrl(estudio.orden_estudio_url) : '';
         let resultadoUrl = estudio.archivo_url ? resolveFileUrl(estudio.archivo_url) : '';
 
-        let mensaje = `Hola *${patientName}*, le compartimos la constancia de su *Estudio Complementario* en CURARE Centro Dental:\n\n`;
+        let mensaje = `Estimado(a) *${patientName}*, le compartimos la constancia de su *Estudio Complementario* en CURARE Centro Dental:\n\n`;
         mensaje += `📅 *Fecha:* ${formatDate(estudio.fecha)}\n`;
         mensaje += `🔬 *Tipo de Estudio:* ${estudio.tipo_estudio}\n`;
         if (estudio.observaciones) {

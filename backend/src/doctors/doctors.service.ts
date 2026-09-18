@@ -76,7 +76,7 @@ export class DoctorsService {
         }));
     }
 
-    async findAll(search?: string, page: number = 1, limit: number = 5): Promise<{
+    async findAll(search?: string, page: number = 1, limit: number = 5, estado?: string): Promise<{
         data: Doctor[];
         total: number;
         page: number;
@@ -92,6 +92,10 @@ export class DoctorsService {
                 'doctor.nombre ILIKE :search OR doctor.paterno ILIKE :search OR doctor.materno ILIKE :search',
                 { search: `%${search}%` }
             );
+        }
+
+        if (estado) {
+            queryBuilder.andWhere('LOWER(doctor.estado) = LOWER(:estado)', { estado });
         }
 
         const [data, total] = await queryBuilder

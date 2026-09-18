@@ -204,7 +204,7 @@ const AgendaView: React.FC<AgendaViewProps> = ({ defaultPacienteId, isEmbedded =
 
         const searchPatients = async () => {
             try {
-                const response = await api.get(`/pacientes?search=${debouncedSearchTerm}&limit=10`);
+                const response = await api.get(`/pacientes?search=${debouncedSearchTerm}&limit=100000`);
                 let results = response.data.data || [];
 
                 const searchTrimmed = debouncedSearchTerm.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");

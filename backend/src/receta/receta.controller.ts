@@ -67,7 +67,7 @@ export class RecetaController {
             const pdfBuffer = await this.pdfService.generateRecetaPdf(receta);
 
             // Send message with PDF
-            const message = `Hola ${receta.paciente.nombre}, le enviamos su receta médica.`;
+            const message = `Estimado(a) ${receta.paciente.nombre}, le enviamos su receta médica.`;
 
             await this.chatbotService.sendMessage(jid, {
                 document: pdfBuffer,

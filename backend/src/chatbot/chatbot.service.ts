@@ -384,9 +384,9 @@ export class ChatbotService implements OnModuleInit, OnModuleDestroy {
             if (respuesta === 'a') {
                 try {
                     await this.agendaService.update(currentSession.citaId, { estado: 'confirmado' } as any);
-                    await this.sendMessage(remoteJid, '¡Gracias! Tu cita ha sido confirmada satisfactoriamente. ✅');
+                    await this.sendMessage(remoteJid, '¡Muchas gracias! Su cita ha sido confirmada satisfactoriamente. ✅');
                 } catch (err) {
-                    await this.sendMessage(remoteJid, 'Ocurrió un error al confirmar tu cita. Por favor, contáctanos directamente.');
+                    await this.sendMessage(remoteJid, 'Ocurrió un error al confirmar su cita. Por favor, contáctenos directamente.');
                 }
                 session.userSessions.delete(remoteJid);
                 return;
@@ -398,7 +398,7 @@ export class ChatbotService implements OnModuleInit, OnModuleDestroy {
                 session.userSessions.delete(remoteJid);
                 return;
             } else {
-                await this.sendMessage(remoteJid, 'Por favor responde *A* para confirmar o *B* para cancelar tu cita.');
+                await this.sendMessage(remoteJid, 'Por favor responda *A* para confirmar o *B* para cancelar su cita.');
                 return;
             }
         }
@@ -688,10 +688,10 @@ export class ChatbotService implements OnModuleInit, OnModuleDestroy {
                 return `📅 ${dateFormatted} 🕒 ${timeFormatted}`;
             });
 
-            const reply = `Hola ${paciente.nombre}, tienes las siguientes citas programadas:\n\n${replies.join('\n')}`;
+            const reply = `Estimado(a) ${paciente.nombre}, tiene las siguientes citas programadas:\n\n${replies.join('\n')}`;
             await this.sendMessage(remoteJid, reply);
         } else {
-            const reply = `Hola ${paciente.nombre}, no encontré citas futuras agendadas.`;
+            const reply = `Estimado(a) ${paciente.nombre}, no encontramos citas futuras agendadas.`;
             await this.sendMessage(remoteJid, reply);
         }
     }

@@ -126,7 +126,7 @@ export class HistoriaClinicaController {
             const pdfBuffer = await this.pdfService.generateHistoriaClinicaPdf(+pacienteId, +proformaId);
 
             // Send message with PDF
-            const message = `Hola ${paciente.nombre}, le enviamos su historial de tratamientos.`;
+            const message = `Estimado(a) ${paciente.nombre}, le enviamos su historial de tratamientos.`;
 
             await this.chatbotService.sendMessage(jid, {
                 document: pdfBuffer,

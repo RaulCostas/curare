@@ -443,7 +443,7 @@ export class ProformasService {
         document: fileBuffer,
         mimetype: 'application/pdf',
         fileName: `Presupuesto_${proforma.numero}.pdf`,
-        caption: `Hola ${paciente.nombre}, aquí tiene el detalle de su presupuesto (N° ${proforma.numero}).`
+        caption: `Estimado(a) ${paciente.nombre}, aquí tiene el detalle de su presupuesto (N° ${proforma.numero}).`
       });
       return { success: true, message: 'Enviado correctamente' };
     } catch (error) {

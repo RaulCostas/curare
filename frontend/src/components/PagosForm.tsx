@@ -4,6 +4,8 @@ import Swal from 'sweetalert2';
 import type { Paciente, Proforma, Pago, ComisionTarjeta } from '../types';
 import ManualModal, { type ManualSection } from './ManualModal';
 import FormaPagoForm from './FormaPagoForm';
+import SearchableSelect, { type Option } from './SearchableSelect';
+import { formatPaternoMaternoNombre } from '../utils/formatters';
 import { getLocalDateString } from '../utils/dateUtils';
 import { Calendar, DollarSign, CreditCard, Hash, FileText, MessageSquare, User } from 'lucide-react';
 
@@ -87,7 +89,7 @@ const PagosForm: React.FC<PagosFormProps> = ({ isOpen, onClose, id, defaultPacie
 
     const fetchPacientes = async () => {
         try {
-            const response = await api.get('/pacientes?limit=1000');
+            const response = await api.get('/pacientes?limit=100000');
             const rawData = response.data?.data || response.data || [];
             const data = Array.isArray(rawData) ? rawData : [];
             const activePacientes = data.filter((p: any) => !p.estado || String(p.estado).toLowerCase() === 'activo');
@@ -255,6 +257,19 @@ const PagosForm: React.FC<PagosFormProps> = ({ isOpen, onClose, id, defaultPacie
 
     if (!isOpen) return null;
 
+    const patientOptions: Option[] = pacientes
+        .map(p => {
+            const paternoMaternoNombre = [p.paterno, p.materno, p.nombre].filter(Boolean).join(' ');
+            const nombrePaternoMaterno = [p.nombre, p.paterno, p.materno].filter(Boolean).join(' ');
+            return {
+                id: p.id,
+                label: paternoMaternoNombre,
+                subLabel: p.ci ? `CI: ${p.ci}` : undefined,
+                searchString: `${nombrePaternoMaterno} ${p.ci || ''}`
+            };
+        })
+        .sort((a, b) => a.label.localeCompare(b.label, 'es', { sensitivity: 'base' }));
+
     return (
         <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-[1000] p-4">
             <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl w-[640px] max-w-[95%] max-h-[90vh] overflow-y-auto shadow-2xl text-gray-800 dark:text-gray-100 border border-gray-100 dark:border-gray-700">
@@ -289,23 +304,22 @@ const PagosForm: React.FC<PagosFormProps> = ({ isOpen, onClose, id, defaultPacie
                         <>
                             <div>
                                 <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300">Paciente:</label>
-                                <div className="relative flex-1 w-full">
-                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
-                                        <User className="h-4 w-4" />
-                                    </div>
-                                    <select
-                                        name="pacienteId"
-                                        value={formData.pacienteId}
-                                        onChange={handleChange}
-                                        required
-                                        className="w-full pl-9 pr-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-2 focus:outline-none focus:ring-blue-500 cursor-pointer"
-                                    >
-                                        <option value={0}>-- Seleccione Paciente --</option>
-                                        {pacientes.map(p => (
-                                            <option key={p.id} value={p.id}>{p.paterno} {p.materno} {p.nombre}</option>
-                                        ))}
-                                    </select>
-                                </div>
+                                <SearchableSelect
+                                    options={patientOptions}
+                                    value={formData.pacienteId || ''}
+                                    onChange={(val) => {
+                                        const pacId = Number(val) || 0;
+                                        setFormData(prev => ({
+                                            ...prev,
+                                            pacienteId: pacId,
+                                            proformaId: 0
+                                        }));
+                                    }}
+                                    placeholder="-- Seleccione Paciente --"
+                                    searchPlaceholder="Buscar por Nombre, Apellido o CI..."
+                                    required
+                                    icon={<User className="h-4 w-4 text-gray-400" />}
+                                />
                             </div>
 
                             <div>

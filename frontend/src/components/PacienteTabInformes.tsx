@@ -79,9 +79,12 @@ const PacienteTabInformes: React.FC<PacienteTabInformesProps> = ({ pacienteId, p
 
     const fetchDoctores = async () => {
         try {
-            const res = await api.get('/doctors?limit=1000');
+            const res = await api.get('/doctors?limit=1000&estado=activo');
             const docs = res.data?.data || res.data || [];
-            setDoctores(Array.isArray(docs) ? docs : []);
+            const activeDocs = (Array.isArray(docs) ? docs : [])
+                .filter((doc: any) => !doc.estado || doc.estado.toLowerCase() === 'activo' || (editingInforme && doc.id === editingInforme.doctorId))
+                .sort((a: any, b: any) => formatPaternoMaternoNombre(a).localeCompare(formatPaternoMaternoNombre(b), 'es', { sensitivity: 'base' }));
+            setDoctores(activeDocs);
         } catch (e) {
             console.error("Error fetching doctors:", e);
         }
@@ -676,7 +679,7 @@ const PacienteTabInformes: React.FC<PacienteTabInformesProps> = ({ pacienteId, p
                                                 <option value="">-- Seleccionar Doctor --</option>
                                                 {doctores.map((doc: any) => (
                                                     <option key={doc.id} value={doc.id}>
-                                                        Dr. {doc.paterno} {doc.materno || ''} {doc.nombre} {doc.especialidad ? `(${doc.especialidad.especialidad})` : ''}
+                                                        Dr(a). {formatPaternoMaternoNombre(doc)} {doc.especialidad ? `(${doc.especialidad.especialidad})` : ''}
                                                     </option>
                                                 ))}
                                             </select>
