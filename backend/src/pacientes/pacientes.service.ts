@@ -190,27 +190,46 @@ export class PacientesService {
         await this.pacientesRepository.delete(id);
     }
 
-    async getDashboardStats(): Promise<{ totalPacientes: number, birthdayPacientes: Paciente[] }> {
+    async updateFechaFelicitacion(id: number, date: Date = new Date()): Promise<void> {
+        await this.pacientesRepository.update(id, {
+            fecha_felicitacion_cumpleanos: date
+        });
+    }
+
+    async getDashboardStats(): Promise<{ totalPacientes: number, birthdayPacientes: any[] }> {
         const totalPacientes = await this.pacientesRepository.count();
 
         // Get today's date parts
         const today = new Date();
         const month = today.getMonth() + 1; // JS months are 0-indexed
         const day = today.getDate();
+        const currentYear = today.getFullYear();
 
         // Query for patients with birthday today
-        // Note: This assumes fecha_nacimiento is stored as a date or string 'YYYY-MM-DD'
-        // We use raw query for better date extraction compatibility across DBs, 
-        // but for TypeORM/Postgres specifically:
         const birthdayPacientes = await this.pacientesRepository
             .createQueryBuilder('paciente')
             .where('EXTRACT(MONTH FROM paciente.fecha_nacimiento) = :month', { month })
             .andWhere('EXTRACT(DAY FROM paciente.fecha_nacimiento) = :day', { day })
+            .andWhere("paciente.estado = 'activo'")
             .getMany();
+
+        const formattedBirthdayPacientes = birthdayPacientes.map(p => {
+            let felicitacionEnviada = false;
+            if (p.fecha_felicitacion_cumpleanos) {
+                const envioYear = new Date(p.fecha_felicitacion_cumpleanos).getFullYear();
+                if (envioYear === currentYear) {
+                    felicitacionEnviada = true;
+                }
+            }
+            return {
+                ...p,
+                felicitacion_enviada: felicitacionEnviada
+            };
+        });
 
         return {
             totalPacientes,
-            birthdayPacientes
+            birthdayPacientes: formattedBirthdayPacientes
         };
     }
 

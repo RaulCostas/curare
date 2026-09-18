@@ -10,6 +10,7 @@ import ManualModal, { type ManualSection } from './ManualModal';
 import PrecioLaboratorioForm from './PrecioLaboratorioForm';
 import Swal from 'sweetalert2';
 import { X } from 'lucide-react';
+import { formatCurrency } from '../utils/formatters';
 
 const PrecioLaboratorioList: React.FC = () => {
     const [precios, setPrecios] = useState<PrecioLaboratorio[]>([]);
@@ -396,7 +397,7 @@ const PrecioLaboratorioList: React.FC = () => {
                             ${allPrecios.map((precio: any) => `
                                 <tr>
                                     <td>${precio.detalle || 'N/A'}</td>
-                                    <td>${precio.precio ? Number(precio.precio).toFixed(2) : '0.00'}</td>
+                                    <td>${precio.precio ? formatCurrency(precio.precio) : '0,00'}</td>
                                     ${!isSpecificLabSelected ? `<td>${precio.laboratorio?.laboratorio || 'N/A'}</td>` : ''}
                                     <td class="${precio.estado === 'activo' ? 'status-active' : 'status-inactive'}">
                                         ${precio.estado ? precio.estado.charAt(0).toUpperCase() + precio.estado.slice(1) : 'N/A'}
@@ -550,7 +551,7 @@ const PrecioLaboratorioList: React.FC = () => {
             const tableRows = allPrecios.map((p: any) => {
                 const row = [
                     p.detalle || 'N/A',
-                    `Bs ${p.precio ? Number(p.precio).toFixed(2) : '0.00'}`
+                    `Bs ${p.precio ? formatCurrency(p.precio) : '0,00'}`
                 ];
 
                 if (!isSpecificLabSelected) {
@@ -769,7 +770,7 @@ const PrecioLaboratorioList: React.FC = () => {
                                     {precio.detalle}
                                 </td>
                                 <td className="px-5 py-4 whitespace-nowrap text-sm text-green-600 dark:text-green-400 font-bold">
-                                    {Number(precio.precio).toFixed(2)}
+                                    {formatCurrency(precio.precio)}
                                 </td>
                                 <td className="px-5 py-4 whitespace-nowrap text-sm">
                                     <span className={`px-2 py-1 rounded text-sm font-medium ${precio.estado === 'activo'

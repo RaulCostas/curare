@@ -231,13 +231,19 @@ const TrabajoLaboratorioViewModal: React.FC<Props> = ({ isOpen, onClose, trabajo
                         </div>
                         <div class="info-item">
                             <span class="label">Estado</span>
-                            <span class="value" style="text-transform: uppercase;">${trabajo.estado}</span>
+                            <span class="value">${trabajo.estado}</span>
                         </div>
                         <div class="info-item">
                             <span class="label">Pagado</span>
-                            <span class="value" style="text-transform: uppercase;">${trabajo.pagado}</span>
+                            <span class="value">${trabajo.traspasado === 'si' ? 'Observado (No se paga)' : trabajo.pagado}</span>
                         </div>
                     </div>
+                    ${trabajo.traspasado === 'si' ? `
+                    <div style="margin-top: 15px; padding: 10px; background-color: #fef3c7; border: 1px solid #f59e0b; border-radius: 6px;">
+                        <strong style="color: #b45309;">⚠️ TRABAJO OBSERVADO / TRASPASADO (No se paga al laboratorio)</strong>
+                        <div style="margin-top: 5px; color: #78350f; font-size: 13px;"><strong>Motivo:</strong> ${trabajo.observacion_traspaso || 'Sin observación'}</div>
+                    </div>
+                    ` : ''}
                 </div>
 
                 <div class="history-section">
@@ -298,7 +304,6 @@ const TrabajoLaboratorioViewModal: React.FC<Props> = ({ isOpen, onClose, trabajo
                 doPrint();
             } else {
                 logo.onload = doPrint;
-                logo.onerror = doPrint;
             }
         } else {
             doPrint();
@@ -306,7 +311,7 @@ const TrabajoLaboratorioViewModal: React.FC<Props> = ({ isOpen, onClose, trabajo
     };
 
     return (
-        <div className="fixed inset-0 z-[9999] overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div className="fixed inset-0 z-[10000] overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
             <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
                 <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose} aria-hidden="true"></div>
                 <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
@@ -328,48 +333,67 @@ const TrabajoLaboratorioViewModal: React.FC<Props> = ({ isOpen, onClose, trabajo
                                     <div className="space-y-6">
                                         {/* Trabajo Info */}
                                         {trabajo && (
-                                            <div className="bg-blue-50 dark:bg-blue-900/30 p-4 rounded-xl border border-blue-100 dark:border-blue-800 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-blue-900 dark:text-blue-100 shadow-sm">
-                                                <div>
-                                                    <span className="font-bold block text-xs uppercase text-blue-400 dark:text-blue-300">Paciente</span>
-                                                    <span className="font-semibold">{trabajo.paciente?.nombre} {trabajo.paciente?.paterno}</span>
+                                            <>
+                                                {trabajo.traspasado === 'si' && (
+                                                    <div className="p-3.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700/60 rounded-xl flex items-start gap-3 text-amber-900 dark:text-amber-200 shadow-sm">
+                                                        <span className="p-2 bg-amber-100 dark:bg-amber-900/60 rounded-lg text-amber-600 dark:text-amber-300 shrink-0">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                                            </svg>
+                                                        </span>
+                                                        <div>
+                                                            <div className="font-bold text-sm">Trabajo Observado / Traspasado (No se paga al laboratorio)</div>
+                                                            <div className="text-xs mt-0.5 text-amber-800 dark:text-amber-300">
+                                                                <span className="font-semibold">Motivo:</span> {trabajo.observacion_traspaso || 'Sin observación'}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                <div className="bg-blue-50 dark:bg-blue-900/30 p-4 rounded-xl border border-blue-100 dark:border-blue-800 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-blue-900 dark:text-blue-100 shadow-sm">
+                                                    <div>
+                                                        <span className="font-bold block text-xs uppercase text-blue-400 dark:text-blue-300">Paciente</span>
+                                                        <span className="font-semibold">{trabajo.paciente?.nombre} {trabajo.paciente?.paterno}</span>
+                                                    </div>
+                                                    <div>
+                                                        <span className="font-bold block text-xs uppercase text-blue-400 dark:text-blue-300">Laboratorio</span>
+                                                        <span className="font-semibold">{trabajo.laboratorio?.laboratorio}</span>
+                                                    </div>
+                                                    <div>
+                                                        <span className="font-bold block text-xs uppercase text-blue-400 dark:text-blue-300">Trabajo</span>
+                                                        <span className="font-semibold">{trabajo.precioLaboratorio?.detalle}</span>
+                                                    </div>
+                                                    <div>
+                                                        <span className="font-bold block text-xs uppercase text-blue-400 dark:text-blue-300">Piezas</span>
+                                                        <span className="font-semibold">{trabajo.pieza}</span>
+                                                    </div>
+                                                    <div>
+                                                        <span className="font-bold block text-xs uppercase text-blue-400 dark:text-blue-300">Fecha Registro</span>
+                                                        <span className="font-semibold">{new Date(trabajo.fecha).toLocaleDateString()}</span>
+                                                    </div>
+                                                    <div>
+                                                        <span className="font-bold block text-xs uppercase text-blue-400 dark:text-blue-300">Color</span>
+                                                        <span className="font-semibold">{trabajo.color || '-'}</span>
+                                                    </div>
+                                                    <div>
+                                                        <span className="font-bold block text-xs uppercase text-blue-400 dark:text-blue-300">Fecha Pedido</span>
+                                                        <span className="font-semibold">{trabajo.fecha_pedido ? new Date(trabajo.fecha_pedido).toLocaleDateString() : '-'}</span>
+                                                    </div>
+                                                    <div>
+                                                        <span className="font-bold block text-xs uppercase text-blue-400 dark:text-blue-300">Fecha Terminado</span>
+                                                        <span className="font-semibold">{trabajo.fecha_terminado ? new Date(trabajo.fecha_terminado).toLocaleDateString() : '-'}</span>
+                                                    </div>
+                                                    <div>
+                                                        <span className="font-bold block text-xs uppercase text-blue-400 dark:text-blue-300">Estado</span>
+                                                        <span className="font-semibold capitalize">{trabajo.estado}</span>
+                                                    </div>
+                                                    <div>
+                                                        <span className="font-bold block text-xs uppercase text-blue-400 dark:text-blue-300">Pagado</span>
+                                                        <span className={`font-semibold capitalize ${trabajo.traspasado === 'si' ? 'text-amber-600 dark:text-amber-400' : trabajo.pagado === 'si' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                                                            {trabajo.traspasado === 'si' ? 'Observado' : trabajo.pagado}
+                                                        </span>
+                                                    </div>
                                                 </div>
-                                                <div>
-                                                    <span className="font-bold block text-xs uppercase text-blue-400 dark:text-blue-300">Laboratorio</span>
-                                                    <span className="font-semibold">{trabajo.laboratorio?.laboratorio}</span>
-                                                </div>
-                                                <div>
-                                                    <span className="font-bold block text-xs uppercase text-blue-400 dark:text-blue-300">Trabajo</span>
-                                                    <span className="font-semibold">{trabajo.precioLaboratorio?.detalle}</span>
-                                                </div>
-                                                <div>
-                                                    <span className="font-bold block text-xs uppercase text-blue-400 dark:text-blue-300">Piezas</span>
-                                                    <span className="font-semibold">{trabajo.pieza}</span>
-                                                </div>
-                                                <div>
-                                                    <span className="font-bold block text-xs uppercase text-blue-400 dark:text-blue-300">Fecha Registro</span>
-                                                    <span className="font-semibold">{new Date(trabajo.fecha).toLocaleDateString()}</span>
-                                                </div>
-                                                <div>
-                                                    <span className="font-bold block text-xs uppercase text-blue-400 dark:text-blue-300">Color</span>
-                                                    <span className="font-semibold">{trabajo.color || '-'}</span>
-                                                </div>
-                                                <div>
-                                                    <span className="font-bold block text-xs uppercase text-blue-400 dark:text-blue-300">Fecha Pedido</span>
-                                                    <span className="font-semibold">{trabajo.fecha_pedido ? new Date(trabajo.fecha_pedido).toLocaleDateString() : '-'}</span>
-                                                </div>
-                                                <div>
-                                                    <span className="font-bold block text-xs uppercase text-blue-400 dark:text-blue-300">Fecha Terminado</span>
-                                                    <span className="font-semibold">{trabajo.fecha_terminado ? new Date(trabajo.fecha_terminado).toLocaleDateString() : '-'}</span>
-                                                </div>
-                                                <div>
-                                                    <span className="font-bold block text-xs uppercase text-blue-400 dark:text-blue-300">Estado</span>
-                                                    <span className="font-semibold capitalize">{trabajo.estado}</span>
-                                                </div>
-                                                <div>
-                                                    <span className="font-bold block text-xs uppercase text-blue-400 dark:text-blue-300">Pagado</span>
-                                                    <span className={`font-semibold capitalize ${trabajo.pagado === 'si' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{trabajo.pagado}</span>
-                                                </div>
-                                            </div>
+                                            </>
                                         )}
 
                                         {/* Historial */}

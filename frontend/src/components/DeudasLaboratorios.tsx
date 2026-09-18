@@ -27,7 +27,7 @@ const DeudasLaboratorios: React.FC = () => {
             const response = await api.get('/trabajos-laboratorios?limit=1000&estado=terminado');
 
             const allWorks = Array.isArray(response.data) ? response.data : (response.data.data || []);
-            const unpaidWorks = allWorks.filter((w: any) => w.pagado !== 'si' && w.estado !== 'anulado');
+            const unpaidWorks = allWorks.filter((w: any) => w.pagado !== 'si' && w.estado !== 'anulado' && w.traspasado !== 'si');
 
             setDeudas(unpaidWorks);
         } catch (error) {

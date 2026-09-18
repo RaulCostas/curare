@@ -72,6 +72,12 @@ export class TrabajoLaboratorio {
     @Column({ default: 'no' })
     resaltar: string;
 
+    @Column({ default: 'no' })
+    traspasado: string;
+
+    @Column({ type: 'text', nullable: true })
+    observacion_traspaso: string;
+
     @Column({ nullable: true })
     idCubeta: number;
 

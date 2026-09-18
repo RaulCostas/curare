@@ -116,6 +116,15 @@ const Home: React.FC = () => {
         try {
             const response = await api.get('/pacientes/dashboard-stats');
             setStats(response.data);
+            if (response.data?.birthdayPacientes) {
+                const sentIds = new Set<number>();
+                response.data.birthdayPacientes.forEach((p: any) => {
+                    if (p.felicitacion_enviada) {
+                        sentIds.add(p.id);
+                    }
+                });
+                setBirthdaySentIds(sentIds);
+            }
         } catch (error) {
             console.error('Error fetching stats:', error);
         }
@@ -521,13 +530,24 @@ const Home: React.FC = () => {
                                                 try {
                                                     await api.post(`/chatbot/send-birthday/${paciente.id}`);
                                                     setBirthdaySentIds(prev => new Set(prev).add(paciente.id));
-                                                } catch {
+                                                    Swal.fire({
+                                                        icon: 'success',
+                                                        title: '¡Felicitación enviada!',
+                                                        text: `Se envió la felicitación de cumpleaños a ${formatPaternoMaternoNombre(paciente)}.`,
+                                                        timer: 2500,
+                                                        showConfirmButton: false,
+                                                    });
+                                                } catch (err: any) {
+                                                    const errorMsg = err.response?.data?.message || 'Verifica que el chatbot esté conectado a WhatsApp.';
                                                     Swal.fire({
                                                         icon: 'error',
                                                         title: 'Error al enviar mensaje',
-                                                        text: 'Verifica que el chatbot esté conectado.',
+                                                        text: errorMsg,
                                                         confirmButtonText: 'OK',
                                                     });
+                                                    if (errorMsg.includes('ya recibió la felicitación')) {
+                                                        setBirthdaySentIds(prev => new Set(prev).add(paciente.id));
+                                                    }
                                                 } finally {
                                                     setBirthdayLoadingIds(prev => { const s = new Set(prev); s.delete(paciente.id); return s; });
                                                 }

@@ -29,6 +29,9 @@ const PagosLaboratoriosForm: React.FC<PagosLaboratoriosFormProps> = ({ isOpen, o
     const [selectedPatientId, setSelectedPatientId] = useState<number | ''>('');
     const [idTrabajosLaboratorios, setIdTrabajosLaboratorios] = useState<number | ''>('');
 
+    const [esObservado, setEsObservado] = useState(false);
+    const [observacionTraspaso, setObservacionTraspaso] = useState('');
+
     const [allUnpaidWorks, setAllUnpaidWorks] = useState<TrabajoLaboratorio[]>([]);
     const [formasPago, setFormasPago] = useState<FormaPago[]>([]);
     const [showManual, setShowManual] = useState(false);
@@ -38,6 +41,10 @@ const PagosLaboratoriosForm: React.FC<PagosLaboratoriosFormProps> = ({ isOpen, o
         {
             title: 'Pagos a Laboratorios',
             content: 'Registre pagos a laboratorios externos por trabajos realizados. Seleccione el laboratorio, paciente y trabajo específico para registrar el pago.'
+        },
+        {
+            title: 'Trabajos Observados (Traspasados)',
+            content: 'Si un trabajo de laboratorio tuvo algún inconveniente o por algún acuerdo no se pagará al laboratorio, marque la casilla "Marcar como Trabajo Observado / Traspasado" e indique el motivo. El trabajo no generará pago ni figurará como deuda pendiente.'
         },
         {
             title: 'Moneda y Tipo de Cambio',
@@ -60,6 +67,8 @@ const PagosLaboratoriosForm: React.FC<PagosLaboratoriosFormProps> = ({ isOpen, o
                 setSelectedLabId('');
                 setSelectedPatientId('');
                 setIdTrabajosLaboratorios(initialWorkId || '');
+                setEsObservado(false);
+                setObservacionTraspaso('');
             }
         }
     }, [isOpen, id, initialWorkId]);
@@ -139,7 +148,7 @@ const PagosLaboratoriosForm: React.FC<PagosLaboratoriosFormProps> = ({ isOpen, o
             }
 
             const unpaidWorks = allTrabajos.filter((w: any) =>
-                (w.estado === 'terminado' && w.pagado !== 'si' && w.estado !== 'anulado') ||
+                (w.estado === 'terminado' && w.pagado !== 'si' && w.traspasado !== 'si' && w.estado !== 'anulado') ||
                 (currentPaymentWorkId && w.id === currentPaymentWorkId)
             );
 
@@ -225,10 +234,54 @@ const PagosLaboratoriosForm: React.FC<PagosLaboratoriosFormProps> = ({ isOpen, o
         setSelectedLabId(val);
         setSelectedPatientId('');
         setIdTrabajosLaboratorios('');
+        setEsObservado(false);
+        setObservacionTraspaso('');
+    };
+
+    const handleWorkSelect = (workId: number | '') => {
+        setIdTrabajosLaboratorios(workId);
+        if (workId) {
+            const found = availableWorks.find(w => w.id === Number(workId));
+            if (found && found.traspasado === 'si') {
+                setEsObservado(true);
+                setObservacionTraspaso(found.observacion_traspaso || '');
+            }
+        }
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        if (esObservado) {
+            if (!idTrabajosLaboratorios) {
+                Swal.fire('Error', 'Por favor seleccione un trabajo de laboratorio', 'warning');
+                return;
+            }
+            if (!observacionTraspaso.trim()) {
+                Swal.fire('Atención', 'Por favor ingrese el motivo de la observación (¿Por qué no se pagará este trabajo?)', 'warning');
+                return;
+            }
+            try {
+                await api.patch(`/trabajos-laboratorios/${idTrabajosLaboratorios}`, {
+                    traspasado: 'si',
+                    observacion_traspaso: observacionTraspaso.trim()
+                });
+                await Swal.fire({
+                    icon: 'success',
+                    title: 'Trabajo Observado',
+                    text: 'El trabajo ha sido marcado como observado (no se pagará al laboratorio).',
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+                onSaveSuccess();
+                onClose();
+            } catch (error: any) {
+                console.error('Error actualizando trabajo observado:', error);
+                const errorMessage = error.response?.data?.message || 'Error al registrar observación';
+                Swal.fire('Error', Array.isArray(errorMessage) ? errorMessage.join(', ') : errorMessage, 'error');
+            }
+            return;
+        }
 
         if (!idTrabajosLaboratorios || !idFormaPago) {
             Swal.fire('Error', 'Por favor complete todos los campos requeridos', 'error');
@@ -355,7 +408,7 @@ const PagosLaboratoriosForm: React.FC<PagosLaboratoriosFormProps> = ({ isOpen, o
                             value={selectedPatientId}
                             onChange={(val) => {
                                 setSelectedPatientId(val ? Number(val) : '');
-                                setIdTrabajosLaboratorios('');
+                                handleWorkSelect('');
                             }}
                             disabled={!selectedLabId}
                             placeholder={!selectedLabId ? '-- Seleccione primero un laboratorio --' : '-- Seleccione un Paciente --'}
@@ -374,7 +427,7 @@ const PagosLaboratoriosForm: React.FC<PagosLaboratoriosFormProps> = ({ isOpen, o
                         <label className="block mb-1 font-bold text-sm text-gray-700 dark:text-gray-300">Trabajo de Laboratorio:</label>
                         <select
                             value={idTrabajosLaboratorios}
-                            onChange={(e) => setIdTrabajosLaboratorios(Number(e.target.value) || '')}
+                            onChange={(e) => handleWorkSelect(e.target.value ? Number(e.target.value) : '')}
                             required
                             disabled={!selectedLabId || !selectedPatientId}
                             className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-2 focus:outline-none focus:ring-blue-500 font-medium cursor-pointer disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60"
@@ -399,88 +452,140 @@ const PagosLaboratoriosForm: React.FC<PagosLaboratoriosFormProps> = ({ isOpen, o
                         </select>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label className="block mb-1 font-bold text-sm text-gray-700 dark:text-gray-300">Moneda:</label>
-                            <select
-                                value={moneda}
-                                onChange={(e) => setMoneda(e.target.value)}
-                                className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-2 focus:outline-none focus:ring-blue-500 font-medium cursor-pointer"
-                            >
-                                <option value="Bolivianos">Bolivianos</option>
-                                <option value="Dólares">Dólares</option>
-                            </select>
-                        </div>
-
-                        {moneda === 'Dólares' && (
-                            <div>
-                                <label className="block mb-1 font-bold text-sm text-gray-700 dark:text-gray-300">Tipo de Cambio:</label>
+                    {/* Opción Trabajo Observado / Traspasado */}
+                    {Boolean(idTrabajosLaboratorios) && (
+                        <div className="p-3.5 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-700/60 rounded-xl space-y-2.5 transition-all">
+                            <label className="flex items-center gap-2.5 cursor-pointer select-none">
                                 <input
-                                    type="text"
-                                    inputMode="decimal"
-                                    value={tc}
-                                    onChange={(e) => setTc(e.target.value)}
-                                    placeholder="Ej: 6.96 o 6,96"
-                                    className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-2 focus:outline-none focus:ring-blue-500 font-medium"
+                                    type="checkbox"
+                                    checked={esObservado}
+                                    onChange={(e) => setEsObservado(e.target.checked)}
+                                    className="w-4 h-4 text-amber-600 bg-white border-gray-300 rounded focus:ring-amber-500 cursor-pointer"
                                 />
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Forma de Pago con Botón de agregar "+" */}
-                    <div>
-                        <label className="block mb-1 font-bold text-sm text-gray-700 dark:text-gray-300">Forma de Pago:</label>
-                        <div className="flex items-center gap-2">
-                            <div className="relative flex-grow">
-                                <select
-                                    value={idFormaPago}
-                                    onChange={(e) => setIdFormaPago(Number(e.target.value) || '')}
-                                    required
-                                    className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-2 focus:outline-none focus:ring-blue-500 font-medium cursor-pointer"
-                                >
-                                    <option value="">Seleccione Forma de Pago...</option>
-                                    {formasPago.map((fp) => (
-                                        <option key={fp.id} value={fp.id}>
-                                            {fp.forma_pago}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-                            <button
-                                type="button"
-                                onClick={() => setIsFormaPagoModalOpen(true)}
-                                className="py-2.5 px-4 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold shadow-md transition-all transform hover:-translate-y-0.5 active:scale-95 flex items-center justify-center text-lg shrink-0 border border-orange-500 hover:border-orange-600 cursor-pointer"
-                                title="Agregar Nueva Forma de Pago"
-                            >
-                                +
-                            </button>
-                        </div>
-                    </div>
-
-                    {selectedWork && (
-                        <div className="bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-xl p-4 text-right">
-                            <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase mr-2">Monto Base:</span>
-                            <span className="font-bold text-gray-800 dark:text-gray-200">Bs. {amountInBs.toFixed(2)}</span>
-                            <div className="mt-1 text-lg font-extrabold text-gray-900 dark:text-white">
-                                Total a Pagar: <span className="text-green-600 dark:text-green-400">
-                                    {moneda === 'Dólares' ? '$us ' : 'Bs. '} {amountToPay.toFixed(2)}
+                                <span className="text-sm font-bold text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                    </svg>
+                                    Marcar como Trabajo Observado / Traspasado (No se pagará al laboratorio)
                                 </span>
-                            </div>
+                            </label>
+
+                            {esObservado && (
+                                <div className="pt-1.5">
+                                    <label className="block mb-1 font-semibold text-xs text-amber-900 dark:text-amber-300">
+                                        Motivo de la Observación (¿Por qué no se paga?): <span className="text-red-500">*</span>
+                                    </label>
+                                    <textarea
+                                        value={observacionTraspaso}
+                                        onChange={(e) => setObservacionTraspaso(e.target.value)}
+                                        placeholder="Ej. Se compró los ataches, laboratorio no cobra / Falla técnica no imputable / Trabajo en garantía..."
+                                        required={esObservado}
+                                        rows={2}
+                                        className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-amber-300 dark:border-amber-600 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-2 focus:ring-amber-500 focus:outline-none placeholder-gray-400"
+                                    />
+                                </div>
+                            )}
                         </div>
                     )}
 
+                    {!esObservado && (
+                        <>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block mb-1 font-bold text-sm text-gray-700 dark:text-gray-300">Moneda:</label>
+                                    <select
+                                        value={moneda}
+                                        onChange={(e) => setMoneda(e.target.value)}
+                                        className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-2 focus:outline-none focus:ring-blue-500 font-medium cursor-pointer"
+                                    >
+                                        <option value="Bolivianos">Bolivianos</option>
+                                        <option value="Dólares">Dólares</option>
+                                    </select>
+                                </div>
+
+                                {moneda === 'Dólares' && (
+                                    <div>
+                                        <label className="block mb-1 font-bold text-sm text-gray-700 dark:text-gray-300">Tipo de Cambio:</label>
+                                        <input
+                                            type="text"
+                                            inputMode="decimal"
+                                            value={tc}
+                                            onChange={(e) => setTc(e.target.value)}
+                                            placeholder="Ej: 6.96 o 6,96"
+                                            className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-2 focus:outline-none focus:ring-blue-500 font-medium"
+                                        />
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Forma de Pago con Botón de agregar "+" */}
+                            <div>
+                                <label className="block mb-1 font-bold text-sm text-gray-700 dark:text-gray-300">Forma de Pago:</label>
+                                <div className="flex items-center gap-2">
+                                    <div className="relative flex-grow">
+                                        <select
+                                            value={idFormaPago}
+                                            onChange={(e) => setIdFormaPago(Number(e.target.value) || '')}
+                                            required={!esObservado}
+                                            className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-2 focus:outline-none focus:ring-blue-500 font-medium cursor-pointer"
+                                        >
+                                            <option value="">Seleccione Forma de Pago...</option>
+                                            {formasPago.map((fp) => (
+                                                <option key={fp.id} value={fp.id}>
+                                                    {fp.forma_pago}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsFormaPagoModalOpen(true)}
+                                        className="py-2.5 px-4 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold shadow-md transition-all transform hover:-translate-y-0.5 active:scale-95 flex items-center justify-center text-lg shrink-0 border border-orange-500 hover:border-orange-600 cursor-pointer"
+                                        title="Agregar Nueva Forma de Pago"
+                                    >
+                                        +
+                                    </button>
+                                </div>
+                            </div>
+
+                            {selectedWork && (
+                                <div className="bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-xl p-4 text-right">
+                                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase mr-2">Monto Base:</span>
+                                    <span className="font-bold text-gray-800 dark:text-gray-200">Bs. {amountInBs.toFixed(2)}</span>
+                                    <div className="mt-1 text-lg font-extrabold text-gray-900 dark:text-white">
+                                        Total a Pagar: <span className="text-green-600 dark:text-green-400">
+                                            {moneda === 'Dólares' ? '$us ' : 'Bs. '} {amountToPay.toFixed(2)}
+                                        </span>
+                                    </div>
+                                </div>
+                            )}
+                        </>
+                    )}
+
                     <div className="pt-4 border-t border-gray-100 dark:border-gray-700 flex justify-start items-center gap-3 mt-6">
-                        <button
-                            type="submit"
-                            className="bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 px-6 rounded-xl shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5 active:scale-95 text-sm flex items-center gap-2 cursor-pointer"
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
-                                <polyline points="17 21 17 13 7 13 7 21"></polyline>
-                                <polyline points="7 3 7 8 15 8"></polyline>
-                            </svg>
-                            <span>{isEdit ? 'Actualizar' : 'Guardar'}</span>
-                        </button>
+                        {esObservado ? (
+                            <button
+                                type="submit"
+                                className="bg-amber-600 hover:bg-amber-700 text-white font-bold py-2.5 px-6 rounded-xl shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5 active:scale-95 text-sm flex items-center gap-2 cursor-pointer"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                                <span>Guardar como Trabajo Observado</span>
+                            </button>
+                        ) : (
+                            <button
+                                type="submit"
+                                className="bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 px-6 rounded-xl shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5 active:scale-95 text-sm flex items-center gap-2 cursor-pointer"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                                    <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                                    <polyline points="7 3 7 8 15 8"></polyline>
+                                </svg>
+                                <span>{isEdit ? 'Actualizar' : 'Guardar'}</span>
+                            </button>
+                        )}
                         <button
                             type="button"
                             onClick={onClose}

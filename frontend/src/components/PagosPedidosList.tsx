@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
-import { formatDate, formatLongDate, formatNumberBs } from '../utils/dateUtils';
+import { formatDate, formatLongDate } from '../utils/dateUtils';
+import { formatCurrency } from '../utils/formatters';
 import type { PagosPedidos } from '../types';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
@@ -203,7 +204,7 @@ const PagosPedidosList: React.FC = () => {
             const tableData = exportPagos.map(p => [
                 formatDate(p.fecha),
                 p.pedido?.proveedor?.proveedor || '',
-                p.monto,
+                formatCurrency(p.monto),
                 p.factura || '',
                 p.recibo || '',
                 p.forma_pago || ''
@@ -300,7 +301,7 @@ const PagosPedidosList: React.FC = () => {
                 doc.text('Monto:', 20, contentStartY + lineHeight * 2);
                 doc.setFont('helvetica', 'normal');
                 doc.setFontSize(14);
-                doc.text(`${formatNumberBs(pago.monto)} BS`, 70, contentStartY + lineHeight * 2);
+                doc.text(`${formatCurrency(pago.monto)} BS`, 70, contentStartY + lineHeight * 2);
                 doc.setFontSize(12);
 
                 doc.setFont('helvetica', 'bold');
@@ -527,7 +528,7 @@ const PagosPedidosList: React.FC = () => {
                             <tr>
                                 <td>${formatDate(p.fecha)}</td>
                                 <td>${p.pedido?.proveedor?.proveedor || ''}</td>
-                                <td>${p.monto}</td>
+                                <td>${formatCurrency(p.monto)}</td>
                                 <td>${p.factura || '-'}</td>
                                 <td>${p.recibo || '-'}</td>
                                 <td>${p.forma_pago}</td>
@@ -680,7 +681,7 @@ const PagosPedidosList: React.FC = () => {
                                 <td className="p-3 text-gray-800 dark:text-gray-300">{(currentPage - 1) * itemsPerPage + index + 1}</td>
                                 <td className="p-3 text-gray-800 dark:text-gray-300">{formatDate(pago.fecha)}</td>
                                 <td className="p-3 text-gray-800 dark:text-gray-300">{pago.pedido?.proveedor?.proveedor}</td>
-                                <td className="p-3 font-semibold text-gray-800 dark:text-gray-300">{pago.monto}</td>
+                                <td className="p-3 font-semibold text-gray-800 dark:text-gray-300">{formatCurrency(pago.monto)}</td>
                                 <td className="p-3 text-gray-800 dark:text-gray-300">{pago.factura || '-'}</td>
                                 <td className="p-3 text-gray-800 dark:text-gray-300">{pago.recibo || '-'}</td>
                                 <td className="p-3">

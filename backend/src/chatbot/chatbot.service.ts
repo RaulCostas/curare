@@ -725,6 +725,14 @@ export class ChatbotService implements OnModuleInit, OnModuleDestroy {
             throw new Error('Paciente no encontrado');
         }
 
+        const currentYear = new Date().getFullYear();
+        if (paciente.fecha_felicitacion_cumpleanos) {
+            const envioYear = new Date(paciente.fecha_felicitacion_cumpleanos).getFullYear();
+            if (envioYear === currentYear) {
+                throw new Error('El paciente ya recibió la felicitación de cumpleaños este año');
+            }
+        }
+
         let rawPhone = (paciente as any).telefono_celular || paciente.celular || paciente.telefono;
         let celular = rawPhone?.replace(/\D/g, '');
         if (!celular) {
@@ -744,6 +752,10 @@ export class ChatbotService implements OnModuleInit, OnModuleDestroy {
             console.error(`[Chatbot] Error enviando imagen de cumpleaños:`, error);
             await this.sendMessage(jid, text);
         }
+
+        // Registrar la fecha de envío en la BD para evitar duplicados
+        await this.pacientesService.updateFechaFelicitacion(pacienteId, new Date());
+
         return { success: true };
     }
 
@@ -787,27 +799,54 @@ export class ChatbotService implements OnModuleInit, OnModuleDestroy {
             throw new Error('El chatbot no está conectado a WhatsApp');
         }
 
-        const filePath = path.join(process.cwd(), 'uploads', filename);
-        if (!fs.existsSync(filePath)) {
+        const possibleDirs = [
+            path.join(process.cwd(), 'uploads'),
+            path.join(process.cwd(), 'backend', 'uploads'),
+            path.join(__dirname, '..', '..', 'uploads'),
+        ];
+
+        let foundPath: string | null = null;
+        const baseNameWithoutExt = filename.replace(/\.[^/.]+$/, '');
+        const ext = path.extname(filename).toLowerCase();
+        const candidateNames = [
+            filename,
+            `${baseNameWithoutExt}.jpeg`,
+            `${baseNameWithoutExt}.jpg`,
+            `${baseNameWithoutExt}.png`,
+            `${baseNameWithoutExt}.webp`
+        ];
+
+        for (const dir of possibleDirs) {
+            for (const cand of candidateNames) {
+                const p = path.join(dir, cand);
+                if (fs.existsSync(p)) {
+                    foundPath = p;
+                    break;
+                }
+            }
+            if (foundPath) break;
+        }
+
+        if (!foundPath) {
             throw new Error(`El archivo ${filename} no fue encontrado en el servidor.`);
         }
 
-        const buffer = fs.readFileSync(filePath);
-        const ext = path.extname(filename).toLowerCase();
+        const buffer = fs.readFileSync(foundPath);
+        const resolvedExt = path.extname(foundPath).toLowerCase();
 
-        if (['.jpg', '.jpeg', '.png', '.webp'].includes(ext)) {
+        if (['.jpg', '.jpeg', '.png', '.webp'].includes(resolvedExt)) {
             await this.sendMessage(jid, {
                 image: buffer,
                 caption: caption || ''
             });
         } else {
             let mimetype = 'application/pdf';
-            if (ext === '.doc' || ext === '.docx') mimetype = 'application/msword';
+            if (resolvedExt === '.doc' || resolvedExt === '.docx') mimetype = 'application/msword';
 
             await this.sendMessage(jid, {
                 document: buffer,
                 mimetype,
-                fileName: filename,
+                fileName: path.basename(foundPath),
                 caption: caption || ''
             });
         }

@@ -178,7 +178,7 @@ const VacacionesForm: React.FC<VacacionesFormProps> = ({ isOpen, onClose, id, on
             else if (years >= 6 && years <= 10) diasCorrespondientes = 20;
             else if (years >= 11) diasCorrespondientes = 30;
 
-            const displayDate = `${day}/${month + 1}/${year}`;
+            const displayDate = `${day.toString().padStart(2, '0')}/${(month + 1).toString().padStart(2, '0')}/${year}`;
             const saldo = diasCorrespondientes - diasTomados;
 
             return (

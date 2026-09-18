@@ -218,6 +218,8 @@ export interface Paciente {
     estado: string;
     foto?: string;
     fichaMedica?: FichaMedica;
+    fecha_felicitacion_cumpleanos?: string | null;
+    felicitacion_enviada?: boolean;
     tieneFirma?: boolean;
 }
 
@@ -758,6 +760,8 @@ export interface TrabajoLaboratorio {
     precio_unitario: number;
     total: number;
     resaltar: string;
+    traspasado?: string;
+    observacion_traspaso?: string;
     idCubeta?: number;
     cubeta?: Cubeta;
 }

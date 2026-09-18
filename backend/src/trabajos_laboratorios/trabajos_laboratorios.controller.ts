@@ -16,8 +16,9 @@ export class TrabajosLaboratoriosController {
         @Query('limit') limit: number = 10,
         @Query('search') search: string = '',
         @Query('estado') estado: string = '',
+        @Query('traspasado') traspasado: string = '',
     ) {
-        const [data, total] = await this.trabajosService.findAll(page, limit, search, estado);
+        const [data, total] = await this.trabajosService.findAll(page, limit, search, estado, traspasado);
         return {
             data,
             total,

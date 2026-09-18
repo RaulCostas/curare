@@ -6,6 +6,7 @@ import ManualModal, { type ManualSection } from './ManualModal';
 import FormaPagoForm from './FormaPagoForm';
 import SearchableSelect from './SearchableSelect';
 import { getLocalDateString } from '../utils/dateUtils';
+import { formatCurrency } from '../utils/formatters';
 
 interface FormaPago {
     id: number;
@@ -137,7 +138,7 @@ const PagosPedidosForm: React.FC<PagosPedidosFormProps> = ({ isOpen, onClose, id
 
     const pedidoOptions = pedidos.map(p => ({
         id: p.id,
-        label: `#${p.id} - ${p.proveedor?.proveedor || 'Sin Proveedor'} - Total: Bs ${p.Total} ${p.Pagado ? '(Pagado)' : ''}`,
+        label: `#${p.id} - ${p.proveedor?.proveedor || 'Sin Proveedor'} - Total: Bs ${formatCurrency(p.Total)} ${p.Pagado ? '(Pagado)' : ''}`,
         subLabel: p.Observaciones ? `Obs: ${p.Observaciones}` : undefined,
         searchString: `${p.id} ${p.proveedor?.proveedor || ''} ${p.Observaciones || ''}`
     }));

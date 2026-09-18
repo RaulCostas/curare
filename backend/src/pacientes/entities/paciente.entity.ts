@@ -116,6 +116,9 @@ export class Paciente {
     @Column({ type: 'text', nullable: true })
     firmaFC: string;
 
+    @Column({ name: 'fecha_felicitacion_cumpleanos', type: 'timestamp', nullable: true })
+    fecha_felicitacion_cumpleanos: Date | null;
+
     @CreateDateColumn()
     createdAt: Date;
 

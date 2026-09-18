@@ -8,9 +8,10 @@ import ManualModal, { type ManualSection } from './ManualModal';
 import TrabajoLaboratorioViewModal from './TrabajoLaboratorioViewModal';
 import TrabajosNoTerminadosModal from './TrabajosNoTerminadosModal';
 import UbicacionCubetasModal from './UbicacionCubetasModal';
+import TrabajosObservadosModal from './TrabajosObservadosModal';
 import TrabajosLaboratoriosForm from './TrabajosLaboratoriosForm';
 import Swal from 'sweetalert2';
-import { formatPaternoMaternoNombre } from '../utils/formatters';
+import { formatPaternoMaternoNombre, formatCurrency } from '../utils/formatters';
 
 const TrabajosLaboratoriosList: React.FC = () => {
     const navigate = useNavigate();
@@ -21,6 +22,7 @@ const TrabajosLaboratoriosList: React.FC = () => {
     const [selectedWorkId, setSelectedWorkId] = useState<number | null>(null);
     const [showNoTerminados, setShowNoTerminados] = useState(false);
     const [showCubetas, setShowCubetas] = useState(false);
+    const [showObservados, setShowObservados] = useState(false);
 
     // Modal state for TrabajosLaboratoriosForm
     const [isFormOpen, setIsFormOpen] = useState(false);
@@ -36,8 +38,12 @@ const TrabajosLaboratoriosList: React.FC = () => {
             content: 'Para registrar un nuevo trabajo, haga clic en el botón azul "+ Nuevo Trabajo". Deberá seleccionar el paciente, el laboratorio, el tipo de trabajo y opcionalmente asignar una cubeta para su almacenamiento.'
         },
         {
+            title: 'Trabajos Observados',
+            content: 'El botón ámbar "Trabajos Observados" abre una ventana con todos los trabajos marcados como traspasados / observados que no se pagarán al laboratorio, mostrando su motivo de observación, datos del paciente y monto.'
+        },
+        {
             title: 'Trabajos No Terminados',
-            content: 'El botón ámbar con icono de reloj "Trabajos No terminados" muestra una lista de todos los trabajos pendientes. Desde esta ventana puede acceder directamente al formulario de edición de cada trabajo para actualizarlo.'
+            content: 'El botón con icono de reloj muestra una lista de todos los trabajos pendientes. Desde esta ventana puede acceder directamente al formulario de edición de cada trabajo para actualizarlo.'
         },
         {
             title: 'Ubicación de Cubetas',
@@ -167,7 +173,8 @@ const TrabajosLaboratoriosList: React.FC = () => {
             Estado: t.estado,
             Cita: t.cita || '-',
             Observacion: t.observacion || '-',
-            Pagado: t.pagado,
+            Pagado: (t as any).traspasado === 'si' ? 'Observado' : t.pagado,
+            'Obs. Traspaso': (t as any).observacion_traspaso || '-',
             'Precio Unitario': t.precio_unitario,
             Total: t.total,
             Resaltar: t.resaltar === 'si' ? 'Sí' : 'No',
@@ -204,14 +211,24 @@ const TrabajosLaboratoriosList: React.FC = () => {
                 <div className="flex gap-2 flex-wrap justify-center">
                     <button
                         onClick={() => setShowManual(true)}
-                        className="bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 p-1.5 rounded-full flex items-center justify-center w-[30px] h-[30px] text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                        className="bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 p-1.5 rounded-full flex items-center justify-center w-[30px] h-[30px] text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors cursor-pointer"
                         title="Ayuda / Manual"
                     >
                         ?
                     </button>
                     <button
+                        onClick={() => setShowObservados(true)}
+                        className="bg-amber-500 hover:bg-amber-600 text-white font-semibold py-2 px-4 rounded-xl flex items-center justify-center gap-2 text-sm shadow-md transition-all transform hover:-translate-y-0.5 cursor-pointer"
+                        title="Ver Trabajos Observados / Traspasados"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                        Trabajos Observados
+                    </button>
+                    <button
                         onClick={exportToExcel}
-                        className="bg-[#28a745] hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-xl flex items-center justify-center gap-2 text-sm shadow-md transition-all transform hover:-translate-y-0.5"
+                        className="bg-[#28a745] hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-xl flex items-center justify-center gap-2 text-sm shadow-md transition-all transform hover:-translate-y-0.5 cursor-pointer"
                         title="Exportar a Excel"
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" /></svg> Excel
@@ -221,7 +238,7 @@ const TrabajosLaboratoriosList: React.FC = () => {
                             setSelectedFormWorkId(null);
                             setIsFormOpen(true);
                         }}
-                        className="bg-[#3498db] hover:bg-blue-600 text-white font-semibold py-2 px-5 rounded-xl flex items-center gap-2 shadow-md transition-all transform hover:-translate-y-0.5 text-sm"
+                        className="bg-[#3498db] hover:bg-blue-600 text-white font-semibold py-2 px-5 rounded-xl flex items-center gap-2 shadow-md transition-all transform hover:-translate-y-0.5 text-sm cursor-pointer"
                     >
                         <span className="text-xl">+</span> Nuevo Trabajo
                     </button>
@@ -319,16 +336,25 @@ const TrabajosLaboratoriosList: React.FC = () => {
                                 </td>
                                 <td className="p-3 text-gray-700 dark:text-gray-300">{trabajo.pieza}</td>
                                 <td className="p-3 text-gray-700 dark:text-gray-300">{trabajo.cantidad}</td>
-                                <td className="p-3 font-bold text-gray-800 dark:text-gray-200">{Number(trabajo.total).toFixed(2)}</td>
+                                <td className="p-3 font-bold text-gray-800 dark:text-gray-200">{formatCurrency(trabajo.total)}</td>
                                 <td className="p-3">
                                     <span className={`px-2 py-1 rounded text-white text-xs ${trabajo.estado === 'terminado' ? 'bg-green-500' : 'bg-yellow-500'}`}>
                                         {trabajo.estado}
                                     </span>
                                 </td>
                                 <td className="p-3">
-                                    <span className={`px-2 py-1 rounded text-white text-xs ${trabajo.pagado === 'si' ? 'bg-green-500' : 'bg-red-500'}`}>
-                                        {trabajo.pagado}
-                                    </span>
+                                    {(trabajo as any).traspasado === 'si' ? (
+                                        <span
+                                            className="px-2 py-1 rounded bg-amber-500 text-white text-xs font-semibold cursor-help inline-block shadow-sm"
+                                            title={`Trabajo Observado / Traspasado: ${(trabajo as any).observacion_traspaso || 'Sin observación'}`}
+                                        >
+                                            Observado
+                                        </span>
+                                    ) : (
+                                        <span className={`px-2 py-1 rounded text-white text-xs ${trabajo.pagado === 'si' ? 'bg-green-500' : 'bg-red-500'}`}>
+                                            {trabajo.pagado}
+                                        </span>
+                                    )}
                                 </td>
                                 <td className="p-3 flex gap-2">
                                     <button
@@ -442,6 +468,20 @@ const TrabajosLaboratoriosList: React.FC = () => {
                 isOpen={isViewModalOpen}
                 onClose={() => setIsViewModalOpen(false)}
                 trabajoId={selectedWorkId}
+            />
+
+            <TrabajosObservadosModal
+                isOpen={showObservados}
+                onClose={() => setShowObservados(false)}
+                trabajos={trabajos}
+                onViewTrabajo={(id) => {
+                    setSelectedWorkId(id);
+                    setIsViewModalOpen(true);
+                }}
+                onEditTrabajo={(id) => {
+                    setSelectedFormWorkId(id);
+                    setIsFormOpen(true);
+                }}
             />
 
             <TrabajosNoTerminadosModal

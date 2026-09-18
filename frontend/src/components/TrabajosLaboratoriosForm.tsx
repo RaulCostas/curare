@@ -4,6 +4,7 @@ import type { TrabajoLaboratorio, Paciente, Laboratorio, PrecioLaboratorio, Cube
 import Swal from 'sweetalert2';
 import ManualModal, { type ManualSection } from './ManualModal';
 import SearchableSelect, { type Option } from './SearchableSelect';
+import { formatCurrency } from '../utils/formatters';
 
 interface TrabajosLaboratoriosFormProps {
     isOpen: boolean;
@@ -36,6 +37,8 @@ const TrabajosLaboratoriosForm: React.FC<TrabajosLaboratoriosFormProps> = ({ isO
         cita: 'no',
         observacion: '',
         pagado: 'no',
+        traspasado: 'no',
+        observacion_traspaso: '',
         precio_unitario: 0,
         total: 0,
         fecha_terminado: undefined,
@@ -167,6 +170,8 @@ const TrabajosLaboratoriosForm: React.FC<TrabajosLaboratoriosFormProps> = ({ isO
             cantidad: Number(formData.cantidad),
             precio_unitario: Number(formData.precio_unitario),
             total: Number(formData.total),
+            traspasado: formData.traspasado || 'no',
+            observacion_traspaso: formData.observacion_traspaso || '',
             fecha_terminado: formData.estado === 'terminado' ? formData.fecha_terminado : null
         };
 
@@ -219,9 +224,9 @@ const TrabajosLaboratoriosForm: React.FC<TrabajosLaboratoriosFormProps> = ({ isO
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 overflow-hidden">
+        <div className="fixed inset-0 z-[10000] overflow-hidden">
             <div className="fixed inset-0 bg-black/50 transition-opacity duration-300 opacity-100" onClick={onClose} />
-            <div className="fixed inset-y-0 right-0 z-50 w-full max-w-2xl bg-white dark:bg-gray-800 shadow-2xl transform transition-transform duration-300 ease-in-out translate-x-0 flex flex-col">
+            <div className="fixed inset-y-0 right-0 z-[10000] w-full max-w-2xl bg-white dark:bg-gray-800 shadow-2xl transform transition-transform duration-300 ease-in-out translate-x-0 flex flex-col">
                 <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50">
                     <h2 className="text-xl font-bold text-gray-800 dark:text-white flex items-center gap-3">
                         <span className="p-2.5 bg-purple-100 dark:bg-purple-900/60 rounded-xl text-purple-600 dark:text-purple-300 shadow-sm">
@@ -346,7 +351,7 @@ const TrabajosLaboratoriosForm: React.FC<TrabajosLaboratoriosFormProps> = ({ isO
                                             .filter(p => p.idLaboratorio === Number(formData.idLaboratorio))
                                             .map(p => (
                                                 <option key={p.id} value={p.id}>
-                                                    {p.detalle} - Bs {Number(p.precio).toFixed(2)}
+                                                    {p.detalle} - Bs {formatCurrency(p.precio)}
                                                 </option>
                                             ))}
                                 </select>
@@ -477,7 +482,7 @@ const TrabajosLaboratoriosForm: React.FC<TrabajosLaboratoriosFormProps> = ({ isO
                     </div>
 
                     <div>
-                        <label className="block mb-1 font-bold text-sm text-gray-700 dark:text-gray-300">Observación:</label>
+                        <label className="block mb-1 font-bold text-sm text-gray-700 dark:text-gray-300">Observación General:</label>
                         <div className="relative flex-1 w-full">
                             <div className="absolute top-3 left-0 pl-3 flex items-start pointer-events-none text-gray-400">
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -488,21 +493,62 @@ const TrabajosLaboratoriosForm: React.FC<TrabajosLaboratoriosFormProps> = ({ isO
                                 name="observacion"
                                 value={formData.observacion}
                                 onChange={handleChange}
-                                rows={3}
+                                rows={2}
                                 placeholder="Ej: Detalles adicionales del trabajo..."
                                 className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 text-gray-800 dark:text-white bg-white dark:bg-gray-700 placeholder-gray-400 dark:placeholder-gray-300 text-sm font-medium"
                             />
                         </div>
                     </div>
 
+                    {/* Trabajo Observado / Traspasado */}
+                    <div className="p-3.5 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-700/60 rounded-xl space-y-2.5">
+                        <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                            <input
+                                type="checkbox"
+                                name="traspasado"
+                                checked={formData.traspasado === 'si'}
+                                onChange={(e) => {
+                                    const isChecked = e.target.checked;
+                                    setFormData(prev => ({
+                                        ...prev,
+                                        traspasado: isChecked ? 'si' : 'no'
+                                    }));
+                                }}
+                                className="w-4 h-4 text-amber-600 bg-white border-gray-300 rounded focus:ring-amber-500 cursor-pointer"
+                            />
+                            <span className="text-sm font-bold text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                                Marcar como Trabajo Observado / Traspasado (No se pagará al laboratorio)
+                            </span>
+                        </label>
+
+                        {formData.traspasado === 'si' && (
+                            <div className="pt-1.5">
+                                <label className="block mb-1 font-semibold text-xs text-amber-900 dark:text-amber-300">
+                                    Motivo de la Observación (¿Por qué no se paga?):
+                                </label>
+                                <textarea
+                                    name="observacion_traspaso"
+                                    value={formData.observacion_traspaso || ''}
+                                    onChange={handleChange}
+                                    placeholder="Ej. Se compró los ataches, laboratorio no cobra / Falla técnica..."
+                                    rows={2}
+                                    className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-amber-300 dark:border-amber-600 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-2 focus:ring-amber-500 focus:outline-none placeholder-gray-400"
+                                />
+                            </div>
+                        )}
+                    </div>
+
                     <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-xl flex justify-end gap-6 items-center border border-gray-100 dark:border-gray-700">
                         <div className="text-right">
                             <span className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">P. Unitario</span>
-                            <span className="text-base font-bold text-gray-800 dark:text-gray-200">Bs {Number(formData.precio_unitario).toFixed(2)}</span>
+                            <span className="text-base font-bold text-gray-800 dark:text-gray-200">Bs {formatCurrency(formData.precio_unitario)}</span>
                         </div>
                         <div className="text-right">
                             <span className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Total</span>
-                            <span className="text-xl font-extrabold text-green-600 dark:text-green-400">Bs {Number(formData.total).toFixed(2)}</span>
+                            <span className="text-xl font-extrabold text-green-600 dark:text-green-400">Bs {formatCurrency(formData.total)}</span>
                         </div>
                     </div>
 

@@ -28,7 +28,7 @@ export class TrabajosLaboratoriosService {
         return this.trabajosRepository.save(createTrabajoLaboratorioDto);
     }
 
-    findAll(page: number = 1, limit: number = 10000, search: string = '', estado: string = '') {
+    findAll(page: number = 1, limit: number = 10000, search: string = '', estado: string = '', traspasado: string = '') {
         const pageNum = Number(page) || 1;
         const limitNum = Number(limit) || 10000;
         const skip = (pageNum - 1) * limitNum;
@@ -51,6 +51,10 @@ export class TrabajosLaboratoriosService {
 
         if (estado) {
             query.andWhere('trabajo.estado = :estado', { estado });
+        }
+
+        if (traspasado) {
+            query.andWhere('trabajo.traspasado = :traspasado', { traspasado });
         }
 
         return query.getManyAndCount();

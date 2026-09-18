@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
 import type { Personal } from '../types';
+import { formatDate } from '../utils/dateUtils';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -168,12 +169,12 @@ const VacacionesList: React.FC = () => {
         try {
             const excelData = vacaciones.map(v => ({
                 'ID': v.id,
-                'Fecha Solicitud': new Date(v.fecha).toLocaleDateString(),
+                'Fecha Solicitud': formatDate(v.fecha),
                 'Personal': v.personal ? `${v.personal.nombre} ${v.personal.paterno} ${v.personal.materno}` : 'N/A',
                 'Tipo': v.tipo_solicitud,
                 'Días': v.cantidad_dias,
-                'Desde': new Date(v.fecha_desde).toLocaleDateString(),
-                'Hasta': new Date(v.fecha_hasta).toLocaleDateString(),
+                'Desde': formatDate(v.fecha_desde),
+                'Hasta': formatDate(v.fecha_hasta),
                 'Autorizado': v.autorizado,
                 'Observaciones': v.observaciones
             }));
@@ -308,7 +309,7 @@ const VacacionesList: React.FC = () => {
                 // Let's add the name to the top of the blue box.
 
                 const fullName = `${personal.nombre} ${personal.paterno} ${personal.materno || ''}`.trim();
-                const ingresoStr = new Date(personal.fecha_ingreso).toLocaleDateString('es-ES');
+                const ingresoStr = formatDate(personal.fecha_ingreso);
 
                 // Blue Box Background
                 doc.setFillColor(235, 245, 251); // Light blue #ebf5fb
@@ -369,12 +370,12 @@ const VacacionesList: React.FC = () => {
 
             const tableData = allVacaciones.map(v => [
                 v.id,
-                new Date(v.fecha).toLocaleDateString(),
+                formatDate(v.fecha),
                 v.personal ? `${v.personal.nombre} ${v.personal.paterno}` : 'N/A',
                 v.tipo_solicitud,
                 v.cantidad_dias,
-                new Date(v.fecha_desde).toLocaleDateString(),
-                new Date(v.fecha_hasta).toLocaleDateString(),
+                formatDate(v.fecha_desde),
+                formatDate(v.fecha_hasta),
                 v.autorizado
             ]);
 
@@ -455,7 +456,7 @@ const VacacionesList: React.FC = () => {
             if (personal) {
                 const stats = calculateVacationStats(personal, allVacaciones);
                 const fullName = `${personal.nombre} ${personal.paterno} ${personal.materno || ''}`.trim();
-                const ingresoStr = new Date(personal.fecha_ingreso).toLocaleDateString('es-ES');
+                const ingresoStr = formatDate(personal.fecha_ingreso);
                 extraHeader = `
                     <div class="stats-box">
                         <div class="stats-row" style="margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #e0e0e0;">
@@ -575,12 +576,12 @@ const VacacionesList: React.FC = () => {
                         <tbody>
                             ${allVacaciones.map(v => `
                                 <tr>
-                                    <td>${new Date(v.fecha).toLocaleDateString()}</td>
+                                    <td>${formatDate(v.fecha)}</td>
                                     <td>${v.personal ? `${v.personal.nombre} ${v.personal.paterno}` : 'N/A'}</td>
                                     <td>${v.tipo_solicitud}</td>
                                     <td>${v.cantidad_dias}</td>
-                                    <td>${new Date(v.fecha_desde).toLocaleDateString()}</td>
-                                    <td>${new Date(v.fecha_hasta).toLocaleDateString()}</td>
+                                    <td>${formatDate(v.fecha_desde)}</td>
+                                    <td>${formatDate(v.fecha_hasta)}</td>
                                     <td>${v.autorizado}</td>
                                 </tr>
                             `).join('')}
@@ -728,14 +729,14 @@ const VacacionesList: React.FC = () => {
                         ) : vacaciones.map((vacacion, index) => (
                             <tr key={vacacion.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                                 <td className="p-3 text-gray-800 dark:text-gray-300">{(currentPage - 1) * limit + index + 1}</td>
-                                <td className="p-3 text-gray-800 dark:text-gray-300">{new Date(vacacion.fecha).toLocaleDateString()}</td>
+                                <td className="p-3 text-gray-800 dark:text-gray-300">{formatDate(vacacion.fecha)}</td>
                                 <td className="p-3 text-gray-800 dark:text-gray-300">
                                     {vacacion.personal ? `${vacacion.personal.nombre} ${vacacion.personal.paterno} ${vacacion.personal.materno || ''}` : 'Personal Eliminado'}
                                 </td>
                                 <td className="p-3 text-gray-800 dark:text-gray-300">{vacacion.tipo_solicitud}</td>
                                 <td className="p-3 text-gray-800 dark:text-gray-300">{vacacion.cantidad_dias}</td>
-                                <td className="p-3 text-gray-800 dark:text-gray-300">{new Date(vacacion.fecha_desde).toLocaleDateString()}</td>
-                                <td className="p-3 text-gray-800 dark:text-gray-300">{new Date(vacacion.fecha_hasta).toLocaleDateString()}</td>
+                                <td className="p-3 text-gray-800 dark:text-gray-300">{formatDate(vacacion.fecha_desde)}</td>
+                                <td className="p-3 text-gray-800 dark:text-gray-300">{formatDate(vacacion.fecha_hasta)}</td>
                                 <td className="p-3">
                                     <span className={`px-2 py-1 rounded text-sm font-bold ${vacacion.autorizado === 'SI' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' :
                                         vacacion.autorizado === 'NO' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300' : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300'}`}>
