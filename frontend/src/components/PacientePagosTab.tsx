@@ -173,16 +173,19 @@ const PacientePagosTab: React.FC<PacientePagosTabProps> = ({ pacienteId }) => {
                 : 'Todos los planes';
             doc.text(planText, 65, boxY + 13);
 
-            // Filter historia clinica & payments for selected plan if selectedProformaId > 0
+            // Filter and sort historia clinica & payments for selected plan if selectedProformaId > 0 (ASC by fecha)
             const rawFilteredHistoria = selectedProformaId > 0
                 ? historia.filter(h => h.proformaId === selectedProformaId && h.estadoTratamiento === 'terminado')
                 : historia.filter(h => h.estadoTratamiento === 'terminado');
             
-            const filteredHistoria = deduplicateHistoria(rawFilteredHistoria);
+            const filteredHistoria = deduplicateHistoria(rawFilteredHistoria)
+                .sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime());
 
-            const filteredPagos = selectedProformaId > 0
+            const filteredPagos = (selectedProformaId > 0
                 ? pagos.filter(p => p.proformaId === selectedProformaId)
-                : pagos;
+                : pagos)
+                .slice()
+                .sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime());
 
             // SECTION 1: TRATAMIENTOS EJECUTADOS (HISTORIA CLINICA - TERMINADOS)
             let currentY = boxY + boxHeight + 8;
@@ -195,47 +198,78 @@ const PacientePagosTab: React.FC<PacientePagosTabProps> = ({ pacienteId }) => {
                 let itemPrice = Number(curr.precio || 0);
                 let discountAmt = 0;
                 let discountPct = 0;
+                const currCant = Math.max(1, Number(curr.cantidad || 1));
+
+                let matchDetalle = null;
                 if (selectedProforma && selectedProforma.detalles) {
-                    const matchDetalle = findMatchingProformaDetalle(curr, selectedProforma.detalles);
-                    if (matchDetalle) {
-                        if (Number(matchDetalle.total || 0) > 0 && Number(matchDetalle.cantidad || 1) > 0) {
-                            const unitNetPrice = Number(matchDetalle.total) / Number(matchDetalle.cantidad || 1);
-                            itemPrice = unitNetPrice * Number(curr.cantidad || 1);
-                        }
-                        if (Number(matchDetalle.descuento || 0) > 0 && Number(matchDetalle.cantidad || 1) > 0) {
-                            discountAmt = (Number(matchDetalle.descuento) / Number(matchDetalle.cantidad || 1)) * Number(curr.cantidad || 1);
-                            const totalOriginal = Number(matchDetalle.total) + Number(matchDetalle.descuento);
-                            if (totalOriginal > 0) {
-                                discountPct = Math.round((Number(matchDetalle.descuento) / totalOriginal) * 100);
-                            }
-                        }
+                    matchDetalle = findMatchingProformaDetalle(curr, selectedProforma.detalles);
+                } else if (curr.proformaId) {
+                    const prof = proformas.find(p => p.id === curr.proformaId);
+                    if (prof && prof.detalles) {
+                        matchDetalle = findMatchingProformaDetalle(curr, prof.detalles);
                     }
                 }
-                return { curr, itemPrice, discountAmt, discountPct };
+
+                let unitGrossPrice = Number(curr.precio || 0) / currCant;
+
+                if (matchDetalle) {
+                    const detalleCant = Math.max(1, Number(matchDetalle.cantidad || 1));
+
+                    let ugp = Number(matchDetalle.precioUnitario || 0);
+                    if (ugp <= 0 && Number(matchDetalle.subTotal || 0) > 0) {
+                        ugp = Number(matchDetalle.subTotal) / detalleCant;
+                    } else if (ugp <= 0 && Number(matchDetalle.total || 0) > 0) {
+                        ugp = Number(matchDetalle.total) / detalleCant;
+                    }
+                    if (ugp > 0) {
+                        unitGrossPrice = ugp;
+                    }
+
+                    discountPct = Number(matchDetalle.descuento || 0);
+                    if (discountPct === 0 && Number(matchDetalle.subTotal || 0) > Number(matchDetalle.total || 0) && Number(matchDetalle.subTotal || 0) > 0) {
+                        discountPct = Math.round(((Number(matchDetalle.subTotal) - Number(matchDetalle.total)) / Number(matchDetalle.subTotal)) * 100);
+                    }
+
+                    let unitNetPrice = 0;
+                    if (Number(matchDetalle.total || 0) > 0) {
+                        unitNetPrice = Number(matchDetalle.total) / detalleCant;
+                    } else {
+                        unitNetPrice = unitGrossPrice * (1 - discountPct / 100);
+                    }
+
+                    itemPrice = unitNetPrice * currCant;
+
+                    if (discountPct > 0) {
+                        discountAmt = (unitGrossPrice * currCant) * (discountPct / 100);
+                    }
+                }
+                return { curr, currCant, unitGrossPrice, itemPrice, discountAmt, discountPct };
             });
 
             const hasDiscount = rowsData.some(r => r.discountAmt > 0);
 
-            const hcTableColumn = ["Fecha", "Pieza", "Tratamiento / Procedimiento"];
-            if (hasDiscount) hcTableColumn.push("Descuento");
+            const hcTableColumn = ["Fecha", "Pieza", "Tratamiento / Procedimiento", "Cant.", "P. Unit. (Bs.)"];
+            if (hasDiscount) hcTableColumn.push("Descuento (Bs.)");
             hcTableColumn.push("Monto (Bs.)");
 
             const hcTableRows = filteredHistoria.length > 0 ? rowsData.map(r => {
                 const row = [
                     formatDate(r.curr.fecha),
                     r.curr.pieza || '-',
-                    r.curr.tratamiento || '-'
+                    r.curr.tratamiento || '-',
+                    String(r.currCant),
+                    formatCurrency(r.unitGrossPrice)
                 ];
                 if (hasDiscount) {
                     if (r.discountAmt > 0) {
-                        row.push(`${r.discountPct}% (Bs. ${formatCurrency(r.discountAmt)})`);
+                        row.push(`${r.discountPct}% (${formatCurrency(r.discountAmt)})`);
                     } else {
                         row.push('-');
                     }
                 }
-                row.push(`Bs. ${formatCurrency(r.itemPrice)}`);
+                row.push(formatCurrency(r.itemPrice));
                 return row;
-            }) : [["-", "-", "No hay tratamientos ejecutados registrados", ...(hasDiscount ? ["-"] : []), "Bs. 0,00"]];
+            }) : [["-", "-", "No hay tratamientos ejecutados registrados", "-", "-", ...(hasDiscount ? ["-"] : []), "0,00"]];
 
             autoTable(doc, {
                 head: [hcTableColumn],
@@ -245,7 +279,7 @@ const PacientePagosTab: React.FC<PacientePagosTabProps> = ({ pacienteId }) => {
                 margin: { left: 15, right: 15 },
                 styles: {
                     fontSize: 8,
-                    cellPadding: 2.5,
+                    cellPadding: 2,
                 },
                 headStyles: {
                     fillColor: [235, 245, 255],
@@ -255,16 +289,20 @@ const PacientePagosTab: React.FC<PacientePagosTabProps> = ({ pacienteId }) => {
                     lineColor: [203, 213, 225]
                 },
                 columnStyles: hasDiscount ? {
-                    0: { cellWidth: 25 },
-                    1: { cellWidth: 25 },
+                    0: { cellWidth: 18 },
+                    1: { cellWidth: 14 },
                     2: { cellWidth: 'auto' },
-                    3: { cellWidth: 25, halign: 'right' },
-                    4: { cellWidth: 25, halign: 'right' }
+                    3: { cellWidth: 12, halign: 'center' },
+                    4: { cellWidth: 20, halign: 'right' },
+                    5: { cellWidth: 25, halign: 'right' },
+                    6: { cellWidth: 20, halign: 'right' }
                 } : {
-                    0: { cellWidth: 25 },
-                    1: { cellWidth: 25 },
+                    0: { cellWidth: 20 },
+                    1: { cellWidth: 16 },
                     2: { cellWidth: 'auto' },
-                    3: { cellWidth: 35, halign: 'right' }
+                    3: { cellWidth: 14, halign: 'center' },
+                    4: { cellWidth: 22, halign: 'right' },
+                    5: { cellWidth: 22, halign: 'right' }
                 },
                 alternateRowStyles: {
                     fillColor: [248, 249, 250]
@@ -525,9 +563,6 @@ const PacientePagosTab: React.FC<PacientePagosTabProps> = ({ pacienteId }) => {
         doc.setDrawColor(52, 152, 219); // #3498db
         doc.setLineWidth(1);
         doc.line(15, 35, pageWidth - 15, 35);
-
-        doc.setFontSize(10);
-        doc.text(dateStr, pageWidth - 15, 25, { align: 'right' });
 
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(18);

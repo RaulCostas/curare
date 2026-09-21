@@ -7,11 +7,16 @@ import { ChatbotModule } from '../chatbot/chatbot.module';
 import { HistoriaClinicaModule } from '../historia_clinica/historia_clinica.module';
 import { PagosPdfService } from './pagos-pdf.service';
 
+import { PacientesModule } from '../pacientes/pacientes.module';
+import { ProformasModule } from '../proformas/proformas.module';
+
 @Module({
     imports: [
         TypeOrmModule.forFeature([Pago]),
         forwardRef(() => ChatbotModule),
-        HistoriaClinicaModule
+        HistoriaClinicaModule,
+        PacientesModule,
+        forwardRef(() => ProformasModule)
     ],
     controllers: [PagosController],
     providers: [PagosService, PagosPdfService],

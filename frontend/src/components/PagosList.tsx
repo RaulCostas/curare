@@ -147,14 +147,85 @@ const PagosList: React.FC = () => {
 
         const dateStr = formatDate(pago.fecha);
 
+        // Fetch / find data for financial summary
+        let targetProforma = proformas.find(p => p.id === pago.proformaId);
+        if (!targetProforma && pago.proformaId) {
+            try {
+                const pRes = await api.get(`/proformas/${pago.proformaId}`);
+                targetProforma = pRes.data;
+            } catch (e) {
+                console.warn('Error fetching proforma for recibo:', e);
+            }
+        }
+
+        const pacId = pago.pacienteId || pago.paciente?.id || targetProforma?.pacienteId;
+        let pacienteHistoria = historia;
+        if (pacId && (!pacienteHistoria || pacienteHistoria.length === 0 || pacienteHistoria[0]?.pacienteId !== pacId)) {
+            try {
+                const hRes = await api.get(`/historia-clinica/paciente/${pacId}`);
+                pacienteHistoria = hRes.data || [];
+            } catch (e) {
+                console.warn('Error fetching historia for recibo:', e);
+            }
+        }
+
+        let allPacientePagos = pagos;
+        if (pacId) {
+            allPacientePagos = pagos.filter(p => (p.pacienteId || p.paciente?.id) === pacId);
+        }
+
+        const totalPresupuesto = targetProforma ? Number(targetProforma.total || 0) : proformas.reduce((sum, p) => sum + Number(p.total || 0), 0);
+
+        const relevantHistoria = deduplicateHistoria(
+            pago.proformaId 
+                ? (pacienteHistoria || []).filter(h => h.proformaId === pago.proformaId && h.estadoTratamiento === 'terminado')
+                : (pacienteHistoria || []).filter(h => h.estadoTratamiento === 'terminado')
+        );
+
+        const relevantPagos = pago.proformaId
+            ? (allPacientePagos || []).filter(p => p.proformaId === pago.proformaId)
+            : (allPacientePagos || []);
+
+        const executedByDetalle = new Map<number, number>();
+        let rawTotalEjecutado = 0;
+
+        relevantHistoria.forEach(curr => {
+            let itemPrice = Number(curr.precio || 0);
+            if (targetProforma && targetProforma.detalles) {
+                const matchDetalle = findMatchingProformaDetalle(curr, targetProforma.detalles);
+                if (matchDetalle && Number(matchDetalle.total || 0) >= 0 && Number(matchDetalle.cantidad || 1) > 0) {
+                    const unitNetPrice = Number(matchDetalle.total) / Number(matchDetalle.cantidad || 1);
+                    itemPrice = unitNetPrice * Number(curr.cantidad || 1);
+
+                    const prev = executedByDetalle.get(matchDetalle.id) || 0;
+                    const maxForThisDetalle = Number(matchDetalle.total || 0);
+                    const allowed = Math.max(0, Math.min(itemPrice, maxForThisDetalle - prev));
+                    executedByDetalle.set(matchDetalle.id, prev + allowed);
+                    rawTotalEjecutado += allowed;
+                    return;
+                }
+            }
+            rawTotalEjecutado += itemPrice;
+        });
+
+        const totalEjecutado = totalPresupuesto > 0 ? Math.min(rawTotalEjecutado, totalPresupuesto) : rawTotalEjecutado;
+
+        const totalPagado = relevantPagos.reduce((acc, curr) => {
+            const val = curr.moneda === 'Dólares'
+                ? Number(curr.monto || 0) * Number(curr.tc || 6.96)
+                : Number(curr.monto || 0);
+            return acc + val;
+        }, 0);
+
+        const saldo = totalPagado - totalEjecutado;
+        const saldoFavor = saldo > 0 ? saldo : 0;
+        const saldoContra = saldo < 0 ? Math.abs(saldo) : 0;
+
         // Header
         const pageWidth = doc.internal.pageSize.width;
         doc.setDrawColor(52, 152, 219); // #3498db
         doc.setLineWidth(1);
         doc.line(15, 35, pageWidth - 15, 35);
-
-        doc.setFontSize(10);
-        doc.text(dateStr, pageWidth - 15, 25, { align: 'right' });
 
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(18);
@@ -162,9 +233,8 @@ const PagosList: React.FC = () => {
         doc.text('RECIBO DE PAGO', 105, 25, { align: 'center' });
         doc.setTextColor(0, 0, 0);
 
-
         const boxY = 42;
-        const boxHeight = 115;
+        const boxHeight = 125;
         doc.setDrawColor(200);
         doc.setFillColor(248, 249, 250);
         doc.rect(15, boxY, pageWidth - 30, boxHeight, 'F');
@@ -233,25 +303,52 @@ const PagosList: React.FC = () => {
 
         // Concepto
         doc.setFont('helvetica', 'bold');
-        doc.text('Por concepto de:', xLabel, y);
+        doc.text('Concepto:', xLabel, y);
         doc.setFont('helvetica', 'normal');
         const concepto = pago.proforma
             ? `Tratamiento Odontológico - Plan #${pago.proforma.numero}`
-            : 'Tratamiento Odontológico';
+            : (targetProforma ? `Tratamiento Odontológico - Plan #${targetProforma.numero || targetProforma.id}` : 'Tratamiento Odontológico');
         doc.text(concepto, xValue, y);
         y += 12;
 
-        if (pago.proforma && pago.proforma.total != null) {
-            doc.setDrawColor(220, 226, 230);
-            doc.setLineWidth(0.5);
-            doc.line(20, y - 3, pageWidth - 20, y - 3);
+        // Separator line inside box
+        doc.setDrawColor(220, 226, 230);
+        doc.setLineWidth(0.5);
+        doc.line(20, y - 3, pageWidth - 20, y - 3);
 
+        // Financial summary: Total Proforma & Total Ejecutado
+        doc.setFont('helvetica', 'bold');
+        doc.text('Total Proforma:', xLabel, y + 4);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`Bs. ${formatCurrency(totalPresupuesto)}`, xValue, y + 4);
+
+        doc.setFont('helvetica', 'bold');
+        doc.text('Total Ejecutado:', 125, y + 4);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`Bs. ${formatCurrency(totalEjecutado)}`, 160, y + 4);
+        y += 11;
+
+        // Saldo en Contra & Saldo a Favor
+        doc.setFont('helvetica', 'bold');
+        doc.text('Saldo en Contra:', xLabel, y + 4);
+        doc.setFont('helvetica', 'normal');
+        if (saldoContra > 0) {
+            doc.setTextColor(185, 28, 28);
             doc.setFont('helvetica', 'bold');
-            doc.text('Total Proforma:', xLabel, y + 4);
-            doc.setFont('helvetica', 'normal');
-            doc.text(`Bs. ${formatCurrency(pago.proforma.total)}`, xValue, y + 4);
-            y += 11;
         }
+        doc.text(`Bs. ${formatCurrency(saldoContra)}`, xValue, y + 4);
+        doc.setTextColor(0, 0, 0);
+
+        doc.setFont('helvetica', 'bold');
+        doc.text('Saldo a Favor:', 125, y + 4);
+        doc.setFont('helvetica', 'normal');
+        if (saldoFavor > 0) {
+            doc.setTextColor(22, 101, 52);
+            doc.setFont('helvetica', 'bold');
+        }
+        doc.text(`Bs. ${formatCurrency(saldoFavor)}`, 160, y + 4);
+        doc.setTextColor(0, 0, 0);
+        y += 11;
 
         // Observaciones
         if (pago.observaciones) {

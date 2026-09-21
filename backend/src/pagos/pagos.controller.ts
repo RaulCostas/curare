@@ -8,6 +8,9 @@ import { PagosPdfService } from './pagos-pdf.service';
 import { HistoriaClinicaService } from '../historia_clinica/historia_clinica.service';
 import { deduplicateHistoria } from '../utils/historia-utils';
 
+import { PacientesService } from '../pacientes/pacientes.service';
+import { ProformasService } from '../proformas/proformas.service';
+
 @Controller('pagos')
 export class PagosController {
     constructor(
@@ -16,6 +19,9 @@ export class PagosController {
         private readonly chatbotService: ChatbotService,
         private readonly pagosPdfService: PagosPdfService,
         private readonly historiaClinicaService: HistoriaClinicaService,
+        private readonly pacientesService: PacientesService,
+        @Inject(forwardRef(() => ProformasService))
+        private readonly proformasService: ProformasService,
     ) { }
 
     @Post()
@@ -30,36 +36,32 @@ export class PagosController {
 
         try {
             // 1. Fetch Data
-            const pagos = await this.pagosService.findAllByPaciente(pacienteId);
-            const filteredPagos = proformaId ? pagos.filter(p => p.proformaId === proformaId) : pagos;
-
-            const historia = await this.historiaClinicaService.findAllByPaciente(pacienteId);
-
-            // Calculate Summary
-            const rawFilteredHistoria = historia.filter(h => h.estadoTratamiento === 'terminado' && (!proformaId || h.proformaId === proformaId));
-            const deduplicatedHistoria = deduplicateHistoria(rawFilteredHistoria);
-
-            const totalEjecutado = deduplicatedHistoria.reduce((acc, curr) => acc + Number(curr.precio || 0), 0);
-
-            const totalPagado = filteredPagos.reduce((acc, curr) => acc + Number(curr.monto || 0), 0);
-            const diff = totalEjecutado - totalPagado;
-            const saldoFavor = diff < 0 ? Math.abs(diff) : 0;
-            const saldoContra = diff > 0 ? diff : 0;
-
-            const resumen = { totalEjecutado, totalPagado, saldoFavor, saldoContra };
-
-            const patientEntity = filteredPagos.length > 0 ? filteredPagos[0].paciente : (historia.length > 0 ? historia[0].paciente : null);
-
+            const patientEntity = await this.pacientesService.findOne(pacienteId);
             if (!patientEntity) {
                 return { success: false, message: 'No se encontraron datos del paciente para generar el reporte.' };
             }
 
-            const proformaEntity = proformaId
-                ? (filteredPagos.find(p => p.proformaId === proformaId)?.proforma || historia.find(h => h.proformaId === proformaId)?.proforma)
-                : null;
+            const proformas = await this.proformasService.findAllByPaciente(pacienteId);
+            const selectedProforma = proformaId ? proformas.find(p => p.id === proformaId) : null;
 
-            // 2. Generate PDF
-            const pdfBuffer = await this.pagosPdfService.generatePagosPdf(patientEntity, proformaEntity, filteredPagos, resumen, deduplicatedHistoria);
+            const pagos = await this.pagosService.findAllByPaciente(pacienteId);
+            const filteredPagos = (proformaId ? pagos.filter(p => p.proformaId === proformaId || p.proforma?.id === proformaId) : pagos)
+                .slice()
+                .sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime());
+
+            const historia = await this.historiaClinicaService.findAllByPaciente(pacienteId);
+            const rawFilteredHistoria = historia.filter(h => h.estadoTratamiento === 'terminado' && (!proformaId || h.proformaId === proformaId));
+            const deduplicatedHistoria = deduplicateHistoria(rawFilteredHistoria)
+                .sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime());
+
+            // 2. Generate PDF with matching design and calculations
+            const pdfBuffer = await this.pagosPdfService.generatePagosPdf(
+                patientEntity,
+                selectedProforma,
+                filteredPagos,
+                deduplicatedHistoria,
+                proformas
+            );
 
             // 3. Send via Chatbot
             const phoneNumber = patientEntity.celular;
@@ -76,11 +78,11 @@ export class PagosController {
             await this.chatbotService.sendMessage(jid, {
                 document: pdfBuffer,
                 mimetype: 'application/pdf',
-                fileName: `Historial_Pagos.pdf`,
-                caption: `Estimado(a) ${patientEntity.nombre}, adjunto encontrará su historial de pagos.`
+                fileName: `Estado_de_Cuentas_${patientEntity.paterno || patientEntity.nombre}.pdf`,
+                caption: `Estimado(a) ${patientEntity.nombre}, adjunto encontrará su Estado de Cuentas.`
             });
 
-            return { success: true, message: 'Enviado correctamente' };
+            return { success: true, message: 'Estado de cuentas enviado por WhatsApp correctamente' };
 
         } catch (error) {
             console.error('Error sending WhatsApp:', error);
@@ -101,7 +103,19 @@ export class PagosController {
                 return { success: false, message: 'El paciente no tiene número de celular registrado.' };
             }
 
-            const pdfBuffer = await this.pagosPdfService.generateReciboSinglePdf(pago);
+            const pacId = paciente.id;
+            const proformas = await this.proformasService.findAllByPaciente(pacId);
+            const targetProforma = pago.proformaId ? proformas.find(p => p.id === pago.proformaId) : null;
+            const historia = await this.historiaClinicaService.findAllByPaciente(pacId);
+            const allPacientePagos = await this.pagosService.findAllByPaciente(pacId);
+
+            const pdfBuffer = await this.pagosPdfService.generateReciboSinglePdf(
+                pago,
+                targetProforma,
+                proformas,
+                historia,
+                allPacientePagos
+            );
 
             const cleanPhone = paciente.celular.replace(/\D/g, '');
             const countryCode = cleanPhone.length === 8 ? '591' : '';
