@@ -295,7 +295,7 @@ const HistoriaClinica: React.FC = () => {
 
             // Table
             if (filteredHistoria.length > 0) {
-                const tableColumn = ["Fecha", "Pieza", "Tratamiento", "Observaciones", "Cant.", "Doctor", "Asistente", "Estado"];
+                const tableColumn = ["Fecha", "Elemento Dental", "Tratamiento", "Observaciones", "Cant.", "Doctor", "Asistente", "Estado"];
                 const tableRows = filteredHistoria.map(item => [
                     formatDateUTC(item.fecha),
                     item.pieza || '-',

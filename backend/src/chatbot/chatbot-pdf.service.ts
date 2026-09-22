@@ -63,7 +63,7 @@ export class ChatbotPdfService {
 
                 const tableHeader = [
                     { text: 'Descripción', style: 'tableHeader', alignment: 'left' },
-                    { text: 'Pieza(s)', style: 'tableHeader', alignment: 'center' },
+                    { text: 'Elemento Dental', style: 'tableHeader', alignment: 'center' },
                     { text: 'Cant.', style: 'tableHeader', alignment: 'center' },
                     { text: 'P.U.', style: 'tableHeader', alignment: 'right' },
                     { text: 'Total', style: 'tableHeader', alignment: 'right' }
@@ -336,7 +336,7 @@ export class ChatbotPdfService {
 
                 const hcTableHeader = [
                     { text: 'Fecha', style: 'tableHeader' },
-                    { text: 'Pieza(s)', style: 'tableHeader' },
+                    { text: 'Elemento Dental', style: 'tableHeader' },
                     { text: 'Tratamiento', style: 'tableHeader' },
                     { text: 'Observaciones', style: 'tableHeader' },
                     { text: 'Cant.', style: 'tableHeader' },

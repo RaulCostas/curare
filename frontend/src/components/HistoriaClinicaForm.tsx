@@ -65,7 +65,7 @@ const HistoriaClinicaForm: React.FC<HistoriaClinicaFormProps> = ({
         },
         {
             title: 'Campos Principales',
-            content: 'Fecha: Fecha del tratamiento realizado.\nTratamiento: Seleccione del plan activo o ingrese manualmente.\nPieza(s): Número de pieza dental tratada.\nCantidad: Número de sesiones o unidades del tratamiento.\n# de Hoja: Número de hoja de la ficha clínica física (obligatorio).'
+            content: 'Fecha: Fecha del tratamiento realizado.\nTratamiento: Seleccione del plan activo o ingrese manualmente.\nElemento Dental: Número del elemento dental tratado.\nCantidad: Número de sesiones o unidades del tratamiento.\n# de Hoja: Número de hoja de la ficha clínica física (obligatorio).'
         },
         {
             title: 'Estados',
@@ -549,7 +549,7 @@ const HistoriaClinicaForm: React.FC<HistoriaClinicaFormProps> = ({
                                                 } : undefined}
                                             >
                                                 {t.arancel?.detalle}
-                                                {t.piezas ? ` - Piezas: ${t.piezas}` : ''}
+                                                {t.piezas ? ` - Elemento Dental: ${t.piezas}` : ''}
                                                 {isCompleted ? ' (Completado)' : ''}
                                             </option>
                                         );
@@ -565,9 +565,9 @@ const HistoriaClinicaForm: React.FC<HistoriaClinicaFormProps> = ({
                         <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 pl-1">Ej. Seleccione del plan activo (ej: Restauración con resina, Extracción, Limpieza).</p>
                     </div>
 
-                    {/* Pieza */}
+                    {/* Elemento Dental */}
                     <div>
-                        <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Pieza(s)</label>
+                        <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Elemento Dental</label>
                         <div className="relative">
                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -583,7 +583,7 @@ const HistoriaClinicaForm: React.FC<HistoriaClinicaFormProps> = ({
                                 className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 font-medium outline-none transition-all shadow-sm"
                             />
                         </div>
-                        <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 pl-1">Ej. 11, 21 ó 18-28. Número de la pieza dental tratada.</p>
+                        <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 pl-1">Ej. 11, 21 ó 18-28. Número del elemento dental tratado.</p>
                     </div>
 
                     {/* Cantidad */}
@@ -608,7 +608,7 @@ const HistoriaClinicaForm: React.FC<HistoriaClinicaFormProps> = ({
                                 className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 font-medium outline-none transition-all shadow-sm"
                             />
                         </div>
-                        <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 pl-1">Ej. 1. Número de piezas o sesiones realizadas.</p>
+                        <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 pl-1">Ej. 1. Número de elementos dentales o sesiones realizadas.</p>
                     </div>
 
 
@@ -707,7 +707,7 @@ const HistoriaClinicaForm: React.FC<HistoriaClinicaFormProps> = ({
                                 value={formData.observaciones}
                                 onChange={handleChange}
                                 rows={3}
-                                placeholder="Ej. Se realizó obturación estética en pieza 11 con resina A2, sin complicaciones. Paciente sin dolor..."
+                                placeholder="Ej. Se realizó obturación estética en elemento dental 11 con resina A2, sin complicaciones. Paciente sin dolor..."
                                 className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 font-medium outline-none transition-all shadow-sm"
                             />
                         </div>

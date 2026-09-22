@@ -619,9 +619,9 @@ const PropuestasForm: React.FC<PropuestasFormProps> = ({
 
                         {/* Fila única: Pieza | Cantidad | Descuento | Posible */}
                         <div className="md:col-span-3 flex flex-wrap md:flex-nowrap items-end gap-3">
-                            {/* Nº Pieza(s) */}
+                            {/* Elemento(s) Dental(es) */}
                             <div className="w-96">
-                                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Nº Pieza(s)</label>
+                                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Elemento(s) Dental(es)</label>
                                 <div className="relative">
                                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
@@ -743,7 +743,7 @@ const PropuestasForm: React.FC<PropuestasFormProps> = ({
                             <tr>
                                 <th className="px-4 py-3 text-left font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Nº</th>
                                 <th className="px-4 py-3 text-left font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Tratamiento</th>
-                                <th className="px-4 py-3 text-center font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Piezas</th>
+                                <th className="px-4 py-3 text-center font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Elemento(s) Dental(es)</th>
                                 <th className="px-4 py-3 text-right font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">P.U.</th>
                                 <th className="px-4 py-3 text-center font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Cant.</th>
                                 <th className="px-4 py-3 text-right font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Total</th>

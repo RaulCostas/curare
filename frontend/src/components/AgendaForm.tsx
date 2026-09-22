@@ -775,7 +775,7 @@ const AgendaForm: React.FC<AgendaFormProps> = ({
                                                 }
 
                                                 const tratamientoText = detalle.arancel?.detalle || `Tratamiento ${index + 1}`;
-                                                const piezasText = detalle.piezas ? ` - Piezas: ${detalle.piezas}` : '';
+                                                const piezasText = detalle.piezas ? ` - Elemento Dental: ${detalle.piezas}` : '';
 
                                                 return (
                                                     <option

@@ -248,7 +248,7 @@ const PacientePagosTab: React.FC<PacientePagosTabProps> = ({ pacienteId }) => {
 
             const hasDiscount = rowsData.some(r => r.discountAmt > 0);
 
-            const hcTableColumn = ["Fecha", "Pieza", "Tratamiento / Procedimiento", "Cant.", "P. Unit. (Bs.)"];
+            const hcTableColumn = ["Fecha", "Elemento Dental", "Tratamiento / Procedimiento", "Cant.", "P. Unit. (Bs.)"];
             if (hasDiscount) hcTableColumn.push("Descuento (Bs.)");
             hcTableColumn.push("Monto (Bs.)");
 
@@ -290,7 +290,7 @@ const PacientePagosTab: React.FC<PacientePagosTabProps> = ({ pacienteId }) => {
                 },
                 columnStyles: hasDiscount ? {
                     0: { cellWidth: 18 },
-                    1: { cellWidth: 14 },
+                    1: { cellWidth: 16 },
                     2: { cellWidth: 'auto' },
                     3: { cellWidth: 12, halign: 'center' },
                     4: { cellWidth: 20, halign: 'right' },
@@ -298,7 +298,7 @@ const PacientePagosTab: React.FC<PacientePagosTabProps> = ({ pacienteId }) => {
                     6: { cellWidth: 20, halign: 'right' }
                 } : {
                     0: { cellWidth: 20 },
-                    1: { cellWidth: 16 },
+                    1: { cellWidth: 18 },
                     2: { cellWidth: 'auto' },
                     3: { cellWidth: 14, halign: 'center' },
                     4: { cellWidth: 22, halign: 'right' },

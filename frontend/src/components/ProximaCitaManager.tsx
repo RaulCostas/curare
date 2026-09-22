@@ -308,7 +308,7 @@ const ProximaCitaManager: React.FC<ProximaCitaManagerProps> = ({
                         <tr>
                             <th>Fecha</th>
                             <th>Tratamiento</th>
-                            <th>Pieza</th>
+                            <th>Elemento Dental</th>
                             <th>Observaciones</th>
                             <th>Doctor</th>
                         </tr>
@@ -545,7 +545,7 @@ const ProximaCitaManager: React.FC<ProximaCitaManagerProps> = ({
                                                     fontWeight: 'bold'
                                                 } : undefined}
                                             >
-                                                {d.arancel ? d.arancel.detalle : 'Tratamiento'} {d.piezas ? `(Pz: ${d.piezas})` : ''} {isCompleted ? '(Completado)' : ''}
+                                                {d.arancel ? d.arancel.detalle : 'Tratamiento'} {d.piezas ? `(Elem: ${d.piezas})` : ''} {isCompleted ? '(Completado)' : ''}
                                             </option>
                                         );
                                     })}
@@ -553,9 +553,9 @@ const ProximaCitaManager: React.FC<ProximaCitaManagerProps> = ({
                             </div>
                         </div>
 
-                        {/* Pieza */}
+                        {/* Elemento Dental */}
                         <div>
-                            <label className="block mb-2 font-bold text-gray-700 dark:text-gray-300 text-sm">Pieza</label>
+                            <label className="block mb-2 font-bold text-gray-700 dark:text-gray-300 text-sm">Elemento Dental</label>
                             <div className="relative">
                                 <svg xmlns="http://www.w3.org/2000/svg" className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                     <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
@@ -622,7 +622,7 @@ const ProximaCitaManager: React.FC<ProximaCitaManagerProps> = ({
                     <div className="relative flex-grow">
                         <input
                             type="text"
-                            placeholder="Buscar por tratamiento, doctor, pieza..."
+                            placeholder="Buscar por tratamiento, doctor, elemento dental..."
                             value={searchTerm}
                             onChange={(e) => {
                                 setSearchTerm(e.target.value);
@@ -697,7 +697,7 @@ const ProximaCitaManager: React.FC<ProximaCitaManagerProps> = ({
                         <tr>
                             <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Fecha</th>
                             <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Tratamiento</th>
-                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Pieza</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Elemento Dental</th>
                             <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Observaciones</th>
                             <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Doctor</th>
                             <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Acciones</th>

@@ -140,7 +140,7 @@ const PropuestasList: React.FC = () => {
         const filteredDetalles = letra ? propuesta.detalles.filter(d => d.letra === letra) : propuesta.detalles;
         const hasDiscount = filteredDetalles.some(item => item.descuento > 0);
 
-        let tableColumn = ["Descripción", "Pieza(s)", "Cant.", "P.U.", "Total"];
+        let tableColumn = ["Descripción", "Elemento Dental", "Cant.", "P.U.", "Total"];
         if (hasDiscount) {
             tableColumn.push("Descuento %", "Total con Dcto %");
         }

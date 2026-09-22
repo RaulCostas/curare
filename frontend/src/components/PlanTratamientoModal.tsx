@@ -86,7 +86,7 @@ const PlanTratamientoModal: React.FC<PlanTratamientoModalProps> = ({ isOpen, onC
                             <thead className="bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-300 font-bold uppercase tracking-wider text-[11px]">
                                 <tr>
                                     <th className="px-4 py-3 text-left">Tratamiento</th>
-                                    <th className="px-4 py-3 text-left">Pieza(s)</th>
+                                    <th className="px-4 py-3 text-left">Elemento(s) Dental(es)</th>
                                     <th className="px-4 py-3 text-center">Cant.</th>
                                     <th className="px-4 py-3 text-right">P.U. (Bs.)</th>
                                     <th className="px-4 py-3 text-center">DESC.</th>

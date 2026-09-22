@@ -342,7 +342,7 @@ const PagosLaboratoriosList: React.FC = () => {
                                 <th>Fecha</th>
                                 <th>Paciente</th>
                                 <th>Trabajo</th>
-                                <th>Pieza</th>
+                                <th>Elemento Dental</th>
                                 <th style="text-align: right;">P. Unit.</th>
                                 <th style="text-align: center;">Cant.</th>
                                 <th style="text-align: right;">Total</th>
@@ -495,7 +495,7 @@ const PagosLaboratoriosList: React.FC = () => {
             const totalMontoFormatted = totalMonto.toFixed(2);
 
             // Prepare table data
-            const tableColumn = ["Fecha", "Paciente", "Trabajo", "Pieza", "P. Unit.", "Cant.", "Total", "Forma Pago"];
+            const tableColumn = ["Fecha", "Paciente", "Trabajo", "Elemento Dental", "P. Unit.", "Cant.", "Total", "Forma Pago"];
             const tableRows = filtered.map((p: any) => {
                 const cant = p.trabajoLaboratorio?.cantidad || 1;
                 const pUnit = p.trabajoLaboratorio?.precio_unitario || (p.trabajoLaboratorio?.total && cant ? p.trabajoLaboratorio.total / cant : 0);
@@ -607,7 +607,7 @@ const PagosLaboratoriosList: React.FC = () => {
                 Paciente: p.trabajoLaboratorio?.paciente ? `${p.trabajoLaboratorio.paciente.nombre} ${p.trabajoLaboratorio.paciente.paterno}` : '-',
                 Laboratorio: p.trabajoLaboratorio?.laboratorio?.laboratorio || '-',
                 Trabajo: p.trabajoLaboratorio?.precioLaboratorio?.detalle || '-',
-                Pieza: p.trabajoLaboratorio?.pieza || '-',
+                'Elemento Dental': p.trabajoLaboratorio?.pieza || '-',
                 'P. Unit.': formatAmount(pUnit),
                 'Cant.': cant,
                 Total: formatAmount(total),
@@ -620,7 +620,7 @@ const PagosLaboratoriosList: React.FC = () => {
             Paciente: '',
             Laboratorio: '',
             Trabajo: '',
-            Pieza: '',
+            'Elemento Dental': '',
             'P. Unit.': '',
             'Cant.': 'TOTAL:',
             Total: formatAmount(totalMonto),
@@ -731,7 +731,7 @@ const PagosLaboratoriosList: React.FC = () => {
                             <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Paciente</th>
                             <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Laboratorio</th>
                             <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Trabajo</th>
-                            <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Pieza</th>
+                            <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Elemento Dental</th>
                             <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">P. UNIT.</th>
                             <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Cant.</th>
                             <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Total</th>

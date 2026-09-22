@@ -131,7 +131,7 @@ const SeguimientoClinicoModal: React.FC<SeguimientoClinicoModalProps> = ({
                                                         </span>
                                                         {item.pieza && (
                                                             <span className="px-2.5 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md text-xs font-bold border border-gray-200 dark:border-gray-600">
-                                                                Pieza: {item.pieza}
+                                                                Elemento Dental: {item.pieza}
                                                             </span>
                                                         )}
                                                     </div>

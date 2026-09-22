@@ -143,7 +143,7 @@ export class PagosPdfService {
 
         const headerRow: any[] = [
             { text: 'Fecha', style: 'tableHeader' },
-            { text: 'Pieza', style: 'tableHeader' },
+            { text: 'Elemento Dental', style: 'tableHeader' },
             { text: 'Tratamiento / Procedimiento', style: 'tableHeader' },
             { text: 'Cant.', style: 'tableHeader', alignment: 'center' },
             { text: 'P. Unit. (Bs.)', style: 'tableHeader', alignment: 'right' }

@@ -490,7 +490,7 @@ const PagosDoctoresList = () => {
                             <tr>
                                 <th>Paciente</th>
                                 <th>Tratamiento</th>
-                                <th style="text-align: center;">Pieza</th>
+                                <th style="text-align: center;">Elemento Dental</th>
                                 <th style="text-align: right;">Precio</th>
                                 <th style="text-align: right;">Desc.</th>
                                 <th style="text-align: right;">Lab.</th>
@@ -824,7 +824,7 @@ const PagosDoctoresList = () => {
                                                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Paciente</th>
                                                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Doctor</th>
                                                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Tratamiento</th>
-                                                <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Piezas</th>
+                                                <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Elemento Dental</th>
                                                 <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Cant.</th>
                                                 <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider"># Presup.</th>
                                                 <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Costo Lab.</th>

@@ -180,7 +180,7 @@ const PacienteTabInformes: React.FC<PacienteTabInformesProps> = ({ pacienteId, p
         });
 
         // Build header row + one data row per selected item, all in one table
-        const headerRow = `<tr><td style="padding:8px;border:1px solid #94a3b8;font-weight:bold;">Fecha</td><td style="padding:8px;border:1px solid #94a3b8;font-weight:bold;">Tratamiento / Procedimiento</td><td style="padding:8px;border:1px solid #94a3b8;font-weight:bold;">Pieza</td><td style="padding:8px;border:1px solid #94a3b8;font-weight:bold;">Observaciones</td></tr>`;
+        const headerRow = `<tr><td style="padding:8px;border:1px solid #94a3b8;font-weight:bold;">Fecha</td><td style="padding:8px;border:1px solid #94a3b8;font-weight:bold;">Tratamiento / Procedimiento</td><td style="padding:8px;border:1px solid #94a3b8;font-weight:bold;">Elemento Dental</td><td style="padding:8px;border:1px solid #94a3b8;font-weight:bold;">Observaciones</td></tr>`;
 
         const dataRows = sorted.map(item => {
             const fechaStr = formatDate(item.fecha) || '-';
@@ -863,7 +863,7 @@ const PacienteTabInformes: React.FC<PacienteTabInformesProps> = ({ pacienteId, p
                                                                         {h.tratamiento || h.procedimiento || h.descripcion || '-'}
                                                                     </p>
                                                                     <div className="flex gap-3 mt-0.5">
-                                                                        {h.pieza && <span className="text-xs text-gray-400 dark:text-gray-500">Pieza: {h.pieza}</span>}
+                                                                        {h.pieza && <span className="text-xs text-gray-400 dark:text-gray-500">Elemento Dental: {h.pieza}</span>}
                                                                         {h.observaciones && <span className="text-xs text-gray-400 dark:text-gray-500 truncate max-w-[300px]">Obs: {h.observaciones}</span>}
                                                                     </div>
                                                                 </div>

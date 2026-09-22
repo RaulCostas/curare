@@ -442,7 +442,7 @@ const PagosLaboratoriosForm: React.FC<PagosLaboratoriosFormProps> = ({ isOpen, o
                             {availableWorks.map((work) => {
                                 const descripcion = work.precioLaboratorio?.detalle || work.observacion || 'Trabajo de laboratorio';
                                 const totalBs = Number(work.total).toFixed(2);
-                                const piezaText = work.pieza ? ` (Pieza: ${work.pieza})` : '';
+                                const piezaText = work.pieza ? ` (Elemento Dental: ${work.pieza})` : '';
                                 return (
                                     <option key={work.id} value={work.id}>
                                         {descripcion}{piezaText} - Bs. {totalBs}

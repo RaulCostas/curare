@@ -59,7 +59,7 @@ const TrabajosLaboratoriosForm: React.FC<TrabajosLaboratoriosFormProps> = ({ isO
         },
         {
             title: 'Campos Principales',
-            content: '• Paciente: Seleccione el paciente para el cual se realiza el trabajo dental.\n• Laboratorio: Seleccione la empresa o profesional de laboratorio encargado.\n• Trabajo / Precio: Seleccione el ítem tarifario del laboratorio.\n• Pieza Dental: Indique el número o descripción de la pieza dental (ej: 11, 21).\n• Cantidad: Cantidad de piezas o prótesis a elaborar.\n• Color: Guía de color requerida (ej: A2, A3).\n• Cubeta: Cubeta de impresión asignada (opcional).'
+            content: '• Paciente: Seleccione el paciente para el cual se realiza el trabajo dental.\n• Laboratorio: Seleccione la empresa o profesional de laboratorio encargado.\n• Trabajo / Precio: Seleccione el ítem tarifario del laboratorio.\n• Elemento Dental: Indique el número o descripción del elemento dental (ej: 11, 21).\n• Cantidad: Cantidad de elementos dentales o prótesis a elaborar.\n• Color: Guía de color requerida (ej: A2, A3).\n• Cubeta: Cubeta de impresión asignada (opcional).'
         }
     ];
 
@@ -359,7 +359,7 @@ const TrabajosLaboratoriosForm: React.FC<TrabajosLaboratoriosFormProps> = ({ isO
                         </div>
 
                         <div>
-                            <label className="block mb-1 font-bold text-sm text-gray-700 dark:text-gray-300">Pieza Dental:</label>
+                            <label className="block mb-1 font-bold text-sm text-gray-700 dark:text-gray-300">Elemento Dental:</label>
                             <div className="relative flex-1 w-full">
                                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

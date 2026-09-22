@@ -67,8 +67,8 @@ const PresupuestoForm: React.FC<PresupuestoFormProps> = ({
 
     const manualSections: ManualSection[] = [
         {
-            title: 'Crear Presupuesto',
-            content: 'Agregue tratamientos del arancel al presupuesto. Puede especificar piezas dentales, cantidad, descuentos y marcar tratamientos como "posibles".'
+            title: 'Agregar Tratamientos',
+            content: 'Agregue tratamientos del arancel al presupuesto. Puede especificar elementos dentales, cantidad, descuentos y marcar tratamientos como "posibles".'
         },
         {
             title: 'Aprobar Presupuesto',
@@ -599,9 +599,9 @@ const PresupuestoForm: React.FC<PresupuestoFormProps> = ({
 
                         {/* Fila única: Pieza | Cantidad | Descuento | Posible */}
                         <div className="md:col-span-3 flex flex-wrap md:flex-nowrap items-end gap-3">
-                            {/* Nº Pieza(s) */}
+                            {/* Elemento(s) Dental(es) */}
                             <div className="w-96">
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nº Pieza(s)</label>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Elemento(s) Dental(es)</label>
                                 <div className="relative">
                                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
@@ -715,7 +715,7 @@ const PresupuestoForm: React.FC<PresupuestoFormProps> = ({
                             <tr>
                                 <th scope="col" className="px-4 py-3 text-center text-xs font-bold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Nº</th>
                                 <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Tratamiento</th>
-                                <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Pieza(s)</th>
+                                <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Elemento(s) Dental(es)</th>
                                 <th scope="col" className="px-4 py-3 text-center text-xs font-bold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Cant.</th>
                                 <th scope="col" className="px-4 py-3 text-right text-xs font-bold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Precio Unit.</th>
                                 <th scope="col" className="px-4 py-3 text-right text-xs font-bold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Total</th>

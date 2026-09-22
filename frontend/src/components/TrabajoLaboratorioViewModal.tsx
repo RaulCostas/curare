@@ -210,7 +210,7 @@ const TrabajoLaboratorioViewModal: React.FC<Props> = ({ isOpen, onClose, trabajo
                             <span class="value">${trabajo.precioLaboratorio?.detalle}</span>
                         </div>
                         <div class="info-item">
-                            <span class="label">Piezas</span>
+                            <span class="label">Elemento Dental</span>
                             <span class="value">${trabajo.pieza}</span>
                         </div>
                         <div class="info-item">
@@ -363,7 +363,7 @@ const TrabajoLaboratorioViewModal: React.FC<Props> = ({ isOpen, onClose, trabajo
                                                         <span className="font-semibold">{trabajo.precioLaboratorio?.detalle}</span>
                                                     </div>
                                                     <div>
-                                                        <span className="font-bold block text-xs uppercase text-blue-400 dark:text-blue-300">Piezas</span>
+                                                        <span className="font-bold block text-xs uppercase text-blue-400 dark:text-blue-300">Elemento Dental</span>
                                                         <span className="font-semibold">{trabajo.pieza}</span>
                                                     </div>
                                                     <div>

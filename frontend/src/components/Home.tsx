@@ -609,7 +609,7 @@ const Home: React.FC = () => {
                                     <span className="font-semibold">Paciente:</span> {formatPaternoMaternoNombre(work.paciente)}
                                 </div>
                                 <div className="text-gray-800 dark:text-white">
-                                    <span className="font-semibold">Trabajo:</span> {work.precioLaboratorio?.detalle} (Pieza: {work.pieza})
+                                    <span className="font-semibold">Trabajo:</span> {work.precioLaboratorio?.detalle} (Elemento Dental: {work.pieza})
                                 </div>
                                 <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                                     Terminado el: {formatDate(work.fecha_terminado)}

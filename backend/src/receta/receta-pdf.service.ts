@@ -387,7 +387,7 @@ export class RecetaPdfService {
                     [
                         { text: 'Paciente', style: 'tableHeader', alignment: 'left' },
                         { text: 'Tratamiento', style: 'tableHeader', alignment: 'left' },
-                        { text: 'Pieza', style: 'tableHeader', alignment: 'center' },
+                        { text: 'Elemento Dental', style: 'tableHeader', alignment: 'center' },
                         { text: 'Precio', style: 'tableHeader', alignment: 'right' },
                         { text: 'Desc.', style: 'tableHeader', alignment: 'right' },
                         { text: 'Lab.', style: 'tableHeader', alignment: 'right' },

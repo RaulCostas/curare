@@ -98,7 +98,7 @@ export class HistoriaClinicaPdfService {
         const tableBody = [
             [
                 { text: 'Fecha', style: 'tableHeader' },
-                { text: 'Pieza', style: 'tableHeader' },
+                { text: 'Elemento Dental', style: 'tableHeader' },
                 { text: 'Tratamiento', style: 'tableHeader' },
                 { text: 'Observaciones', style: 'tableHeader' },
                 { text: 'Cant.', style: 'tableHeader' },

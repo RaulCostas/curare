@@ -164,7 +164,7 @@ const TrabajosLaboratoriosList: React.FC = () => {
             Laboratorio: t.laboratorio?.laboratorio || '-',
             Paciente: t.paciente ? formatPaternoMaternoNombre(t.paciente) : '-',
             Trabajo: t.precioLaboratorio?.detalle || (t as any).trabajo,
-            Piezas: t.pieza,
+            'Elemento Dental': t.pieza,
             Cantidad: t.cantidad,
             'Fecha Recepcion': formatDate(t.fecha),
             'Fecha Pedido': formatDate(t.fecha_pedido),
@@ -312,7 +312,7 @@ const TrabajosLaboratoriosList: React.FC = () => {
                             <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Paciente</th>
                             <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Laboratorio</th>
                             <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Trabajo</th>
-                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Piezas</th>
+                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Elemento Dental</th>
                             <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Cant.</th>
                             <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Total</th>
                             <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Estado</th>

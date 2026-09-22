@@ -206,9 +206,9 @@ const ProximaCitaModal: React.FC<ProximaCitaModalProps> = ({
                             </div>
                         </div>
 
-                        {/* Pieza */}
+                        {/* Elemento Dental */}
                         <div>
-                            <label className="block mb-2 font-bold text-gray-700 dark:text-gray-300 text-sm">Pieza</label>
+                            <label className="block mb-2 font-bold text-gray-700 dark:text-gray-300 text-sm">Elemento Dental</label>
                             <div className="relative">
                                 <svg xmlns="http://www.w3.org/2000/svg" className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                     <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
@@ -269,7 +269,7 @@ const ProximaCitaModal: React.FC<ProximaCitaModalProps> = ({
                                         let isCompleted = false;
 
                                         if (d.piezas) {
-                                            const allPiezas = d.piezas.split('/').map((p: string) => p.trim());
+                                             const allPiezas = d.piezas.split('/').map((p: string) => p.trim());
                                             const completedPieces: string[] = [];
                                             historia.forEach(h => {
                                                 if (h.proformaDetalleId === d.id &&
@@ -296,7 +296,7 @@ const ProximaCitaModal: React.FC<ProximaCitaModalProps> = ({
                                                     fontWeight: 'bold'
                                                 } : undefined}
                                             >
-                                                {d.arancel ? d.arancel.detalle : 'Tratamiento'} {d.piezas ? `(Pz: ${d.piezas})` : ''} {isCompleted ? '(Completado)' : ''}
+                                                {d.arancel ? d.arancel.detalle : 'Tratamiento'} {d.piezas ? `(Elem: ${d.piezas})` : ''} {isCompleted ? '(Completado)' : ''}
                                             </option>
                                         );
                                     })}

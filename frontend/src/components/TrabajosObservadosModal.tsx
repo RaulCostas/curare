@@ -175,7 +175,7 @@ const TrabajosObservadosModal: React.FC<TrabajosObservadosModalProps> = ({
                                         <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Fecha</th>
                                         <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Paciente</th>
                                         <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Laboratorio</th>
-                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Trabajo / Pieza</th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Trabajo / Elemento Dental</th>
                                         <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Total (Bs)</th>
                                         <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Motivo de Observación</th>
                                         <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Acciones</th>
@@ -198,7 +198,7 @@ const TrabajosObservadosModal: React.FC<TrabajosObservadosModalProps> = ({
                                                 <td className="p-3 text-gray-700 dark:text-gray-300 text-xs">
                                                     <div>{trabajo.precioLaboratorio?.detalle || '-'}</div>
                                                     {trabajo.pieza && (
-                                                        <span className="text-[11px] text-gray-500 dark:text-gray-400">Pieza: {trabajo.pieza}</span>
+                                                        <span className="text-[11px] text-gray-500 dark:text-gray-400">Elemento Dental: {trabajo.pieza}</span>
                                                     )}
                                                 </td>
                                                 <td className="p-3 font-bold text-gray-800 dark:text-gray-200 text-xs whitespace-nowrap text-right">

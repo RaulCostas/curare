@@ -80,11 +80,11 @@ const TrabajosRealizadosList: React.FC = () => {
         },
         {
             title: 'Pestaña: Trabajos No Pagados',
-            content: 'Muestra los tratamientos clínicos registrados en la historia clínica que aún están pendientes de liquidación (pagado = NO).\nColumnas: Fecha Cita, Paciente, Tratamiento, Pieza(s), Cantidad y Total Bs.'
+            content: 'Muestra los tratamientos clínicos registrados en la historia clínica que aún están pendientes de liquidación (pagado = NO).\nColumnas: Fecha Cita, Paciente, Tratamiento, Elemento(s) Dental(es), Cantidad y Total Bs.'
         },
         {
             title: 'Pestaña: Trabajos Pagados',
-            content: 'Muestra el historial de tratamientos que ya han sido liquidados o cancelados al doctor (pagado = SI).\nColumnas: Fecha Pago, Paciente, Tratamiento, Pieza(s), Cantidad, Total Neto, Descuento, Costo Laboratorio y Sub Total.'
+            content: 'Muestra el historial de tratamientos que ya han sido liquidados o cancelados al doctor (pagado = SI).\nColumnas: Fecha Pago, Paciente, Tratamiento, Elemento(s) Dental(es), Cantidad, Total Neto, Descuento, Costo Laboratorio y Sub Total.'
         }
     ];
 
@@ -239,7 +239,7 @@ const TrabajosRealizadosList: React.FC = () => {
                     'Fecha Cita': formatDateDisplay(item.fecha),
                     'Paciente': formatPatientName(item.paciente),
                     'Tratamiento': item.tratamiento || item.proformaDetalle?.arancel?.detalle || 'N/A',
-                    'Pieza(s)': item.pieza || '-',
+                    'Elemento(s) Dental(es)': item.pieza || '-',
                     'Cant': item.cantidad || 1,
                     'Total Bs': Number(item.precio) || 0
                 }));
@@ -250,7 +250,7 @@ const TrabajosRealizadosList: React.FC = () => {
                     'Fecha Pago': formatDateDisplay(item.fechaPago),
                     'Paciente': formatPatientName(item.paciente),
                     'Tratamiento': item.tratamiento,
-                    'Pieza(s)': item.pieza || '-',
+                    'Elemento(s) Dental(es)': item.pieza || '-',
                     'Cant': item.cantidad || 1,
                     'Total Neto Bs': item.totalNeto,
                     'Desc. %': item.descuento,
@@ -293,7 +293,7 @@ const TrabajosRealizadosList: React.FC = () => {
 
                 autoTable(doc, {
                     startY: 28,
-                    head: [['#', 'Fecha Cita', 'Paciente', 'Tratamiento', 'Pieza(s)', 'Cant', 'Total Bs']],
+                    head: [['#', 'Fecha Cita', 'Paciente', 'Tratamiento', 'Elemento(s) Dental(es)', 'Cant', 'Total Bs']],
                     body: tableData,
                 });
             } else {
@@ -312,7 +312,7 @@ const TrabajosRealizadosList: React.FC = () => {
 
                 autoTable(doc, {
                     startY: 28,
-                    head: [['#', 'Fecha Pago', 'Paciente', 'Tratamiento', 'Pieza(s)', 'Cant', 'Total Neto', 'Desc.', 'Costo Lab', 'Sub Total']],
+                    head: [['#', 'Fecha Pago', 'Paciente', 'Tratamiento', 'Elemento(s) Dental(es)', 'Cant', 'Total Neto', 'Desc.', 'Costo Lab', 'Sub Total']],
                     body: tableData,
                 });
             }
@@ -498,7 +498,7 @@ const TrabajosRealizadosList: React.FC = () => {
                                     <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Fecha Cita</th>
                                     <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Paciente</th>
                                     <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Tratamiento</th>
-                                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider text-center">Pieza(s)</th>
+                                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider text-center">Elemento(s) Dental(es)</th>
                                     <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider text-center">Cant.</th>
                                     <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider text-right">Total Bs</th>
                                 </tr>
@@ -575,7 +575,7 @@ const TrabajosRealizadosList: React.FC = () => {
                                     <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Fecha Pago</th>
                                     <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Paciente</th>
                                     <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Tratamiento</th>
-                                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider text-center">Pieza(s)</th>
+                                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider text-center">Elemento(s) Dental(es)</th>
                                     <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider text-center">Cant.</th>
                                     <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider text-right">Total Neto</th>
                                     <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider text-center">Desc.</th>

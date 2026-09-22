@@ -61,7 +61,7 @@ const PacienteImagenesTab: React.FC<PacienteImagenesTabProps> = ({ pacienteId })
         },
         {
             title: 'Descripciones & Notas',
-            content: 'Cada imagen cuenta con una caja de texto inferior para escribir notas clínicas o descripciones (ej: "Radiografía Periapical Pieza 21 pre-tratamiento"). Las notas se guardan automáticamente.'
+            content: 'Cada imagen cuenta con una caja de texto inferior para escribir notas clínicas o descripciones (ej: "Radiografía Periapical Elemento Dental 21 pre-tratamiento"). Las notas se guardan automáticamente.'
         },
         {
             title: 'Visor Pantalla Completa & Navegación',

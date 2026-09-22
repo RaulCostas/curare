@@ -97,7 +97,7 @@ const HistoriaClinicaList: React.FC<HistoriaClinicaListProps> = ({ historia, all
                         Historial de Historias Clínicas
                     </h3>
                     <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5 font-medium">
-                        Registro de tratamientos realizados, piezas dentales y evolución clínica
+                        Registro de tratamientos realizados, elementos dentales y evolución clínica
                     </p>
                 </div>
             </div>
@@ -108,7 +108,7 @@ const HistoriaClinicaList: React.FC<HistoriaClinicaListProps> = ({ historia, all
                     <div className="relative flex-1 min-w-[200px]">
                         <input
                             type="text"
-                            placeholder="Buscar por Pieza o Tratamiento..."
+                            placeholder="Buscar por Elemento Dental o Tratamiento..."
                             value={searchTerm}
                             onChange={(e) => {
                                 setSearchTerm(e.target.value);
@@ -222,7 +222,7 @@ const HistoriaClinicaList: React.FC<HistoriaClinicaListProps> = ({ historia, all
                     <thead className="bg-gray-50 dark:bg-gray-700">
                         <tr>
                             <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Fecha</th>
-                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Pieza</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Elemento Dental</th>
                             <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Tratamiento</th>
                             <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Observaciones</th>
                             <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Cant.</th>

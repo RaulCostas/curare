@@ -53,19 +53,19 @@ const PresupuestoList: React.FC = () => {
     const manualSections: ManualSection[] = [
         {
             title: 'Presupuestos',
-            content: 'Gestión de proformas y presupuestos de tratamientos para el paciente. Los presupuestos permiten planificar tratamientos, hacer seguimiento de piezas completadas y controlar el estado de finalización.'
+            content: 'Gestión de proformas y presupuestos de tratamientos para el paciente. Los presupuestos permiten planificar tratamientos, hacer seguimiento de elementos dentales completados y controlar el estado de finalización.'
         },
         {
             title: 'Nuevo Presupuesto',
-            content: 'Cree un nuevo presupuesto seleccionando tratamientos del arancel. Puede especificar las piezas dentales a tratar, agregar notas y generar PDF para entregar al paciente.'
+            content: 'Cree un nuevo presupuesto seleccionando tratamientos del arancel. Puede especificar los elementos dentales a tratar, agregar notas y generar PDF para entregar al paciente.'
         },
         {
             title: 'Indicadores Visuales',
             content: 'Los presupuestos terminados aparecen con las columnas "# Pres." y "Fecha" tachadas en verde. Esto indica que todos los tratamientos del plan han sido completados en Historia Clínica.'
         },
         {
-            title: 'Seguimiento de Piezas',
-            content: 'Al ver o editar un presupuesto, las piezas dentales completadas aparecen tachadas en verde. Solo cuando TODAS las piezas de un tratamiento están terminadas, el tratamiento completo se marca como finalizado.'
+            title: 'Seguimiento de Elementos Dentales',
+            content: 'Al ver o editar un presupuesto, los elementos dentales completados aparecen tachados en verde. Solo cuando TODOS los elementos dentales de un tratamiento están terminados, el tratamiento completo se marca como finalizado.'
         },
         {
             title: 'Aprobación',
@@ -414,7 +414,7 @@ const PresupuestoList: React.FC = () => {
         // 4. Table
         const hasDiscount = proforma.detalles.some(item => item.descuento > 0);
 
-        let tableColumn = ["Descripción", "Pieza(s)", "Cant.", "P.U.", "Total"];
+        let tableColumn = ["Descripción", "Elemento Dental", "Cant.", "P.U.", "Total"];
         if (hasDiscount) {
             tableColumn.push("Descuento %", "Total con Dcto %");
         }
