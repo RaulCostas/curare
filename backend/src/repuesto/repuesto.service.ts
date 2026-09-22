@@ -17,22 +17,54 @@ export class RepuestoService {
         return await this.repuestoRepository.save(nuevo);
     }
 
-    async findAll(query?: { page?: number; limit?: number; search?: string }): Promise<{ data: Repuesto[]; total: number; page: number; totalPages: number }> {
+    async findAll(query?: { page?: number; limit?: number; search?: string; consultorio?: string; startDate?: string; endDate?: string }): Promise<{ data: Repuesto[]; total: number; page: number; totalPages: number }> {
         const page = query?.page ? Number(query.page) : 1;
         const limit = query?.limit ? Number(query.limit) : 10;
         const skip = (page - 1) * limit;
 
         const qb = this.repuestoRepository.createQueryBuilder('r');
 
-        if (query?.search) {
+        if (query?.search && query.search.trim()) {
             const term = `%${query.search.trim().toLowerCase()}%`;
-            qb.where(
-                'LOWER(r.descripcion) LIKE :term OR LOWER(r.consultorio) LIKE :term OR LOWER(r.motivo) LIKE :term OR LOWER(r.observaciones) LIKE :term',
+            qb.andWhere(
+                '(LOWER(r.descripcion) LIKE :term OR LOWER(r.motivo) LIKE :term)',
                 { term }
             );
         }
 
-        qb.orderBy('r.id', 'DESC')
+        if (query?.consultorio && query.consultorio.trim()) {
+            const rawVal = query.consultorio.trim();
+            const numMatch = rawVal.match(/\d+/);
+            if (numMatch) {
+                const num = numMatch[0];
+                qb.andWhere(
+                    '(TRIM(LOWER(r.consultorio)) = :exactNum OR LOWER(r.consultorio) = :consultorioTxt OR LOWER(r.consultorio) LIKE :likeVal)',
+                    {
+                        exactNum: num,
+                        consultorioTxt: `consultorio ${num}`,
+                        likeVal: `%${rawVal.toLowerCase()}%`
+                    }
+                );
+            } else {
+                const consultorioTerm = `%${rawVal.toLowerCase()}%`;
+                qb.andWhere('LOWER(r.consultorio) LIKE :consultorioTerm', { consultorioTerm });
+            }
+        }
+
+        if (query?.startDate && query?.endDate) {
+            const startStr = query.startDate.split('T')[0];
+            const endStr = query.endDate.split('T')[0];
+            qb.andWhere('r.fecha BETWEEN :startStr AND :endStr', { startStr, endStr });
+        } else if (query?.startDate) {
+            const startStr = query.startDate.split('T')[0];
+            qb.andWhere('r.fecha >= :startStr', { startStr });
+        } else if (query?.endDate) {
+            const endStr = query.endDate.split('T')[0];
+            qb.andWhere('r.fecha <= :endStr', { endStr });
+        }
+
+        qb.orderBy('r.fecha', 'DESC')
+          .addOrderBy('r.id', 'DESC')
           .skip(skip)
           .take(limit);
 
@@ -44,6 +76,27 @@ export class RepuestoService {
             page,
             totalPages: Math.ceil(total / limit) || 1,
         };
+    }
+
+    async getConsultorios(): Promise<string[]> {
+        const results = await this.repuestoRepository
+            .createQueryBuilder('r')
+            .select('DISTINCT r.consultorio', 'consultorio')
+            .where('r.consultorio IS NOT NULL AND TRIM(r.consultorio) != :empty', { empty: '' })
+            .getRawMany();
+
+        const consultorios = results
+            .map(r => r.consultorio?.trim())
+            .filter((c): c is string => Boolean(c));
+
+        return consultorios.sort((a, b) => {
+            const numA = parseInt(a.replace(/\D/g, ''), 10);
+            const numB = parseInt(b.replace(/\D/g, ''), 10);
+            if (!isNaN(numA) && !isNaN(numB)) {
+                return numA - numB;
+            }
+            return a.localeCompare(b, undefined, { numeric: true });
+        });
     }
 
     async findOne(id: number): Promise<Repuesto> {

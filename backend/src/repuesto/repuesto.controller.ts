@@ -13,8 +13,13 @@ export class RepuestoController {
     }
 
     @Get()
-    findAll(@Query() query: { page?: number; limit?: number; search?: string }) {
+    findAll(@Query() query: { page?: number; limit?: number; search?: string; consultorio?: string; startDate?: string; endDate?: string }) {
         return this.repuestoService.findAll(query);
+    }
+
+    @Get('consultorios')
+    getConsultorios() {
+        return this.repuestoService.getConsultorios();
     }
 
     @Get(':id')
