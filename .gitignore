@@ -26,6 +26,7 @@ backups/
 !backend/scripts/add_fecha_recordatorio_enviado_to_agenda.sql
 !backend/scripts/migration_traspasado_produccion.sql
 !backend/scripts/migration_cumpleanos_produccion.sql
+!backend/scripts/actualizar_pagado_doctores.sql
 
 # Uploads
 backend/uploads/*

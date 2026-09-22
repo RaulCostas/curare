@@ -248,18 +248,21 @@ const PagosDoctoresForm: React.FC<PagosDoctoresFormProps> = ({ isOpen, onClose, 
     ));
 
     const getOriginalPrice = (item: HistoriaClinica) => {
-        if (item.proformaDetalle) {
-            if (item.proformaDetalle.subTotal != null && Number(item.proformaDetalle.subTotal) > 0) {
-                return Number(item.proformaDetalle.subTotal);
-            }
-            if (item.proformaDetalle.precioUnitario != null && Number(item.proformaDetalle.precioUnitario) > 0) {
-                return Number(item.proformaDetalle.precioUnitario) * (item.cantidad || 1);
-            }
-            if ((item.proformaDetalle as any).arancel?.precio1 != null && Number((item.proformaDetalle as any).arancel.precio1) > 0) {
-                return Number((item.proformaDetalle as any).arancel.precio1) * (item.cantidad || 1);
-            }
+        const qty = item.cantidad && Number(item.cantidad) > 0 ? Number(item.cantidad) : 1;
+
+        if (item.proformaDetalle?.precioUnitario != null && Number(item.proformaDetalle.precioUnitario) > 0) {
+            return Number(item.proformaDetalle.precioUnitario) * qty;
         }
-        return Number(item.precio) || 0;
+        if ((item.proformaDetalle as any)?.arancel?.precio1 != null && Number((item.proformaDetalle as any).arancel.precio1) > 0) {
+            return Number((item.proformaDetalle as any).arancel.precio1) * qty;
+        }
+        if (item.precio != null && Number(item.precio) > 0) {
+            return Number(item.precio);
+        }
+        if (item.proformaDetalle?.subTotal != null && Number(item.proformaDetalle.subTotal) > 0) {
+            return Number(item.proformaDetalle.subTotal);
+        }
+        return 0;
     };
 
     const calculateRowTotal = (item: HistoriaClinica) => {
