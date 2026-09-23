@@ -83,7 +83,7 @@ const PersonalForm: React.FC<PersonalFormProps> = ({ isOpen, onClose, id, onSave
 
     const fetchPersonalTipos = async (selectId?: number) => {
         try {
-            const response = await api.get('/personal-tipo?limit=100');
+            const response = await api.get('/personal-tipo?limit=10000');
             const data = response.data;
             const items = Array.isArray(data) ? data : (data?.data || []);
             setPersonalTipos(items);

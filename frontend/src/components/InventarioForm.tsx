@@ -74,8 +74,8 @@ const InventarioForm: React.FC<InventarioFormProps> = ({ isOpen, onClose, id, on
     const fetchDropdowns = async () => {
         try {
             const [espRes, grupRes] = await Promise.all([
-                api.get<any>('/especialidad?limit=100'),
-                api.get<any>('/grupo-inventario?limit=100')
+                api.get<any>('/especialidad?limit=10000'),
+                api.get<any>('/grupo-inventario?limit=10000')
             ]);
 
             const especialidadesData = Array.isArray(espRes.data) ? espRes.data : (espRes.data.data || []);
@@ -90,7 +90,7 @@ const InventarioForm: React.FC<InventarioFormProps> = ({ isOpen, onClose, id, on
 
     const handleEspecialidadSuccess = async () => {
         try {
-            const espRes = await api.get<any>('/especialidad?limit=100');
+            const espRes = await api.get<any>('/especialidad?limit=10000');
             const list = Array.isArray(espRes.data) ? espRes.data : (espRes.data.data || []);
             setEspecialidades(list);
             if (list.length > 0) {
@@ -104,7 +104,7 @@ const InventarioForm: React.FC<InventarioFormProps> = ({ isOpen, onClose, id, on
 
     const handleGrupoSuccess = async () => {
         try {
-            const grupRes = await api.get<any>('/grupo-inventario?limit=100');
+            const grupRes = await api.get<any>('/grupo-inventario?limit=10000');
             const list = Array.isArray(grupRes.data) ? grupRes.data : (grupRes.data.data || []);
             setGrupos(list);
             if (list.length > 0) {

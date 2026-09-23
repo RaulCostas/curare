@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import api from '../services/api';
 import Swal from 'sweetalert2';
 import type { Doctor, Proforma, HistoriaClinica } from '../types';
+import SearchableSelect, { type Option } from './SearchableSelect';
 import { formatDateUTC } from '../utils/formatters';
 
 interface ProximaCitaModalProps {
@@ -78,7 +79,7 @@ const ProximaCitaModal: React.FC<ProximaCitaModalProps> = ({
 
     const fetchDoctors = async () => {
         try {
-            const response = await api.get('/doctors?limit=100');
+            const response = await api.get('/doctors?limit=10000');
             const allDoctors = response.data.data || response.data || [];
             const activeDoctors = allDoctors.filter((doctor: Doctor) => doctor.estado === 'activo');
             setDoctors(activeDoctors);
@@ -93,6 +94,20 @@ const ProximaCitaModal: React.FC<ProximaCitaModalProps> = ({
         const proforma = localProformas.find(p => p.id === targetPlanId);
         return proforma ? proforma.detalles.filter((d: any) => !d.posible) : [];
     }, [formData.proformaId, selectedProformaId, localProformas]);
+
+    const doctorOptions: Option[] = useMemo(() => {
+        return doctors
+            .map(d => {
+                const fullName = `${d.paterno || ''} ${d.materno || ''} ${d.nombre || ''}`.replace(/\s+/g, ' ').trim();
+                const altName = `${d.nombre || ''} ${d.paterno || ''} ${d.materno || ''}`.replace(/\s+/g, ' ').trim();
+                return {
+                    id: d.id,
+                    label: fullName,
+                    searchString: `${fullName} ${altName}`
+                };
+            })
+            .sort((a, b) => a.label.localeCompare(b.label, 'es', { sensitivity: 'base' }));
+    }, [doctors]);
 
     const handleTreatmentChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         const detailId = Number(e.target.value);
@@ -307,23 +322,20 @@ const ProximaCitaModal: React.FC<ProximaCitaModalProps> = ({
                         {/* Doctor */}
                         <div>
                             <label className="block mb-2 font-bold text-gray-700 dark:text-gray-300 text-sm">Doctor</label>
-                            <div className="relative">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                                    <circle cx="12" cy="7" r="4"></circle>
-                                </svg>
-                                <select
-                                    value={formData.doctorId}
-                                    onChange={e => setFormData({ ...formData, doctorId: Number(e.target.value) })}
-                                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-500 bg-white dark:bg-gray-600 text-gray-800 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
-                                    required
-                                >
-                                    <option value={0}>-- Seleccione --</option>
-                                    {doctors.map(d => (
-                                        <option key={d.id} value={d.id}>{d.paterno} {d.nombre}</option>
-                                    ))}
-                                </select>
-                            </div>
+                            <SearchableSelect
+                                options={doctorOptions}
+                                value={formData.doctorId}
+                                onChange={(val) => setFormData(prev => ({ ...prev, doctorId: Number(val) }))}
+                                placeholder="-- Seleccione Doctor --"
+                                searchPlaceholder="Buscar por nombre o apellido..."
+                                required
+                                icon={
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="text-gray-400" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                        <circle cx="12" cy="7" r="4"></circle>
+                                    </svg>
+                                }
+                            />
                         </div>
 
                         {/* Observaciones */}

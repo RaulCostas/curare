@@ -54,7 +54,7 @@ const PagosPedidosForm: React.FC<PagosPedidosFormProps> = ({ isOpen, onClose, id
 
     const fetchFormasPago = async () => {
         try {
-            const formasRes = await api.get<any>('/forma-pago?limit=100');
+            const formasRes = await api.get<any>('/forma-pago?limit=10000');
             const list = formasRes.data.data || formasRes.data;
             setFormasPago(list);
             if (list.length > 0) {
@@ -74,7 +74,7 @@ const PagosPedidosForm: React.FC<PagosPedidosFormProps> = ({ isOpen, onClose, id
             try {
                 const [pedidosRes, formasRes] = await Promise.all([
                     api.get<Pedidos[]>('/pedidos'),
-                    api.get<any>('/forma-pago?limit=100')
+                    api.get<any>('/forma-pago?limit=10000')
                 ]);
 
                 const allPedidos = pedidosRes.data;

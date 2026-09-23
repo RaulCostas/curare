@@ -27,7 +27,7 @@ const PagosGastosFijosForm: React.FC<PagosGastosFijosFormProps> = ({ gastoFijo, 
 
     const fetchFormasPago = async () => {
         try {
-            const response = await api.get('/forma-pago?limit=100');
+            const response = await api.get('/forma-pago?limit=10000');
             if (response.data && response.data.data) {
                 const activeFormasPago = (response.data.data || []).filter((fp: any) => !fp.estado || fp.estado.toLowerCase() === 'activo');
                 setFormasPago(activeFormasPago);
@@ -42,7 +42,7 @@ const PagosGastosFijosForm: React.FC<PagosGastosFijosFormProps> = ({ gastoFijo, 
 
     const handleFormaPagoSuccess = async () => {
         try {
-            const response = await api.get('/forma-pago?limit=100');
+            const response = await api.get('/forma-pago?limit=10000');
             const data = response.data.data || response.data || [];
             const activeFormasPago = data.filter((fp: any) => !fp.estado || fp.estado.toLowerCase() === 'activo');
             setFormasPago(activeFormasPago);

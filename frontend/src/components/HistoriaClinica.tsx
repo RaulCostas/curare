@@ -117,8 +117,8 @@ const HistoriaClinica: React.FC = () => {
             const [musicasRes, televisionesRes, allMusicasRes, allTelevisionesRes] = await Promise.all([
                 api.get(`/pacientes/${id}/musica`),
                 api.get(`/pacientes/${id}/television`),
-                api.get('/musica?limit=100'),
-                api.get('/television?limit=100')
+                api.get('/musica?limit=10000'),
+                api.get('/television?limit=10000')
             ]);
 
             const selectedMusicaIds = musicasRes.data || [];

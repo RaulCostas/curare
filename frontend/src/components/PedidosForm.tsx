@@ -3,6 +3,7 @@ import api from '../services/api';
 import Swal from 'sweetalert2';
 import type { Proveedor, Inventario } from '../types';
 import ManualModal, { type ManualSection } from './ManualModal';
+import SearchableSelect, { type Option } from './SearchableSelect';
 import { getLocalDateString, formatDate, formatNumberBs } from '../utils/dateUtils';
 
 interface PedidoDetail {
@@ -101,16 +102,19 @@ const PedidosForm: React.FC<PedidosFormProps> = ({ isOpen, onClose, id, onSaveSu
                 inventarioNombre: d.inventario?.descripcion
             }));
             setDetalles(mappedDetalles);
+            await fetchProviders(pedido.idproveedor);
         } catch (error) {
             console.error('Error fetching pedido:', error);
         }
     };
 
-    const fetchProviders = async () => {
+    const fetchProviders = async (currentId?: number) => {
         try {
-            const response = await api.get('/proveedores?limit=100');
-            const allProviders = Array.isArray(response.data) ? response.data : response.data.data;
-            const activeProviders = (allProviders || []).filter((p: any) => p.estado === 'activo');
+            const response = await api.get('/proveedores?limit=100000');
+            const allProviders = Array.isArray(response.data) ? response.data : (response.data.data || []);
+            const activeProviders = (allProviders || []).filter((p: any) =>
+                !p.estado || p.estado.toLowerCase() === 'activo' || p.id === (currentId !== undefined ? currentId : idproveedor)
+            );
             setProviders(activeProviders);
         } catch (error) {
             console.error('Error fetching providers:', error);
@@ -236,6 +240,23 @@ const PedidosForm: React.FC<PedidosFormProps> = ({ isOpen, onClose, id, onSaveSu
         }
     };
 
+    // Proveedor Options sorted alphabetically with contact subLabel and searchString
+    const providerOptions: Option[] = providers
+        .map(p => {
+            const contactInfo = [
+                p.nombre_contacto ? `Contacto: ${p.nombre_contacto}` : '',
+                p.celular || p.celular_contacto ? `Cel: ${p.celular || p.celular_contacto}` : ''
+            ].filter(Boolean).join(' | ');
+
+            return {
+                id: p.id,
+                label: p.proveedor,
+                subLabel: contactInfo || undefined,
+                searchString: `${p.proveedor} ${p.nombre_contacto || ''} ${p.celular || ''} ${p.celular_contacto || ''} ${p.email || ''}`
+            };
+        })
+        .sort((a, b) => a.label.localeCompare(b.label, 'es', { sensitivity: 'base' }));
+
     if (!isOpen) return null;
 
     return (
@@ -290,17 +311,20 @@ const PedidosForm: React.FC<PedidosFormProps> = ({ isOpen, onClose, id, onSaveSu
 
                             <div>
                                 <label className="block mb-1 font-medium text-sm text-gray-700 dark:text-gray-300">Proveedor:</label>
-                                <select
+                                <SearchableSelect
+                                    options={providerOptions}
                                     value={idproveedor}
-                                    onChange={(e) => setIdProveedor(Number(e.target.value))}
+                                    onChange={(val) => setIdProveedor(Number(val))}
+                                    placeholder="-- Seleccione Proveedor --"
+                                    searchPlaceholder="Buscar por Proveedor o Contacto..."
                                     required
-                                    className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-2 focus:outline-none focus:ring-blue-500 cursor-pointer"
-                                >
-                                    <option value={0}>Seleccione Proveedor</option>
-                                    {providers.map(p => (
-                                        <option key={p.id} value={p.id}>{p.proveedor}</option>
-                                    ))}
-                                </select>
+                                    icon={
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400">
+                                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                            <circle cx="12" cy="7" r="4"></circle>
+                                        </svg>
+                                    }
+                                />
                             </div>
 
                             <div>

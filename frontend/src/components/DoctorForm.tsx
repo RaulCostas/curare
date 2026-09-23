@@ -96,7 +96,7 @@ const DoctorForm: React.FC<DoctorFormProps> = ({ isOpen, onClose, id, onSaveSucc
 
     const fetchEspecialidades = async () => {
         try {
-            const response = await api.get<{ data: Especialidad[] }>('/especialidad?limit=100');
+            const response = await api.get<{ data: Especialidad[] }>('/especialidad?limit=10000');
             setEspecialidades(response.data.data || []);
         } catch (error) {
             console.error('Error fetching especialidades:', error);

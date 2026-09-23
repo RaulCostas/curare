@@ -89,8 +89,8 @@ const PacientesPendientes: React.FC = () => {
     const fetchFilters = async () => {
         try {
             const [doctorsRes, especialidadesRes] = await Promise.all([
-                api.get('/doctors?limit=100'),
-                api.get('/especialidad?limit=100')
+                api.get('/doctors?limit=10000'),
+                api.get('/especialidad?limit=10000')
             ]);
             const activeDoctors = (doctorsRes.data.data || []).filter((doctor: any) => doctor.estado === 'activo');
             const activeEspecialidades = (especialidadesRes.data.data || []).filter((esp: any) => esp.estado === 'activo');

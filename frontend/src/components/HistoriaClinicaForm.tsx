@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import api from '../services/api';
 import type { Doctor, Proforma, Arancel, HistoriaClinica, Personal } from '../types';
+import SearchableSelect, { type Option } from './SearchableSelect';
 import Swal from 'sweetalert2';
 import ManualModal, { type ManualSection } from './ManualModal';
 import { getLocalDateString } from '../utils/dateUtils';
@@ -93,6 +94,34 @@ const HistoriaClinicaForm: React.FC<HistoriaClinicaFormProps> = ({
         const proforma = proformas.find(p => p.id === formData.proformaId);
         return proforma ? proforma.detalles : [];
     }, [formData.proformaId, proformas]);
+
+    const doctorOptions: Option[] = useMemo(() => {
+        return doctors
+            .map(d => {
+                const fullName = `${d.paterno || ''} ${d.materno || ''} ${d.nombre || ''}`.replace(/\s+/g, ' ').trim();
+                const altName = `${d.nombre || ''} ${d.paterno || ''} ${d.materno || ''}`.replace(/\s+/g, ' ').trim();
+                return {
+                    id: d.id,
+                    label: fullName,
+                    searchString: `${fullName} ${altName}`
+                };
+            })
+            .sort((a, b) => a.label.localeCompare(b.label, 'es', { sensitivity: 'base' }));
+    }, [doctors]);
+
+    const asistenteOptions: Option[] = useMemo(() => {
+        return asistentes
+            .map(a => {
+                const fullName = `${a.paterno || ''} ${a.materno || ''} ${a.nombre || ''}`.replace(/\s+/g, ' ').trim();
+                const altName = `${a.nombre || ''} ${a.paterno || ''} ${a.materno || ''}`.replace(/\s+/g, ' ').trim();
+                return {
+                    id: a.id,
+                    label: fullName,
+                    searchString: `${fullName} ${altName}`
+                };
+            })
+            .sort((a, b) => a.label.localeCompare(b.label, 'es', { sensitivity: 'base' }));
+    }, [asistentes]);
 
     // Update formData when selectedProformaId (from parent props) changes
     useEffect(() => {
@@ -211,7 +240,7 @@ const HistoriaClinicaForm: React.FC<HistoriaClinicaFormProps> = ({
 
     const fetchAsistentes = async () => {
         try {
-            const response = await api.get('/personal?limit=100');
+            const response = await api.get('/personal?limit=10000');
             // Filtramos por personal activo y que sea del área 'Clínica' (Igual que en Agenda)
             const activeAsistentes = (response.data.data || []).filter((p: Personal) =>
                 p.personalTipo?.area === 'Clínica' && p.estado === 'activo'
@@ -615,52 +644,40 @@ const HistoriaClinicaForm: React.FC<HistoriaClinicaFormProps> = ({
                     {/* Doctor */}
                     <div>
                         <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Doctor</label>
-                        <div className="relative">
-                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <SearchableSelect
+                            options={doctorOptions}
+                            value={formData.doctorId}
+                            onChange={(val) => setFormData(prev => ({ ...prev, doctorId: Number(val) }))}
+                            placeholder="-- Seleccione Doctor --"
+                            searchPlaceholder="Buscar por nombre o apellido..."
+                            icon={
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                     <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                                     <circle cx="12" cy="7" r="4"></circle>
                                 </svg>
-                            </div>
-                            <select
-                                name="doctorId"
-                                value={formData.doctorId}
-                                onChange={handleChange}
-                                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 font-medium outline-none transition-all shadow-sm cursor-pointer"
-                            >
-                                <option value={0}>-- Seleccione --</option>
-                                {doctors.map(d => (
-                                    <option key={d.id} value={d.id}>{d.paterno} {d.materno} {d.nombre}</option>
-                                ))}
-                            </select>
-                        </div>
+                            }
+                        />
                         <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 pl-1">Ej. Odontólogo responsable que realizó el procedimiento.</p>
                     </div>
 
                     {/* Asistente */}
                     <div>
                         <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Asistente</label>
-                        <div className="relative">
-                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <SearchableSelect
+                            options={asistenteOptions}
+                            value={formData.personalId}
+                            onChange={(val) => setFormData(prev => ({ ...prev, personalId: Number(val) }))}
+                            placeholder="-- Seleccione Asistente --"
+                            searchPlaceholder="Buscar por nombre o apellido..."
+                            icon={
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                     <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
                                     <circle cx="9" cy="7" r="4"></circle>
                                     <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
                                     <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
                                 </svg>
-                            </div>
-                            <select
-                                name="personalId"
-                                value={formData.personalId}
-                                onChange={handleChange}
-                                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 font-medium outline-none transition-all shadow-sm cursor-pointer"
-                            >
-                                <option value={0}>-- Seleccione --</option>
-                                {asistentes.map(a => (
-                                    <option key={a.id} value={a.id}>{a.paterno} {a.materno} {a.nombre}</option>
-                                ))}
-                            </select>
-                        </div>
+                            }
+                        />
                         <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 pl-1">Ej. Personal auxiliar o asistente de gabinete.</p>
                     </div>
 

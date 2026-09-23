@@ -79,8 +79,8 @@ const EstadisticasProductos: React.FC = () => {
     const fetchInitialData = async () => {
         try {
             const [gruposRes, productosRes] = await Promise.all([
-                api.get('/grupo-inventario?limit=100'),
-                api.get('/inventario?limit=5000')
+                api.get('/grupo-inventario?limit=10000'),
+                api.get('/inventario?limit=10000')
             ]);
 
             const gruposData = Array.isArray(gruposRes.data) ? gruposRes.data : (gruposRes.data.data || []);

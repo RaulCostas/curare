@@ -30,8 +30,8 @@ const MusicaTelevisionTab: React.FC<MusicaTelevisionTabProps> = ({
     const fetchListas = async () => {
         try {
             const [musicasRes, televisionesRes] = await Promise.all([
-                api.get('/musica?limit=100'),
-                api.get('/television?limit=100')
+                api.get('/musica?limit=10000'),
+                api.get('/television?limit=10000')
             ]);
             const musicasData = musicasRes.data.data || musicasRes.data;
             const televisionesData = televisionesRes.data.data || televisionesRes.data;

@@ -180,11 +180,11 @@ const PagosLaboratoriosForm: React.FC<PagosLaboratoriosFormProps> = ({ isOpen, o
                 uniqueLabsMap.set(labId, labName);
             }
         });
-        const opts: { id: number; name: string }[] = [];
+        const opts: Option[] = [];
         uniqueLabsMap.forEach((name, id) => {
-            opts.push({ id, name });
+            opts.push({ id, label: name });
         });
-        return opts.sort((a, b) => a.name.localeCompare(b.name));
+        return opts.sort((a, b) => a.label.localeCompare(b.label));
     }, [allUnpaidWorks]);
 
     const patientOptions: Option[] = useMemo(() => {
@@ -385,19 +385,20 @@ const PagosLaboratoriosForm: React.FC<PagosLaboratoriosFormProps> = ({ isOpen, o
                     {/* Fila 1: Laboratorio */}
                     <div>
                         <label className="block mb-1 font-bold text-sm text-gray-700 dark:text-gray-300">Laboratorio:</label>
-                        <select
+                        <SearchableSelect
+                            options={labOptions}
                             value={selectedLabId}
-                            onChange={handleLabChange}
+                            onChange={(val) => {
+                                setSelectedLabId(val ? Number(val) : '');
+                                setSelectedPatientId('');
+                                setIdTrabajosLaboratorios('');
+                                setEsObservado(false);
+                                setObservacionTraspaso('');
+                            }}
+                            placeholder="-- Seleccione un Laboratorio --"
+                            searchPlaceholder="Buscar laboratorio..."
                             required
-                            className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-2 focus:outline-none focus:ring-blue-500 font-medium cursor-pointer"
-                        >
-                            <option value="">-- Seleccione un Laboratorio --</option>
-                            {labOptions.map((lab) => (
-                                <option key={lab.id} value={lab.id}>
-                                    {lab.name}
-                                </option>
-                            ))}
-                        </select>
+                        />
                     </div>
 
                     {/* Fila 2: Paciente (SearchableSelect) */}

@@ -3,6 +3,7 @@ import api from '../services/api';
 import type { RecetaDetalle, Doctor, RecetaPredisenada } from '../types';
 import Swal from 'sweetalert2';
 import ManualModal, { type ManualSection } from './ManualModal';
+import SearchableSelect, { type Option } from './SearchableSelect';
 import { Calendar, Pill, Hash, FileText, MessageSquare, User as UserIcon, X, BookmarkCheck } from 'lucide-react';
 import { getLocalDateString } from '../utils/dateUtils';
 import { formatPaternoMaternoNombre } from '../utils/formatters';
@@ -276,6 +277,18 @@ const RecetarioForm: React.FC<RecetarioFormProps> = ({ isOpen, onClose, id, paci
         }
     };
 
+    const doctorOptions: Option[] = doctores
+        .map(doc => {
+            const paternoMaternoNombre = formatPaternoMaternoNombre(doc);
+            const nombrePaternoMaterno = `${doc.nombre || ''} ${doc.paterno || ''} ${doc.materno || ''}`.replace(/\s+/g, ' ').trim();
+            return {
+                id: doc.id,
+                label: paternoMaternoNombre,
+                searchString: `${paternoMaternoNombre} ${nombrePaternoMaterno}`
+            };
+        })
+        .sort((a, b) => a.label.localeCompare(b.label, 'es', { sensitivity: 'base' }));
+
     if (!isOpen) return null;
 
     return (
@@ -365,15 +378,19 @@ const RecetarioForm: React.FC<RecetarioFormProps> = ({ isOpen, onClose, id, paci
                             {/* 2. Doctor */}
                             <div>
                                 <label className="block mb-1 font-bold text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Doctor / Especialista:</label>
-                                <div className="relative">
-                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
-                                        <UserIcon size={18} />
-                                    </div>
-                                    <select
-                                        name="doctorId"
+
+
+
+
+                                    <SearchableSelect
+                                        options={doctorOptions}
                                         value={formData.doctorId}
-                                        onChange={handleChange}
-                                        className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-medium focus:ring-2 focus:ring-blue-500 outline-none transition-all shadow-sm"
+                                        onChange={(val) => setFormData(prev => ({ ...prev, doctorId: val ? Number(val) : '' }))}
+                                        placeholder="-- Seleccionar Doctor --"
+                                        searchPlaceholder="Buscar por nombre o apellido..."
+                                        icon={<UserIcon size={18} />}
+                                    />
+                                    {/*
                                     >
                                         <option value="">-- Seleccionar Doctor --</option>
                                         {doctores.map(doc => (
@@ -382,7 +399,7 @@ const RecetarioForm: React.FC<RecetarioFormProps> = ({ isOpen, onClose, id, paci
                                             </option>
                                         ))}
                                     </select>
-                                </div>
+                                    */}
                             </div>
                         </div>
 

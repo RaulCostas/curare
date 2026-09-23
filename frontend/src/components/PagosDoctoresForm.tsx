@@ -5,6 +5,7 @@ import { formatDate, getLocalDateString } from '../utils/dateUtils';
 import { formatCurrency } from '../utils/formatters';
 import ManualModal, { type ManualSection } from './ManualModal';
 import FormaPagoForm from './FormaPagoForm';
+import SearchableSelect, { type Option } from './SearchableSelect';
 import { Save, X, Plus } from 'lucide-react';
 
 interface Doctor {
@@ -401,6 +402,18 @@ const PagosDoctoresForm: React.FC<PagosDoctoresFormProps> = ({ isOpen, onClose, 
         }
     };
 
+    const doctorOptions: Option[] = doctores
+        .map(d => {
+            const fullName = `${d.paterno || ''} ${d.materno || ''} ${d.nombre || ''}`.replace(/\s+/g, ' ').trim();
+            const altName = `${d.nombre || ''} ${d.paterno || ''} ${d.materno || ''}`.replace(/\s+/g, ' ').trim();
+            return {
+                id: d.id,
+                label: fullName,
+                searchString: `${fullName} ${altName}`
+            };
+        })
+        .sort((a, b) => a.label.localeCompare(b.label, 'es', { sensitivity: 'base' }));
+
     if (!isOpen) return null;
 
     return (
@@ -442,24 +455,19 @@ const PagosDoctoresForm: React.FC<PagosDoctoresFormProps> = ({ isOpen, onClose, 
                     <div className="space-y-4">
                         <div>
                             <label className="block mb-1 font-bold text-sm text-gray-700 dark:text-gray-300">Doctor:</label>
-                            <div className="relative">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                </svg>
-                                <select
-                                    value={idDoctor}
-                                    onChange={(e) => setIdDoctor(e.target.value)}
-                                    required
-                                    className="w-full pl-9 pr-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-2 focus:outline-none focus:ring-blue-500 font-medium cursor-pointer"
-                                >
-                                    <option value="">-- Seleccione Doctor --</option>
-                                    {doctores.map(d => (
-                                        <option key={d.id} value={d.id}>
-                                            {`${d.paterno} ${d.materno} ${d.nombre}`.trim()}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
+                            <SearchableSelect
+                                options={doctorOptions}
+                                value={idDoctor}
+                                onChange={(val) => setIdDoctor(String(val))}
+                                placeholder="-- Seleccione Doctor --"
+                                searchPlaceholder="Buscar por nombre o apellido del Doctor..."
+                                required
+                                icon={
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                    </svg>
+                                }
+                            />
                         </div>
 
                         {/* Search bar above table */}

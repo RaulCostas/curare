@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import api from '../services/api';
 import Swal from 'sweetalert2';
 import type { Laboratorio } from '../types';
 import ManualModal, { type ManualSection } from './ManualModal';
+import SearchableSelect, { type Option } from './SearchableSelect';
 
 interface PrecioLaboratorioFormProps {
     isOpen: boolean;
@@ -63,13 +64,24 @@ const PrecioLaboratorioForm: React.FC<PrecioLaboratorioFormProps> = ({ isOpen, o
 
     const fetchLaboratorios = async () => {
         try {
-            const response = await api.get('/laboratorios?limit=100');
+            const response = await api.get('/laboratorios?limit=10000');
             const activeLabs = (response.data.data || []).filter((lab: any) => lab.estado === 'activo');
             setLaboratorios(activeLabs);
         } catch (error) {
             console.error('Error fetching laboratorios:', error);
         }
     };
+
+    const labOptions: Option[] = useMemo(() => {
+        return laboratorios
+            .map(lab => ({
+                id: lab.id,
+                label: lab.laboratorio,
+                subLabel: lab.telefono ? `Tel: ${lab.telefono}` : undefined,
+                searchString: `${lab.laboratorio} ${lab.telefono || ''} ${lab.direccion || ''}`
+            }))
+            .sort((a, b) => a.label.localeCompare(b.label, 'es', { sensitivity: 'base' }));
+    }, [laboratorios]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
@@ -160,20 +172,14 @@ const PrecioLaboratorioForm: React.FC<PrecioLaboratorioFormProps> = ({ isOpen, o
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
                         <label className="block mb-1 font-bold text-sm text-gray-700 dark:text-gray-300">Laboratorio:</label>
-                        <select
-                            name="idLaboratorio"
+                        <SearchableSelect
+                            options={labOptions}
                             value={formData.idLaboratorio}
-                            onChange={handleChange}
+                            onChange={(val) => setFormData(prev => ({ ...prev, idLaboratorio: String(val) }))}
+                            placeholder="Seleccione un laboratorio"
+                            searchPlaceholder="Buscar laboratorio por nombre o teléfono..."
                             required
-                            className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-2 focus:outline-none focus:ring-blue-500 font-medium cursor-pointer"
-                        >
-                            <option value="">Seleccione un laboratorio</option>
-                            {laboratorios.map(lab => (
-                                <option key={lab.id} value={lab.id}>
-                                    {lab.laboratorio}
-                                </option>
-                            ))}
-                        </select>
+                        />
                     </div>
 
                     <div>

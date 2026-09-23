@@ -181,7 +181,7 @@ const PacienteForm: React.FC<PacienteFormProps> = ({ isOpen, onClose, id, onSave
 
     const fetchCategorias = async () => {
         try {
-            const response = await api.get('/categoria-paciente?limit=100');
+            const response = await api.get('/categoria-paciente?limit=10000');
             const activeCategorias = (response.data.data || []).filter((cat: any) => cat.estado === 'activo');
             setCategorias(activeCategorias);
         } catch (error) {
