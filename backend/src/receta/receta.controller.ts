@@ -67,12 +67,14 @@ export class RecetaController {
             const pdfBuffer = await this.pdfService.generateRecetaPdf(receta);
 
             // Send message with PDF
-            const message = `Estimado(a) ${receta.paciente.nombre}, le enviamos su receta médica.`;
+            const patientGreeting = (receta.paciente.nombre || 'Paciente').trim();
+            const message = `Estimado(a) ${patientGreeting}, le enviamos su receta médica.`;
+            const fileSuffix = (receta.paciente.paterno || receta.paciente.nombre || 'paciente').trim().replace(/[^a-zA-Z0-9_-]/g, '_');
 
             await this.chatbotService.sendMessage(jid, {
                 document: pdfBuffer,
                 mimetype: 'application/pdf',
-                fileName: `receta_${receta.id}_${receta.paciente.paterno}.pdf`,
+                fileName: `receta_${receta.id}_${fileSuffix}.pdf`,
                 caption: message
             });
 
@@ -81,6 +83,7 @@ export class RecetaController {
                 message: 'Receta enviada por WhatsApp exitosamente'
             };
         } catch (error) {
+            console.error('Error al enviar la receta por WhatsApp:', error);
             if (error instanceof HttpException) {
                 throw error;
             }

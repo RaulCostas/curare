@@ -1,4 +1,6 @@
 import { Injectable } from '@nestjs/common';
+import * as path from 'path';
+import * as fs from 'fs';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const PdfPrinter = require('pdfmake');
 
@@ -18,32 +20,30 @@ export class RecetaPdfService {
         this.printer = new PdfPrinter(fonts);
     }
 
-    private getLogoBase64(): string | null {
-        try {
-            // Adjust path based on your project structure. 
-            // Assuming dist/backend/src/... or src/... 
-            // Typically images might be in 'public' or 'assets'. 
-            // In frontend it's '/logo-curare.png'. In backend we need fs path.
-            // Let's rely on standard backend assets folder if it exists, or check where prev modules did it.
-            // PROVISIONALLY: We will try to read from frontend public folder if local, or standard assets.
-            // However, typical setup: 'd:\SOFT-MEDIC\Antigravity\CURARE\frontend\public\logo-curare.png'
+    private getLogoBase64(): string {
+        const possiblePaths = [
+            path.join(process.cwd(), 'frontend/public/logo-curare.png'),
+            path.join(process.cwd(), '../frontend/public/logo-curare.png'),
+            path.join(process.cwd(), 'public/logo-curare.png'),
+            path.join(process.cwd(), '../public/logo-curare.png'),
+            path.join(__dirname, '../../../frontend/public/logo-curare.png'),
+            path.join(__dirname, '../../../../frontend/public/logo-curare.png'),
+            path.join(__dirname, '../../public/logo-curare.png'),
+        ];
 
-            const path = require('path');
-            const fs = require('fs');
-            // Assuming monorepo structure where we can access frontend public
-            // Current dir: .../backend/src/receta
-            // Go up: ../../.. -> .../backend -> .../ -> .../frontend/public/logo-curare.png
-            const logoPath = path.join(__dirname, '../../../../frontend/public/logo-curare.png');
-
-            if (fs.existsSync(logoPath)) {
-                const bitmap = fs.readFileSync(logoPath);
-                return `data:image/png;base64,${bitmap.toString('base64')}`;
+        for (const logoPath of possiblePaths) {
+            try {
+                if (fs.existsSync(logoPath)) {
+                    const logoBuffer = fs.readFileSync(logoPath);
+                    return `data:image/png;base64,${logoBuffer.toString('base64')}`;
+                }
+            } catch (error) {
+                console.error(`Error reading logo from ${logoPath}:`, error);
             }
-            return null;
-        } catch (error) {
-            console.error('Error loading logo:', error);
-            return null;
         }
+
+        // 1x1 transparent PNG fallback so pdfmake never receives null or empty string
+        return 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
     }
 
     async generateRecetaPdf(receta: any): Promise<Buffer> {
@@ -85,7 +85,7 @@ export class RecetaPdfService {
             // Patient Info Box
             // Style: bg #f8f9fa, border-left 4px solid #3498db, padding 15px
             const patientName = receta.paciente
-                ? `${receta.paciente.nombre} ${receta.paciente.paterno} ${receta.paciente.materno || ''}`.trim()
+                ? `${receta.paciente.nombre || ''} ${receta.paciente.paterno || ''} ${receta.paciente.materno || ''}`.trim() || 'N/A'
                 : 'N/A';
             const doctorObj = receta.doctor || receta.user;
             const doctorName = doctorObj
@@ -582,9 +582,21 @@ export class RecetaPdfService {
         });
     }
 
-    private formatDate(dateString: string): string {
-        if (!dateString) return '';
-        const [year, month, day] = dateString.split('T')[0].split('-').map(Number);
-        return `${day.toString().padStart(2, '0')}/${month.toString().padStart(2, '0')}/${year}`;
+    private formatDate(dateVal: any): string {
+        if (!dateVal) return '';
+        try {
+            if (dateVal instanceof Date) {
+                const day = dateVal.getDate().toString().padStart(2, '0');
+                const month = (dateVal.getMonth() + 1).toString().padStart(2, '0');
+                const year = dateVal.getFullYear();
+                return `${day}/${month}/${year}`;
+            }
+            const dateStr = String(dateVal);
+            const [year, month, day] = dateStr.split('T')[0].split('-').map(Number);
+            if (isNaN(year) || isNaN(month) || isNaN(day)) return dateStr;
+            return `${day.toString().padStart(2, '0')}/${month.toString().padStart(2, '0')}/${year}`;
+        } catch {
+            return String(dateVal);
+        }
     }
 }
