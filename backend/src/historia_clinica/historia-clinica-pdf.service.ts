@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { HistoriaClinica } from './entities/historia_clinica.entity';
 import * as fs from 'fs';
 import * as path from 'path';
+import { CURARE_LOGO_BASE64 } from '../common/logo.constant';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const PdfPrinter = require('pdfmake');
 
@@ -54,8 +55,8 @@ export class HistoriaClinicaPdfService {
         console.error(`Current working directory: ${process.cwd()}`);
         console.error(`__dirname: ${__dirname}`);
 
-        // Return a transparent 1x1 pixel as fallback
-        return 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+        // Return official Curare logo embedded base64
+        return CURARE_LOGO_BASE64;
     }
 
     async generateHistoriaClinicaPdf(pacienteId: number, proformaId: number): Promise<Buffer> {

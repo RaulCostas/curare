@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import * as path from 'path';
 import * as fs from 'fs';
+import { CURARE_LOGO_BASE64 } from '../common/logo.constant';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const PdfPrinter = require('pdfmake');
 
@@ -42,8 +43,8 @@ export class RecetaPdfService {
             }
         }
 
-        // 1x1 transparent PNG fallback so pdfmake never receives null or empty string
-        return 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+        // Guaranteed official Curare logo embedded base64
+        return CURARE_LOGO_BASE64;
     }
 
     async generateRecetaPdf(receta: any): Promise<Buffer> {
