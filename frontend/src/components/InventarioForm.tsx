@@ -128,9 +128,15 @@ const InventarioForm: React.FC<InventarioFormProps> = ({ isOpen, onClose, id, on
             return;
         }
 
+        const payload = {
+            ...formData,
+            cantidad_existente: Number(formData.cantidad_existente ?? 0),
+            stock_minimo: Number(formData.stock_minimo ?? 0),
+        };
+
         try {
             if (isEditing) {
-                await api.patch(`/inventario/${id}`, formData);
+                await api.patch(`/inventario/${id}`, payload);
                 await Swal.fire({
                     icon: 'success',
                     title: 'Actualizado',
@@ -139,7 +145,7 @@ const InventarioForm: React.FC<InventarioFormProps> = ({ isOpen, onClose, id, on
                     showConfirmButton: false
                 });
             } else {
-                await api.post('/inventario', formData);
+                await api.post('/inventario', payload);
                 await Swal.fire({
                     icon: 'success',
                     title: 'Creado',
@@ -221,8 +227,8 @@ const InventarioForm: React.FC<InventarioFormProps> = ({ isOpen, onClose, id, on
                             <div className="relative">
                                 <input
                                     type="number"
-                                    value={formData.cantidad_existente || ''}
-                                    onChange={(e) => setFormData({ ...formData, cantidad_existente: Number(e.target.value) })}
+                                    value={formData.cantidad_existente !== undefined && formData.cantidad_existente !== null ? formData.cantidad_existente : ''}
+                                    onChange={(e) => setFormData({ ...formData, cantidad_existente: e.target.value === '' ? ('' as any) : Number(e.target.value) })}
                                     required
                                     min={0}
                                     placeholder="Ej: 100"
@@ -239,8 +245,8 @@ const InventarioForm: React.FC<InventarioFormProps> = ({ isOpen, onClose, id, on
                             <div className="relative">
                                 <input
                                     type="number"
-                                    value={formData.stock_minimo || ''}
-                                    onChange={(e) => setFormData({ ...formData, stock_minimo: Number(e.target.value) })}
+                                    value={formData.stock_minimo !== undefined && formData.stock_minimo !== null ? formData.stock_minimo : ''}
+                                    onChange={(e) => setFormData({ ...formData, stock_minimo: e.target.value === '' ? ('' as any) : Number(e.target.value) })}
                                     required
                                     min={0}
                                     placeholder="Ej: 10"

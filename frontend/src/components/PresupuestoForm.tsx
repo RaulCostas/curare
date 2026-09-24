@@ -5,6 +5,8 @@ import type { Paciente, Arancel } from '../types';
 import ManualModal, { type ManualSection } from './ManualModal';
 import { formatCurrency } from '../utils/formatters';
 import SearchableSelect from './SearchableSelect';
+import PresupuestoVoiceAssistant from './PresupuestoVoiceAssistant';
+import type { ParsedVoicePresupuestoItem } from '../utils/speechPresupuestoParser';
 
 interface DetalleItem {
     id?: number;
@@ -67,7 +69,11 @@ const PresupuestoForm: React.FC<PresupuestoFormProps> = ({
 
     const manualSections: ManualSection[] = [
         {
-            title: 'Agregar Tratamientos',
+            title: 'Dictado por Voz Inteligente',
+            content: 'Active el micrófono para dictar tratamientos sin escribir. Puede decir el nombre del procedimiento, piezas dentales, cantidad, descuento o si es posible. Ejemplos con aranceles reales:\n• "Obturación de resina compuesta en piezas 16 y 17"\n• "Limpieza dental cantidad 1"\n• "Corona de resina en pieza 24 con 10% de descuento"\n• "Extracción dentaria 3er molar superior pieza 18 posible"\n• "Carilla directa de resina estetica pieza 21 precio 2"\n• Diga "Agregar" para confirmar o active "Agregar automático".'
+        },
+        {
+            title: 'Agregar Tratamientos Manuales',
             content: 'Agregue tratamientos del arancel al presupuesto. Puede especificar elementos dentales, cantidad, descuentos y marcar tratamientos como "posibles".'
         },
         {
@@ -96,9 +102,10 @@ const PresupuestoForm: React.FC<PresupuestoFormProps> = ({
             setPosible(false);
             setEditingIndex(null);
             
+            fetchAranceles();
+
             if (id) {
                 fetchPaciente(Number(id));
-                fetchAranceles();
                 fetchHistoriaClinica(Number(id));
             }
             if (proformaId) {
@@ -158,8 +165,11 @@ const PresupuestoForm: React.FC<PresupuestoFormProps> = ({
 
     const fetchAranceles = async () => {
         try {
-            const response = await api.get('/arancel?limit=1000');
-            setAranceles(response.data.data);
+            const response = await api.get<any>('/arancel?limit=2000');
+            const list = Array.isArray(response.data) 
+                ? response.data 
+                : (response.data?.data || []);
+            setAranceles(list);
         } catch (error) {
             console.error('Error fetching aranceles:', error);
         }
@@ -279,6 +289,32 @@ const PresupuestoForm: React.FC<PresupuestoFormProps> = ({
         setCantidad(1);
         setDescuento(0);
         setPosible(false);
+    };
+
+    const handleVoiceAddItem = (item: ParsedVoicePresupuestoItem) => {
+        const newItem: DetalleItem = {
+            arancelId: item.arancel.id,
+            codigo: item.arancel.id.toString(),
+            tratamiento: item.arancel.detalle,
+            precioUnitario: item.precioUnitario,
+            tc: Number(item.arancel.tc || 1),
+            piezas: item.piezas,
+            cantidad: item.cantidad,
+            subTotal: item.subTotal,
+            descuento: item.descuento,
+            total: item.total,
+            posible: item.posible
+        };
+        setDetalles(prev => [...prev, newItem]);
+        setAprobado(false);
+    };
+
+    const handleVoiceRemoveLast = () => {
+        setDetalles(prev => {
+            if (prev.length === 0) return prev;
+            return prev.slice(0, prev.length - 1);
+        });
+        setAprobado(false);
     };
 
     const isItemCompleted = (item: DetalleItem) => {
@@ -501,6 +537,16 @@ const PresupuestoForm: React.FC<PresupuestoFormProps> = ({
                     </div>
                 </div>
             </div>
+
+            {/* Voice Assistant for Budgeting */}
+            {!isReadOnly && (
+                <PresupuestoVoiceAssistant
+                    aranceles={aranceles}
+                    onAddItem={handleVoiceAddItem}
+                    onRemoveLastItem={handleVoiceRemoveLast}
+                    disabled={isReadOnly}
+                />
+            )}
 
             {/* Item Entry Form - Hide in Read Only */}
             {!isReadOnly && (
