@@ -8,6 +8,7 @@ import { formatDate } from '../utils/dateUtils';
 import { formatCurrency, formatDateUTC, deduplicateHistoria, findMatchingProformaDetalle } from '../utils/formatters';
 import ManualModal, { type ManualSection } from './ManualModal';
 import PagosForm from './PagosForm';
+import { printPdf } from '../utils/printUtils';
 
 const PagosList: React.FC = () => {
     const [pagos, setPagos] = useState<Pago[]>([]);
@@ -379,17 +380,7 @@ const PagosList: React.FC = () => {
         doc.setFontSize(8);
         doc.text(`Impreso el: ${new Date().toLocaleString()}`, 15, pageHeight - 10);
 
-        doc.autoPrint();
-        const blobUrl = doc.output('bloburl');
-        const iframe = document.createElement('iframe');
-        iframe.style.position = 'fixed';
-        iframe.style.right = '0';
-        iframe.style.bottom = '0';
-        iframe.style.width = '0';
-        iframe.style.height = '0';
-        iframe.style.border = '0';
-        iframe.src = String(blobUrl);
-        document.body.appendChild(iframe);
+        printPdf(doc);
     };
 
     const handleSendWhatsApp = async (pago: Pago) => {

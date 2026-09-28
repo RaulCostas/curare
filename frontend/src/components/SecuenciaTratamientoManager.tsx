@@ -5,6 +5,7 @@ import type { SecuenciaTratamiento, Paciente } from '../types';
 import { formatDateUTC } from '../utils/formatters';
 import ManualModal, { type ManualSection } from './ManualModal';
 import Pagination from './Pagination';
+import { printHtml } from '../utils/printUtils';
 
 interface Props {
     pacienteId: number;
@@ -216,9 +217,6 @@ const SecuenciaTratamientoManager: React.FC<Props> = ({ pacienteId, paciente, se
     }, [searchTerm]);
 
     const handlePrint = () => {
-        const printWindow = window.open('', '_blank');
-        if (!printWindow) return;
-
         const date = new Date().toLocaleDateString('es-ES', {
             year: 'numeric',
             month: 'long',
@@ -390,20 +388,10 @@ const SecuenciaTratamientoManager: React.FC<Props> = ({ pacienteId, paciente, se
                         <div>Fecha de impresión: ${date}</div>
                     </div>
                 </div>
-                
-                <script>
-                    window.onload = function() {
-                        setTimeout(function() {
-                            window.print();
-                            window.close();
-                        }, 500);
-                    };
-                </script>
             </body>
             </html>
         `;
-        printWindow.document.write(printContent);
-        printWindow.document.close();
+        printHtml(printContent);
     };
 
     if (!selectedProformaId || selectedProformaId === 0) {

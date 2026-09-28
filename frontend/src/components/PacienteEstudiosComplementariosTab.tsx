@@ -18,6 +18,7 @@ import {
     X,
     Image as ImageIcon
 } from 'lucide-react';
+import { printHtml } from '../utils/printUtils';
 
 interface PacienteEstudiosComplementariosTabProps {
     pacienteId: number;
@@ -207,9 +208,6 @@ const PacienteEstudiosComplementariosTab: React.FC<PacienteEstudiosComplementari
 
     // Imprimir Ficha del Estudio Complementario mostrando las imágenes y membrete oficial
     const handlePrint = (estudio: EstudioComplementario) => {
-        const printWindow = window.open('', '_blank');
-        if (!printWindow) return;
-
         const patientName = paciente
             ? `${paciente.paterno || ''} ${paciente.materno || ''} ${paciente.nombre || ''}`.trim().toUpperCase()
             : 'N/A';
@@ -432,18 +430,11 @@ const PacienteEstudiosComplementariosTab: React.FC<PacienteEstudiosComplementari
                 <div class="footer-date">
                     Fecha de impresión: ${new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                 </div>
-
-                <script>
-                    window.onload = function() {
-                        setTimeout(function() { window.print(); }, 450);
-                    };
-                </script>
             </body>
             </html>
         `;
 
-        printWindow.document.write(html);
-        printWindow.document.close();
+        printHtml(html);
     };
 
     // Filter studies

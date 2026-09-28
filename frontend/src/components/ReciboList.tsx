@@ -12,6 +12,7 @@ import Swal from 'sweetalert2';
 import { formatDate } from '../utils/dateUtils';
 import { formatCurrency } from '../utils/formatters';
 import { FileText, Printer } from 'lucide-react';
+import { printHtml } from '../utils/printUtils';
 
 interface PaginatedResponse {
     data: ReciboItem[];
@@ -126,9 +127,6 @@ const ReciboList: React.FC = () => {
     };
 
     const handlePrintRecibo = (item: ReciboItem) => {
-        const printWindow = window.open('', '_blank');
-        if (!printWindow) return;
-
         const isDolares = item.moneda?.toUpperCase() === 'DOLARES';
         const simbolo = isDolares ? '$us' : 'Bs.';
         const montoFormatted = formatCurrency(item.monto);
@@ -196,18 +194,11 @@ const ReciboList: React.FC = () => {
                         <div class="signature-name">Entregué Conforme</div>
                     </div>
                 </div>
-
-                <script>
-                    window.onload = function() {
-                        setTimeout(function() { window.print(); }, 500);
-                    };
-                </script>
             </body>
             </html>
         `;
 
-        printWindow.document.write(htmlContent);
-        printWindow.document.close();
+        printHtml(htmlContent);
     };
 
     const handlePageChange = (page: number) => {

@@ -11,6 +11,7 @@ import TraspasoSaldoModal from './TraspasoSaldoModal';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { CreditCard, Plus, Printer } from 'lucide-react';
+import { printPdf } from '../utils/printUtils';
 
 interface PacientePagosTabProps {
     pacienteId: number;
@@ -484,9 +485,7 @@ const PacientePagosTab: React.FC<PacientePagosTabProps> = ({ pacienteId }) => {
             doc.setTextColor(100, 100, 100);
             doc.text(`Fecha de impresión: ${new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })}`, pageWidth - 15, pageHeight - 13, { align: 'right' });
 
-            doc.autoPrint();
-            const blobUrl = doc.output('bloburl');
-            window.open(blobUrl, '_blank');
+            printPdf(doc);
         } catch (error) {
             console.error('Error al generar impresión de estado de cuentas:', error);
             Swal.fire({
@@ -717,9 +716,7 @@ const PacientePagosTab: React.FC<PacientePagosTabProps> = ({ pacienteId }) => {
         doc.setFontSize(8);
         doc.text(`Impreso el: ${new Date().toLocaleString()}`, 15, pageHeight - 10);
 
-        doc.autoPrint();
-        const blobUrl = doc.output('bloburl');
-        window.open(blobUrl, '_blank');
+        printPdf(doc);
     };
 
     const handleSendWhatsApp = async (pago: Pago) => {

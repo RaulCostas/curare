@@ -19,6 +19,7 @@ import SeguimientoClinicoModal from './SeguimientoClinicoModal';
 import { Activity } from 'lucide-react';
 import { deduplicateHistoria, formatCurrency, formatDateUTC } from '../utils/formatters';
 import PagosForm from './PagosForm';
+import { printPdf } from '../utils/printUtils';
 
 const HistoriaClinica: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -352,9 +353,7 @@ const HistoriaClinica: React.FC = () => {
             doc.setTextColor(51, 51, 51); // #333 - darker text
             doc.text(`Fecha de impresión: ${new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })}`, pageWidth - 15, pageHeight - 18, { align: 'right' });
 
-            doc.autoPrint();
-            const blobUrl = doc.output('bloburl');
-            window.open(blobUrl, '_blank');
+            printPdf(doc);
         } catch (error) {
             console.error('Error generating print history:', error);
             Swal.fire({

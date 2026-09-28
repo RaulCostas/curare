@@ -11,23 +11,7 @@ import Pagination from './Pagination';
 import ManualModal, { type ManualSection } from './ManualModal';
 import GastosFijosForm from './GastosFijosForm';
 import Swal from 'sweetalert2';
-
-const getCleanPrintIframe = () => {
-    const existing = document.getElementById('curare-print-iframe');
-    if (existing && existing.parentNode) {
-        existing.parentNode.removeChild(existing);
-    }
-    const iframe = document.createElement('iframe');
-    iframe.id = 'curare-print-iframe';
-    iframe.style.position = 'fixed';
-    iframe.style.right = '0';
-    iframe.style.bottom = '0';
-    iframe.style.width = '0';
-    iframe.style.height = '0';
-    iframe.style.border = '0';
-    document.body.appendChild(iframe);
-    return iframe;
-};
+import { printPdf, printHtml, getCleanPrintIframe } from '../utils/printUtils';
 
 const GastosFijosList: React.FC = () => {
     const [gastos, setGastos] = useState<GastoFijo[]>([]);
@@ -553,18 +537,7 @@ const GastosFijosList: React.FC = () => {
             if (action === 'save') {
                 doc.save(`historial_pagos_${timestamp}.pdf`);
             } else {
-                doc.autoPrint();
-                const blobUrl = doc.output('bloburl');
-                const iframe = getCleanPrintIframe();
-                iframe.src = blobUrl as unknown as string;
-                iframe.onload = () => {
-                    try {
-                        iframe.contentWindow?.focus();
-                        iframe.contentWindow?.print();
-                    } catch (e) {
-                        console.error('Print error:', e);
-                    }
-                };
+                printPdf(doc);
             }
         } catch (error) {
             console.error('Error exporting Pagos PDF:', error);
@@ -656,19 +629,7 @@ const GastosFijosList: React.FC = () => {
             doc.setTextColor(150);
             doc.text('Comprobante generado automáticamente por el sistema CURARE', 105, 290, { align: 'center' });
 
-            doc.autoPrint();
-            const blobUrl = doc.output('bloburl');
-            const iframe = getCleanPrintIframe();
-            iframe.src = blobUrl as unknown as string;
-
-            iframe.onload = () => {
-                try {
-                    iframe.contentWindow?.focus();
-                    iframe.contentWindow?.print();
-                } catch (e) {
-                    console.error('Print error:', e);
-                }
-            };
+            printPdf(doc);
         } catch (error) {
             console.error('Error creating receipt:', error);
             alert('Error al generar el recibo');

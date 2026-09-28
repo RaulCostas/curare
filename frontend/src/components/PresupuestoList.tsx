@@ -13,6 +13,8 @@ import { CheckCircle, FileText, Plus, X } from 'lucide-react';
 import PresupuestoForm from './PresupuestoForm';
 import SignatureModal from './SignatureModal';
 
+import { printPdf } from '../utils/printUtils';
+
 interface Proforma {
     id: number;
     numero: number;
@@ -693,16 +695,7 @@ const PresupuestoList: React.FC = () => {
         }
 
         if (action === 'print') {
-            const blobUrl = doc.output('bloburl');
-            const printWin = window.open(blobUrl, '_blank');
-            if (printWin) {
-                printWin.onload = () => {
-                    printWin.print();
-                };
-            } else {
-                doc.autoPrint();
-                doc.output('dataurlnewwindow');
-            }
+            printPdf(doc);
         } else if (action === 'download') {
             const fullPatientName = (formatFullName(paciente) || `${paciente?.nombre || ''} ${paciente?.paterno || ''} ${paciente?.materno || ''}`).trim() || 'Paciente';
             const safeDocName = `${fullPatientName} - Presupuesto #${proforma.numero}`.replace(/[/\\?%*:|"<>]/g, '');

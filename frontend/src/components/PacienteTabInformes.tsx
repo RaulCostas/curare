@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Printer, Search, Calendar, FileText, Eye, Edit, Image as ImageIcon, XCircle, User } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Plus, Trash2, Printer, Search, Calendar, FileText, Eye, Edit, Image as ImageIcon, XCircle, User, Mic, MicOff } from 'lucide-react';
 import api from '../services/api';
 import Swal from 'sweetalert2';
 import ReactQuill from 'react-quill-new';
@@ -8,6 +8,7 @@ import Pagination from './Pagination';
 import ManualModal, { type ManualSection } from './ManualModal';
 import { getLocalDateString, formatDate } from '../utils/dateUtils';
 import { formatPaternoMaternoNombre } from '../utils/formatters';
+import { printHtml } from '../utils/printUtils';
 
 interface PacienteTabInformesProps {
     pacienteId: number;
@@ -41,6 +42,114 @@ const PacienteTabInformes: React.FC<PacienteTabInformesProps> = ({ pacienteId, p
     const [selectedHistoriaItems, setSelectedHistoriaItems] = useState<any[]>([]);
     const [selectedImages, setSelectedImages] = useState<any[]>([]);
 
+    // Voice Dictation state
+    const recognitionRef = useRef<any>(null);
+    const [isListening, setIsListening] = useState(false);
+    const [interimTranscript, setInterimTranscript] = useState('');
+
+    const stopVoiceDictation = () => {
+        if (recognitionRef.current) {
+            try {
+                recognitionRef.current.stop();
+            } catch (e) {}
+            recognitionRef.current = null;
+        }
+        setIsListening(false);
+        setInterimTranscript('');
+    };
+
+    const toggleVoiceDictation = () => {
+        if (isListening) {
+            stopVoiceDictation();
+            return;
+        }
+
+        const win = window as any;
+        const SpeechRecognitionClass = win.SpeechRecognition || win.webkitSpeechRecognition;
+
+        if (!SpeechRecognitionClass) {
+            Swal.fire({
+                title: 'Reconocimiento de voz no soportado',
+                text: 'Tu navegador no soporta reconocimiento de voz nativo (Web Speech API). Te recomendamos usar Google Chrome o Microsoft Edge.',
+                icon: 'info',
+                confirmButtonColor: '#3085d6',
+            });
+            return;
+        }
+
+        try {
+            const recognition = new SpeechRecognitionClass();
+            recognition.continuous = true;
+            recognition.interimResults = true;
+            recognition.lang = 'es-BO';
+
+            recognition.onstart = () => {
+                setIsListening(true);
+                setInterimTranscript('');
+            };
+
+            recognition.onresult = (event: any) => {
+                let interim = '';
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    const transcriptChunk = event.results[i][0].transcript;
+                    if (event.results[i].isFinal) {
+                        const cleanText = transcriptChunk.trim();
+                        if (cleanText) {
+                            const formatted = cleanText.charAt(0).toUpperCase() + cleanText.slice(1);
+                            setContenido(prev => {
+                                if (!prev || prev === '<p><br></p>' || prev.trim() === '') {
+                                    return `<p>${formatted}.</p>`;
+                                }
+                                if (prev.endsWith('</p>')) {
+                                    return prev.slice(0, -4) + ` ${formatted}.</p>`;
+                                }
+                                return prev + `<p>${formatted}.</p>`;
+                            });
+                        }
+                    } else {
+                        interim += transcriptChunk;
+                    }
+                }
+                setInterimTranscript(interim);
+            };
+
+            recognition.onerror = (event: any) => {
+                console.warn('Speech recognition error:', event.error);
+                if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+                    Swal.fire('Permiso denegado', 'Por favor habilita el permiso de micrófono en tu navegador.', 'warning');
+                    stopVoiceDictation();
+                }
+            };
+
+            recognition.onend = () => {
+                setIsListening(false);
+                setInterimTranscript('');
+            };
+
+            recognitionRef.current = recognition;
+            recognition.start();
+        } catch (err) {
+            console.error('Error starting recognition:', err);
+            stopVoiceDictation();
+        }
+    };
+
+    const handleCloseForm = () => {
+        stopVoiceDictation();
+        setIsFormOpen(false);
+        setEditingInforme(null);
+    };
+
+    useEffect(() => {
+        return () => {
+            if (recognitionRef.current) {
+                try {
+                    recognitionRef.current.stop();
+                } catch (e) {}
+            }
+        };
+    }, []);
+
     const limit = 10;
 
     const manualSections: ManualSection[] = [
@@ -58,8 +167,8 @@ const PacienteTabInformes: React.FC<PacienteTabInformesProps> = ({ pacienteId, p
         toolbar: [
             [{ 'header': [1, 2, 3, false] }],
             ['bold', 'italic', 'underline', 'strike'],
+            [{ 'align': '' }, { 'align': 'center' }, { 'align': 'right' }, { 'align': 'justify' }],
             [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-            [{ 'align': [] }],
             ['clean']
         ],
     };
@@ -296,9 +405,6 @@ const PacienteTabInformes: React.FC<PacienteTabInformesProps> = ({ pacienteId, p
     };
 
     const handlePrintInforme = (informe: any) => {
-        const printWindow = window.open('', '_blank');
-        if (!printWindow) return;
-
         const nombrePaciente = paciente ? formatPaternoMaternoNombre(paciente) : 'Paciente';
 
         let doctorNombreFirma = 'FIRMA DEL PROFESIONAL ODONTÓLOGO';
@@ -314,7 +420,7 @@ const PacienteTabInformes: React.FC<PacienteTabInformesProps> = ({ pacienteId, p
             }
         }
 
-        printWindow.document.write(`
+        const htmlContent = `
             <!DOCTYPE html>
             <html>
             <head>
@@ -356,10 +462,8 @@ const PacienteTabInformes: React.FC<PacienteTabInformesProps> = ({ pacienteId, p
                 </div>
             </body>
             </html>
-        `);
-        printWindow.document.close();
-        printWindow.focus();
-        setTimeout(() => printWindow.print(), 500);
+        `;
+        printHtml(htmlContent);
     };
 
     const stripHtmlTags = (html: string) => {
@@ -619,7 +723,7 @@ const PacienteTabInformes: React.FC<PacienteTabInformesProps> = ({ pacienteId, p
                             </h2>
                             <button
                                 type="button"
-                                onClick={() => setEditingInforme(null)}
+                                onClick={handleCloseForm}
                                 className="text-gray-400 bg-transparent hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 p-2 rounded-full transition-all"
                                 title="Cerrar"
                             >
@@ -688,11 +792,24 @@ const PacienteTabInformes: React.FC<PacienteTabInformesProps> = ({ pacienteId, p
                                 </div>
 
                                 <div className="space-y-2">
-                                    <div className="flex justify-between items-center">
+                                    <div className="flex flex-wrap justify-between items-center gap-2">
                                         <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
                                             Contenido del Informe <span className="text-red-500">*</span>
                                         </label>
-                                        <div className="flex gap-2">
+                                        <div className="flex flex-wrap gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={toggleVoiceDictation}
+                                                className={`text-xs font-semibold py-1.5 px-3 rounded-lg flex items-center gap-1.5 transition-all shadow-sm ${
+                                                    isListening
+                                                        ? 'bg-red-500 hover:bg-red-600 text-white animate-pulse ring-2 ring-red-400'
+                                                        : 'bg-purple-100 hover:bg-purple-200 dark:bg-purple-900/40 dark:hover:bg-purple-900/60 text-purple-700 dark:text-purple-300'
+                                                }`}
+                                                title={isListening ? 'Detener dictado por voz' : 'Dictar contenido por micrófono'}
+                                            >
+                                                {isListening ? <MicOff size={14} className="animate-spin" /> : <Mic size={14} />}
+                                                <span>{isListening ? 'Detener Dictado' : 'Dictar por Voz'}</span>
+                                            </button>
                                             <button
                                                 type="button"
                                                 onClick={() => setShowHistoriaModal(true)}
@@ -709,7 +826,74 @@ const PacienteTabInformes: React.FC<PacienteTabInformesProps> = ({ pacienteId, p
                                             </button>
                                         </div>
                                     </div>
-                                    <div className="bg-white dark:bg-gray-800 rounded-xl overflow-hidden border border-gray-300 dark:border-gray-600">
+
+                                    {isListening && (
+                                        <div className="flex items-center gap-2 px-3 py-2 bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 rounded-lg text-xs text-purple-700 dark:text-purple-300">
+                                            <span className="relative flex h-2.5 w-2.5">
+                                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+                                            </span>
+                                            <span className="font-bold">Dictando:</span>
+                                            <span className="italic truncate flex-1">{interimTranscript || 'Hable ahora para redactar el informe...'}</span>
+                                            <button
+                                                type="button"
+                                                onClick={stopVoiceDictation}
+                                                className="px-2.5 py-1 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-lg shadow-sm transition-all flex items-center gap-1 shrink-0 cursor-pointer"
+                                            >
+                                                <MicOff size={13} />
+                                                <span>Detener</span>
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    <style>{`
+                                        .informe-editor .ql-editor {
+                                            min-height: 240px;
+                                            font-size: 14px;
+                                            line-height: 1.6;
+                                        }
+                                        .informe-editor .ql-toolbar.ql-snow {
+                                            border-radius: 0.75rem 0.75rem 0 0;
+                                            background: #f8fafc;
+                                        }
+                                        .dark .informe-editor .ql-toolbar.ql-snow {
+                                            background: #1e293b !important;
+                                            border-color: #374151 !important;
+                                        }
+                                        .dark .informe-editor .ql-container.ql-snow {
+                                            border-color: #374151 !important;
+                                            background: #111827 !important;
+                                        }
+                                        .dark .informe-editor .ql-editor {
+                                            color: #f9fafb !important;
+                                        }
+                                        .dark .informe-editor .ql-editor.ql-blank::before {
+                                            color: #9ca3af !important;
+                                            font-style: italic;
+                                        }
+                                        .dark .informe-editor .ql-stroke {
+                                            stroke: #ffffff !important;
+                                        }
+                                        .dark .informe-editor .ql-fill {
+                                            fill: #ffffff !important;
+                                        }
+                                        .dark .informe-editor .ql-picker {
+                                            color: #ffffff !important;
+                                        }
+                                        .dark .informe-editor .ql-picker-label {
+                                            color: #ffffff !important;
+                                        }
+                                        .dark .informe-editor .ql-picker-options {
+                                            background-color: #1e293b !important;
+                                            border-color: #374151 !important;
+                                            color: #ffffff !important;
+                                        }
+                                        .dark .informe-editor .ql-picker-item {
+                                            color: #ffffff !important;
+                                        }
+                                    `}</style>
+
+                                    <div className="informe-editor bg-white dark:bg-gray-800 rounded-xl overflow-hidden border border-gray-300 dark:border-gray-600">
                                         <ReactQuill
                                             theme="snow"
                                             value={contenido}
@@ -739,7 +923,7 @@ const PacienteTabInformes: React.FC<PacienteTabInformesProps> = ({ pacienteId, p
                             </button>
                             <button
                                 type="button"
-                                onClick={() => setIsFormOpen(false)}
+                                onClick={handleCloseForm}
                                 className="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-xl shadow-md transition-all transform hover:-translate-y-0.5 flex items-center gap-2 text-sm"
                             >
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">

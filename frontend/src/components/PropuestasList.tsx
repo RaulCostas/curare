@@ -9,6 +9,7 @@ import { formatDateSpanish, numberToWords, formatCurrency, formatDateUTC } from 
 import ManualModal, { type ManualSection } from './ManualModal';
 import { ClipboardList, Plus } from 'lucide-react';
 import PropuestasForm from './PropuestasForm';
+import { printPdf } from '../utils/printUtils';
 
 const PropuestasList: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -339,16 +340,7 @@ const PropuestasList: React.FC = () => {
         doc.text(patientName, 125, sigY + 5);
 
         if (action === 'print') {
-            const blobUrl = doc.output('bloburl');
-            const printWin = window.open(blobUrl, '_blank');
-            if (printWin) {
-                printWin.onload = () => {
-                    printWin.print();
-                };
-            } else {
-                doc.autoPrint();
-                doc.output('dataurlnewwindow');
-            }
+            printPdf(doc);
         } else {
             const fileName = letra
                 ? `propuesta_${propuesta.numero}_${letra}_${paciente?.paterno}.pdf`

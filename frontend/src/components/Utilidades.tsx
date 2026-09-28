@@ -4,6 +4,7 @@ import ManualModal, { type ManualSection } from './ManualModal';
 import { formatPaternoMaternoNombre } from '../utils/formatters';
 import { formatNumberBs, getLocalDateString } from '../utils/dateUtils';
 import { Printer, X } from 'lucide-react';
+import { printHtml } from '../utils/printUtils';
 
 interface DetailItem {
     id: number;
@@ -340,8 +341,7 @@ const Utilidades: React.FC = () => {
     };
 
     const handlePrintDetail = (itemsToPrint: DetailItem[], totalMonto: number) => {
-        const printWindow = window.open('', '_blank');
-        if (!printWindow || !selectedDetail) return;
+        if (!selectedDetail) return;
 
         const isBs = selectedDetail.currency === 'Bolivianos';
         const prefix = isBs ? 'Bs' : 'Sus';
@@ -572,18 +572,11 @@ const Utilidades: React.FC = () => {
                     <div>Sistema Curare - Control Financiero</div>
                     <div>Reporte Oficial</div>
                 </div>
-
-                <script>
-                    window.onload = function() {
-                        setTimeout(function() { window.print(); }, 500);
-                    };
-                </script>
             </body>
             </html>
         `;
 
-        printWindow.document.write(htmlContent);
-        printWindow.document.close();
+        printHtml(htmlContent);
     };
 
     const closeModal = () => setSelectedDetail(null);

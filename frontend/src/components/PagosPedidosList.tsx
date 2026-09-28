@@ -13,6 +13,7 @@ import ManualModal, { type ManualSection } from './ManualModal';
 import PagosPedidosPrintModal from './PagosPedidosPrintModal';
 import autoTable from 'jspdf-autotable';
 import PagosPedidosForm from './PagosPedidosForm';
+import { printPdf } from '../utils/printUtils';
 
 const PagosPedidosList: React.FC = () => {
     const [pagos, setPagos] = useState<PagosPedidos[]>([]);
@@ -349,9 +350,8 @@ const PagosPedidosList: React.FC = () => {
             doc.setTextColor(150);
             doc.text('Comprobante generado automáticamente por el sistema CURARE', 105, 290, { align: 'center' });
 
-            // Auto print and open
-            doc.autoPrint();
-            window.open(doc.output('bloburl'), '_blank');
+            // Auto print and trigger print dialog
+            printPdf(doc);
         } catch (error) {
             console.error('Error creating receipt:', error);
             Swal.fire({

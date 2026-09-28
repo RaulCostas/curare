@@ -9,12 +9,14 @@ import ManualModal, { type ManualSection } from './ManualModal';
 import Pagination from './Pagination';
 import Swal from 'sweetalert2';
 import ConsentimientosPlantillaForm from './ConsentimientosPlantillaForm';
-import { FileText } from 'lucide-react';
+import { FileText, Filter } from 'lucide-react';
 
 const ConsentimientosPlantillasList: React.FC = () => {
     const navigate = useNavigate();
     const [plantillas, setPlantillas] = useState<ConsentimientoPlantilla[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
+    const [selectedEspecialidad, setSelectedEspecialidad] = useState<string>('all');
+    const [especialidadesList, setEspecialidadesList] = useState<any[]>([]);
     const [currentPage, setCurrentPage] = useState(1);
     const [showManual, setShowManual] = useState(false);
 
@@ -36,18 +38,31 @@ const ConsentimientosPlantillasList: React.FC = () => {
 
     const manualSections: ManualSection[] = [
         {
-            title: 'Plantillas de Consentimientos Informados',
-            content: 'Aquí puede administrar las plantillas de Consentimiento Informado redactadas para los pacientes.'
+            title: 'Plantillas de Consentimientos Informados en Word (.docx)',
+            content: 'Puede cargar directamente sus consentimientos diseñados previamente en Microsoft Word (.docx) utilizando el botón "Nueva Plantilla" y seleccionando el archivo Word.'
         },
         {
-            title: 'Variables Automáticas',
-            content: 'Use etiquetas como {{NOMBRE_PACIENTE}} o {{CI_PACIENTE}} en el texto. Estas serán reemplazadas por los datos del paciente automáticamente.'
+            title: 'Variables Automáticas para Pacientes',
+            content: 'Al cargar o redactar plantillas, use etiquetas automáticas como {{NOMBRE_PACIENTE}}, {{CI_PACIENTE}} o {{FECHA_ACTUAL}}. Al emitir el consentimiento para un paciente específico, el sistema rellenará estos datos automáticamente.'
         }
     ];
 
     useEffect(() => {
+        fetchEspecialidades();
+    }, []);
+
+    useEffect(() => {
         fetchPlantillas();
     }, [searchTerm]);
+
+    const fetchEspecialidades = async () => {
+        try {
+            const response = await api.get('/especialidad', { params: { limit: 100 } });
+            setEspecialidadesList(response.data.data || response.data || []);
+        } catch (error) {
+            console.error('Error fetching especialidades:', error);
+        }
+    };
 
     const fetchPlantillas = async () => {
         try {
@@ -84,7 +99,7 @@ const ConsentimientosPlantillasList: React.FC = () => {
 
     const exportToExcel = () => {
         const worksheet = XLSX.utils.json_to_sheet(
-            plantillas.map(p => ({
+            filteredPlantillas.map(p => ({
                 ID: p.id,
                 Título: p.titulo,
                 Especialidad: (p as any).especialidad?.especialidad || 'General',
@@ -100,7 +115,7 @@ const ConsentimientosPlantillasList: React.FC = () => {
         try {
             const doc = new jsPDF();
             doc.text('Lista de Plantillas de Consentimiento', 14, 15);
-            const tableData = plantillas.map(p => [
+            const tableData = filteredPlantillas.map(p => [
                 p.id.toString(),
                 p.titulo,
                 (p as any).especialidad?.especialidad || 'General',
@@ -121,8 +136,16 @@ const ConsentimientosPlantillasList: React.FC = () => {
         window.print();
     };
 
-    const totalPages = Math.ceil(plantillas.length / limit) || 1;
-    const paginatedPlantillas = plantillas.slice((currentPage - 1) * limit, currentPage * limit);
+    // Filter by especialidad
+    const filteredPlantillas = plantillas.filter(p => {
+        if (selectedEspecialidad === 'all') return true;
+        if (selectedEspecialidad === 'none') return !(p as any).especialidadId && !(p as any).especialidad;
+        const espId = (p as any).especialidadId || (p as any).especialidad?.id;
+        return espId === Number(selectedEspecialidad);
+    });
+
+    const totalPages = Math.ceil(filteredPlantillas.length / limit) || 1;
+    const paginatedPlantillas = filteredPlantillas.slice((currentPage - 1) * limit, currentPage * limit);
 
     return (
         <div className="content-card">
@@ -146,7 +169,7 @@ const ConsentimientosPlantillasList: React.FC = () => {
                             Plantillas de Consentimientos
                         </h2>
                         <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-                            Administrar plantillas de consentimientos informados para pacientes
+                            Gestión de consentimientos informados Word (.docx) y plantillas por especialidad
                         </p>
                     </div>
                 </div>
@@ -190,26 +213,44 @@ const ConsentimientosPlantillasList: React.FC = () => {
                         onClick={() => { setSelectedId(null); setIsModalOpen(true); }}
                         className="bg-[#3498db] hover:bg-blue-600 text-white hover:text-white font-semibold py-2 px-6 rounded-lg flex items-center gap-2 shadow-md transition-all transform hover:-translate-y-0.5 text-sm"
                     >
-                        <span className="text-xl">+</span> Nueva Plantilla
+                        <span className="text-xl">+</span> Nueva Plantilla / Cargar Word
                     </button>
                 </div>
             </div>
 
-            {/* Search Bar */}
+            {/* Search and Filters Bar */}
             <div className="mb-6 flex flex-wrap gap-4 items-center justify-between bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 no-print">
-                <div className="flex items-center gap-2 max-w-md w-full">
-                    <div className="relative flex-grow">
+                <div className="flex flex-wrap items-center gap-3 max-w-2xl w-full">
+                    {/* Search Input */}
+                    <div className="relative flex-grow min-w-[240px]">
                         <input
                             type="text"
-                            placeholder="Buscar plantilla..."
+                            placeholder="Buscar plantilla por título o contenido..."
                             value={searchTerm}
-                            onChange={e => setSearchTerm(e.target.value)}
+                            onChange={e => { setSearchTerm(e.target.value); setCurrentPage(1); }}
                             className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 text-gray-800 dark:text-white bg-white dark:bg-gray-700 placeholder-gray-400 dark:placeholder-gray-300 text-sm"
                         />
                         <svg className="w-5 h-5 text-gray-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                         </svg>
                     </div>
+
+                    {/* Filter by Especialidad */}
+                    <div className="flex items-center gap-2 min-w-[200px]">
+                        <Filter size={16} className="text-gray-400 hidden sm:block" />
+                        <select
+                            value={selectedEspecialidad}
+                            onChange={e => { setSelectedEspecialidad(e.target.value); setCurrentPage(1); }}
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-800 dark:text-white text-sm"
+                        >
+                            <option value="all">Todas las Especialidades</option>
+                            <option value="none">General / Sin Especialidad</option>
+                            {especialidadesList.map(esp => (
+                                <option key={esp.id} value={esp.id}>{esp.especialidad}</option>
+                            ))}
+                        </select>
+                    </div>
+
                     {searchTerm && (
                         <button
                             onClick={() => { setSearchTerm(''); setCurrentPage(1); }}
@@ -226,7 +267,7 @@ const ConsentimientosPlantillasList: React.FC = () => {
             </div>
 
             <div className="mb-2 text-sm text-gray-500 dark:text-gray-400">
-                Mostrando {plantillas.length === 0 ? 0 : (currentPage - 1) * limit + 1} - {Math.min(currentPage * limit, plantillas.length)} de {plantillas.length} registros
+                Mostrando {filteredPlantillas.length === 0 ? 0 : (currentPage - 1) * limit + 1} - {Math.min(currentPage * limit, filteredPlantillas.length)} de {filteredPlantillas.length} registros
             </div>
 
             {/* Table */}
@@ -237,7 +278,7 @@ const ConsentimientosPlantillasList: React.FC = () => {
                             <th className="py-4 px-6 font-semibold">#</th>
                             <th className="py-4 px-6 font-semibold">Título del Consentimiento</th>
                             <th className="py-4 px-6 font-semibold">Especialidad</th>
-                            <th className="py-4 px-6 font-semibold">Resumen</th>
+                            <th className="py-4 px-6 font-semibold">Resumen de Contenido</th>
                             <th className="py-4 px-6 font-semibold text-center no-print">Acciones</th>
                         </tr>
                     </thead>
@@ -247,10 +288,15 @@ const ConsentimientosPlantillasList: React.FC = () => {
                                 <tr key={p.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-700/30 transition-all text-gray-800 dark:text-gray-200">
                                     <td className="py-4 px-6 font-bold text-gray-500">{(currentPage - 1) * limit + index + 1}</td>
                                     <td className="py-4 px-6 font-bold text-gray-800 dark:text-white">
-                                        {p.titulo}
+                                        <div className="flex items-center gap-2">
+                                            <FileText className="text-blue-500 flex-shrink-0" size={16} />
+                                            <span>{p.titulo}</span>
+                                        </div>
                                     </td>
-                                    <td className="py-4 px-6 font-medium text-teal-600 dark:text-teal-400">
-                                        {(p as any).especialidad?.especialidad || 'General'}
+                                    <td className="py-4 px-6 font-medium">
+                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-300">
+                                            {(p as any).especialidad?.especialidad || 'General'}
+                                        </span>
                                     </td>
                                     <td className="py-4 px-6 text-gray-500 dark:text-gray-400 max-w-xs truncate">
                                         {stripHtml(p.contenido || '').slice(0, 100) || '—'}
@@ -301,7 +347,7 @@ const ConsentimientosPlantillasList: React.FC = () => {
             </div>
 
             {/* Pagination */}
-            {plantillas.length > limit && (
+            {filteredPlantillas.length > limit && (
                 <div className="mt-6 flex justify-center">
                     <Pagination
                         currentPage={currentPage}
@@ -321,10 +367,10 @@ const ConsentimientosPlantillasList: React.FC = () => {
 
             {/* Modal Ver Consentimiento (solo lectura) */}
             {viewPlantilla && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 overflow-y-auto">
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto">
                     <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-3xl w-full border border-gray-200 dark:border-gray-700 max-h-[90vh] flex flex-col">
                         {/* Header */}
-                        <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex items-center bg-gray-50 dark:bg-gray-700/50 rounded-t-2xl">
+                        <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between bg-gray-50 dark:bg-gray-700/50 rounded-t-2xl">
                             <div>
                                 <h3 className="text-xl font-extrabold text-gray-800 dark:text-white flex items-center gap-2">
                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-teal-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -333,9 +379,18 @@ const ConsentimientosPlantillasList: React.FC = () => {
                                     {viewPlantilla.titulo}
                                 </h3>
                                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 font-medium">
-                                    Vista de lectura del consentimiento informado
+                                    Especialidad: {(viewPlantilla as any).especialidad?.especialidad || 'General'}
                                 </p>
                             </div>
+                            <button
+                                type="button"
+                                onClick={() => setViewPlantilla(null)}
+                                className="text-gray-400 hover:text-red-500 p-1.5 rounded-full"
+                            >
+                                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
                         </div>
                         {/* Body */}
                         <div className="p-6 overflow-y-auto flex-grow">
