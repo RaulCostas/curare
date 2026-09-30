@@ -34,6 +34,20 @@ const PacienteCreateView: React.FC = () => {
     };
 
     useEffect(() => {
+        const userStr = localStorage.getItem('user');
+        const userObj = userStr ? JSON.parse(userStr) : null;
+        const permisosUsuario = userObj && Array.isArray(userObj.permisos) ? userObj.permisos : [];
+        if (isEditing && permisosUsuario.includes('ocultar-datos-personales-paciente')) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Acceso Restringido',
+                text: 'No tienes permiso para editar los datos personales del paciente.',
+            });
+            navigate('/pacientes');
+        }
+    }, [isEditing, navigate]);
+
+    useEffect(() => {
         if (location.state?.openSignature) {
             setShowSignatureModal(true);
             // Clear state so it doesn't reopen on manual refresh

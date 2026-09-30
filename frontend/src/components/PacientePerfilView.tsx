@@ -201,7 +201,7 @@ const PacientePerfilView: React.FC = () => {
                 >
                     <ArrowLeft size={16} /> Volver a Pacientes
                 </button>
-                {paciente && (
+                {paciente && hasAccessTo('ocultar-datos-personales-paciente') && (
                 <button
                     onClick={() => navigate(`/pacientes/edit/${id}`)}
                     className="bg-amber-400 hover:bg-amber-500 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition-all transform hover:-translate-y-0.5 flex items-center gap-2 text-sm"
@@ -229,8 +229,12 @@ const PacientePerfilView: React.FC = () => {
                             {paciente && (
                             <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 mt-1.5 text-blue-100 text-xs">
                                 {paciente.fecha_nacimiento && <span>🎂 {calcularEdad(paciente.fecha_nacimiento)}</span>}
-                                {paciente.celular && <span>📱 {formatCelularWithCode(paciente.celular)}</span>}
-                                {paciente.email && <span>✉️ {paciente.email}</span>}
+                                {paciente.celular && hasAccessTo('ocultar-datos-personales-paciente') && (
+                                    <span>📱 {formatCelularWithCode(paciente.celular)}</span>
+                                )}
+                                {paciente.email && hasAccessTo('ocultar-datos-personales-paciente') && (
+                                    <span>✉️ {paciente.email}</span>
+                                )}
                                 
                                 {prefMusica.length > 0 && (
                                     <span className="bg-white/20 text-white px-2.5 py-0.5 rounded-full font-medium flex items-center gap-1 shadow-sm">

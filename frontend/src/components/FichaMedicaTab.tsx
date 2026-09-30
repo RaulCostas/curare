@@ -19,6 +19,11 @@ const FichaMedicaTab: React.FC<FichaMedicaTabProps> = ({ pacienteId, onUpdateSuc
     const [saving, setSaving] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
 
+    const userStr = localStorage.getItem('user');
+    const userObj = userStr ? JSON.parse(userStr) : null;
+    const permisosUsuario = userObj && Array.isArray(userObj.permisos) ? userObj.permisos : [];
+    const ocultarDatosPersonales = permisosUsuario.includes('ocultar-datos-personales-paciente');
+
     // Estado editable de los campos de la tabla pacientes
     const [pacienteForm, setPacienteForm] = useState({
         nombre: '',
@@ -262,35 +267,37 @@ const FichaMedicaTab: React.FC<FichaMedicaTabProps> = ({ pacienteId, onUpdateSuc
                     </p>
                 </div>
                 <div className="flex items-center gap-3">
-                    {!isEditing ? (
-                        <button
-                            type="button"
-                            onClick={() => setIsEditing(true)}
-                            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-xl shadow transition-all flex items-center gap-2 text-sm"
-                        >
-                            <Edit size={16} />
-                            <span>Editar Expediente</span>
-                        </button>
-                    ) : (
-                        <>
+                    {!ocultarDatosPersonales && (
+                        !isEditing ? (
                             <button
                                 type="button"
-                                onClick={handleCancelEdit}
-                                disabled={saving}
-                                className="bg-gray-500 hover:bg-gray-600 text-white font-semibold px-4 py-2 rounded-xl shadow transition-all flex items-center gap-2 text-sm"
+                                onClick={() => setIsEditing(true)}
+                                className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-xl shadow transition-all flex items-center gap-2 text-sm"
                             >
-                                <X size={16} />
-                                <span>Cancelar</span>
+                                <Edit size={16} />
+                                <span>Editar Expediente</span>
                             </button>
-                            <button
-                                type="submit"
-                                disabled={saving}
-                                className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-4 py-2 rounded-xl shadow transition-all flex items-center gap-2 text-sm disabled:opacity-50"
-                            >
-                                <Save size={16} />
-                                <span>{saving ? 'Guardando...' : 'Guardar Cambios'}</span>
-                            </button>
-                        </>
+                        ) : (
+                            <>
+                                <button
+                                    type="button"
+                                    onClick={handleCancelEdit}
+                                    disabled={saving}
+                                    className="bg-gray-500 hover:bg-gray-600 text-white font-semibold px-4 py-2 rounded-xl shadow transition-all flex items-center gap-2 text-sm"
+                                >
+                                    <X size={16} />
+                                    <span>Cancelar</span>
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={saving}
+                                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-4 py-2 rounded-xl shadow transition-all flex items-center gap-2 text-sm disabled:opacity-50"
+                                >
+                                    <Save size={16} />
+                                    <span>{saving ? 'Guardando...' : 'Guardar Cambios'}</span>
+                                </button>
+                            </>
+                        )
                     )}
                 </div>
             </div>
@@ -467,115 +474,117 @@ const FichaMedicaTab: React.FC<FichaMedicaTabProps> = ({ pacienteId, onUpdateSuc
             </div>
 
             {/* SECCIÓN 2: CONTACTO Y UBICACIÓN */}
-            <div className="bg-white dark:bg-[#1e293b] rounded-2xl p-6 shadow-sm border border-gray-200 dark:border-gray-700/60 space-y-4">
-                <h4 className="text-sm font-bold text-gray-800 dark:text-white flex items-center gap-2 uppercase tracking-wide border-b pb-3 border-gray-100 dark:border-gray-700/50">
-                    <MapPin className="text-emerald-500" size={18} />
-                    <span>2. Contacto, Dirección y Empleo</span>
-                </h4>
+            {!ocultarDatosPersonales && (
+                <div className="bg-white dark:bg-[#1e293b] rounded-2xl p-6 shadow-sm border border-gray-200 dark:border-gray-700/60 space-y-4">
+                    <h4 className="text-sm font-bold text-gray-800 dark:text-white flex items-center gap-2 uppercase tracking-wide border-b pb-3 border-gray-100 dark:border-gray-700/50">
+                        <MapPin className="text-emerald-500" size={18} />
+                        <span>2. Contacto, Dirección y Empleo</span>
+                    </h4>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
-                    <div className="lg:col-span-2">
-                        <label className="text-[10px] uppercase font-extrabold text-gray-400 block mb-1">Dirección Domicilio</label>
-                        {isEditing ? (
-                            <input
-                                type="text"
-                                name="direccion"
-                                value={pacienteForm.direccion}
-                                onChange={handlePacienteInputChange}
-                                className="w-full p-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-white font-medium"
-                            />
-                        ) : (
-                            <span className="font-semibold text-gray-800 dark:text-gray-200 text-sm">{paciente?.direccion || '—'}</span>
-                        )}
-                    </div>
-                    <div>
-                        <label className="text-[10px] uppercase font-extrabold text-gray-400 block mb-1">Teléfono Fijo</label>
-                        {isEditing ? (
-                            <input
-                                type="text"
-                                name="telefono"
-                                value={pacienteForm.telefono}
-                                onChange={handlePacienteInputChange}
-                                className="w-full p-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-white font-medium"
-                            />
-                        ) : (
-                            <span className="font-semibold text-gray-800 dark:text-gray-200 text-sm">{paciente?.telefono || '—'}</span>
-                        )}
-                    </div>
-                    <div>
-                        <label className="text-[10px] uppercase font-extrabold text-gray-400 block mb-1">Celular (Prefijo +591)</label>
-                        {isEditing ? (
-                            <input
-                                type="text"
-                                name="celular"
-                                value={pacienteForm.celular}
-                                onChange={handlePacienteInputChange}
-                                className="w-full p-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-white font-medium"
-                            />
-                        ) : (
-                            <span className="font-bold text-emerald-600 dark:text-emerald-400 text-sm">{paciente?.celular || '—'}</span>
-                        )}
-                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+                        <div className="lg:col-span-2">
+                            <label className="text-[10px] uppercase font-extrabold text-gray-400 block mb-1">Dirección Domicilio</label>
+                            {isEditing ? (
+                                <input
+                                    type="text"
+                                    name="direccion"
+                                    value={pacienteForm.direccion}
+                                    onChange={handlePacienteInputChange}
+                                    className="w-full p-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-white font-medium"
+                                />
+                            ) : (
+                                <span className="font-semibold text-gray-800 dark:text-gray-200 text-sm">{paciente?.direccion || '—'}</span>
+                            )}
+                        </div>
+                        <div>
+                            <label className="text-[10px] uppercase font-extrabold text-gray-400 block mb-1">Teléfono Fijo</label>
+                            {isEditing ? (
+                                <input
+                                    type="text"
+                                    name="telefono"
+                                    value={pacienteForm.telefono}
+                                    onChange={handlePacienteInputChange}
+                                    className="w-full p-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-white font-medium"
+                                />
+                            ) : (
+                                <span className="font-semibold text-gray-800 dark:text-gray-200 text-sm">{paciente?.telefono || '—'}</span>
+                            )}
+                        </div>
+                        <div>
+                            <label className="text-[10px] uppercase font-extrabold text-gray-400 block mb-1">Celular (Prefijo +591)</label>
+                            {isEditing ? (
+                                <input
+                                    type="text"
+                                    name="celular"
+                                    value={pacienteForm.celular}
+                                    onChange={handlePacienteInputChange}
+                                    className="w-full p-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-white font-medium"
+                                />
+                            ) : (
+                                <span className="font-bold text-emerald-600 dark:text-emerald-400 text-sm">{paciente?.celular || '—'}</span>
+                            )}
+                        </div>
 
-                    <div className="lg:col-span-2">
-                        <label className="text-[10px] uppercase font-extrabold text-gray-400 block mb-1">Correo Electrónico (Email)</label>
-                        {isEditing ? (
-                            <input
-                                type="email"
-                                name="email"
-                                value={pacienteForm.email}
-                                onChange={handlePacienteInputChange}
-                                className="w-full p-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-white font-medium"
-                            />
-                        ) : (
-                            <span className="font-semibold text-gray-800 dark:text-gray-200 text-sm">{paciente?.email || '—'}</span>
-                        )}
-                    </div>
-                    <div>
-                        <label className="text-[10px] uppercase font-extrabold text-gray-400 block mb-1">Profesión / Ocupación</label>
-                        {isEditing ? (
-                            <input
-                                type="text"
-                                name="profesion"
-                                value={pacienteForm.profesion}
-                                onChange={handlePacienteInputChange}
-                                className="w-full p-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-white font-medium"
-                            />
-                        ) : (
-                            <span className="font-semibold text-gray-800 dark:text-gray-200 text-sm">{paciente?.profesion || '—'}</span>
-                        )}
-                    </div>
-                    <div>
-                        <label className="text-[10px] uppercase font-extrabold text-gray-400 block mb-1">Teléfono Oficina</label>
-                        {isEditing ? (
-                            <input
-                                type="text"
-                                name="telefono_oficina"
-                                value={pacienteForm.telefono_oficina}
-                                onChange={handlePacienteInputChange}
-                                className="w-full p-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-white font-medium"
-                            />
-                        ) : (
-                            <span className="font-semibold text-gray-800 dark:text-gray-200 text-sm">{paciente?.telefono_oficina || '—'}</span>
-                        )}
-                    </div>
+                        <div className="lg:col-span-2">
+                            <label className="text-[10px] uppercase font-extrabold text-gray-400 block mb-1">Correo Electrónico (Email)</label>
+                            {isEditing ? (
+                                <input
+                                    type="email"
+                                    name="email"
+                                    value={pacienteForm.email}
+                                    onChange={handlePacienteInputChange}
+                                    className="w-full p-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-white font-medium"
+                                />
+                            ) : (
+                                <span className="font-semibold text-gray-800 dark:text-gray-200 text-sm">{paciente?.email || '—'}</span>
+                            )}
+                        </div>
+                        <div>
+                            <label className="text-[10px] uppercase font-extrabold text-gray-400 block mb-1">Profesión / Ocupación</label>
+                            {isEditing ? (
+                                <input
+                                    type="text"
+                                    name="profesion"
+                                    value={pacienteForm.profesion}
+                                    onChange={handlePacienteInputChange}
+                                    className="w-full p-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-white font-medium"
+                                />
+                            ) : (
+                                <span className="font-semibold text-gray-800 dark:text-gray-200 text-sm">{paciente?.profesion || '—'}</span>
+                            )}
+                        </div>
+                        <div>
+                            <label className="text-[10px] uppercase font-extrabold text-gray-400 block mb-1">Teléfono Oficina</label>
+                            {isEditing ? (
+                                <input
+                                    type="text"
+                                    name="telefono_oficina"
+                                    value={pacienteForm.telefono_oficina}
+                                    onChange={handlePacienteInputChange}
+                                    className="w-full p-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-white font-medium"
+                                />
+                            ) : (
+                                <span className="font-semibold text-gray-800 dark:text-gray-200 text-sm">{paciente?.telefono_oficina || '—'}</span>
+                            )}
+                        </div>
 
-                    <div className="lg:col-span-4">
-                        <label className="text-[10px] uppercase font-extrabold text-gray-400 block mb-1">Dirección Trabajo / Oficina</label>
-                        {isEditing ? (
-                            <input
-                                type="text"
-                                name="direccion_oficina"
-                                value={pacienteForm.direccion_oficina}
-                                onChange={handlePacienteInputChange}
-                                className="w-full p-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-white font-medium"
-                            />
-                        ) : (
-                            <span className="font-semibold text-gray-800 dark:text-gray-200 text-sm">{paciente?.direccion_oficina || '—'}</span>
-                        )}
+                        <div className="lg:col-span-4">
+                            <label className="text-[10px] uppercase font-extrabold text-gray-400 block mb-1">Dirección Trabajo / Oficina</label>
+                            {isEditing ? (
+                                <input
+                                    type="text"
+                                    name="direccion_oficina"
+                                    value={pacienteForm.direccion_oficina}
+                                    onChange={handlePacienteInputChange}
+                                    className="w-full p-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-white font-medium"
+                                />
+                            ) : (
+                                <span className="font-semibold text-gray-800 dark:text-gray-200 text-sm">{paciente?.direccion_oficina || '—'}</span>
+                            )}
+                        </div>
                     </div>
                 </div>
-            </div>
+            )}
 
             {/* SECCIÓN 3: SEGURO Y RESPONSABLE */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

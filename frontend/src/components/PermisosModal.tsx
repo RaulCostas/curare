@@ -64,6 +64,7 @@ const PermisosModal: React.FC<PermisosModalProps> = ({ user, isOpen, onClose, on
                 { id: 'pacientes-deudores', label: ' - Pacientes Deudores' },
                 { id: 'pacientes-pendientes', label: ' - Pacientes Pendientes' },
                 { id: 'enviar-presupuesto-whatsapp', label: ' - Enviar Presupuesto por WhatsApp' },
+                { id: 'ocultar-datos-personales-paciente', label: ' - Ocultar Datos Personales del Paciente' },
 
                 { id: 'doctores', label: 'Doctores (Módulo)' },
                 { id: 'doctores-registro', label: ' - Registro de Doctores' },
