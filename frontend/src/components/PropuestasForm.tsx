@@ -44,7 +44,14 @@ const PropuestasForm: React.FC<PropuestasFormProps> = ({
     const [paciente, setPaciente] = useState<Paciente | null>(null);
     const [aranceles, setAranceles] = useState<Arancel[]>([]);
     const [detalles, setDetalles] = useState<DetalleItem[]>([]);
-    const [nota, setNota] = useState('');
+    const [notas, setNotas] = useState<{ [key: string]: string }>({
+        A: '',
+        B: '',
+        C: '',
+        D: '',
+        E: '',
+        F: '',
+    });
     const [letraHeader, setLetraHeader] = useState(''); // Optional header label
     const [fecha, setFecha] = useState(() => {
         const today = new Date();
@@ -96,7 +103,7 @@ const PropuestasForm: React.FC<PropuestasFormProps> = ({
         if (propuestaId) {
             fetchPropuesta(propuestaId);
         } else {
-            setNota('');
+            setNotas({ A: '', B: '', C: '', D: '', E: '', F: '' });
             setLetraHeader('');
             setNumero(null);
             setDetalles([]);
@@ -113,7 +120,20 @@ const PropuestasForm: React.FC<PropuestasFormProps> = ({
         try {
             const response = await api.get(`/propuestas/${propuestaId}`);
             const data = response.data;
-            setNota(data.nota);
+            let parsedNotas: Record<string, string> = { A: '', B: '', C: '', D: '', E: '', F: '' };
+            if (data.nota) {
+                try {
+                    const obj = JSON.parse(data.nota);
+                    if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
+                        parsedNotas = { ...parsedNotas, ...obj };
+                    } else {
+                        parsedNotas.A = String(data.nota);
+                    }
+                } catch {
+                    parsedNotas.A = String(data.nota);
+                }
+            }
+            setNotas(parsedNotas);
             setLetraHeader(data.letra || '');
             setFecha(data.fecha.split('T')[0]);
             setNumero(data.numero);
@@ -309,10 +329,13 @@ const PropuestasForm: React.FC<PropuestasFormProps> = ({
             const currentUser = userStr ? JSON.parse(userStr) : null;
             const usuarioId = currentUser?.id || 1;
 
+            const hasAnyNote = Object.values(notas).some(n => n && n.trim() !== '');
+            const notaPayload = hasAnyNote ? JSON.stringify(notas) : '';
+
             const payload = {
                 pacienteId: pacienteId,
                 usuarioId: usuarioId,
-                nota,
+                nota: notaPayload,
                 letra: letraHeader || activeTab,
                 fecha,
                 detalles: detalles.map(d => ({
@@ -823,14 +846,15 @@ const PropuestasForm: React.FC<PropuestasFormProps> = ({
             {/* Footer: Total and Note matching PresupuestoForm layout */}
             <div className="flex flex-col lg:flex-row justify-between items-start bg-gray-50 dark:bg-gray-700/50 p-6 rounded-2xl border border-gray-100 dark:border-gray-600">
                 <div className="flex-1 w-full lg:w-auto lg:mr-8 mb-6 lg:mb-0">
-                    <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wide">Nota / Observaciones</label>
+                    <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wide">
+                        Nota / Observaciones (Propuesta {activeTab})
+                    </label>
                     <textarea
-                        value={nota}
-                        onChange={(e) => setNota(e.target.value)}
+                        value={notas[activeTab] || ''}
+                        onChange={(e) => setNotas({ ...notas, [activeTab]: e.target.value })}
                         disabled={isReadOnly}
-                        required
                         className="w-full h-32 p-4 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-gray-100 dark:disabled:bg-gray-900 disabled:cursor-not-allowed resize-none transition-all shadow-inner font-medium"
-                        placeholder="Ingrese una nota o comentario general para la propuesta..."
+                        placeholder={`Ingrese una nota o comentario para la Propuesta ${activeTab}...`}
                     />
                 </div>
 

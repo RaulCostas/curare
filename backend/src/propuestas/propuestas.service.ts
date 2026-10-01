@@ -29,10 +29,28 @@ export class PropuestasService {
             throw new NotFoundException(`No hay items en la Propuesta ${letra}`);
         }
 
+        let optionNota = '';
+        if (propuesta.nota) {
+            try {
+                const parsed = JSON.parse(propuesta.nota);
+                if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                    optionNota = parsed[letra] || '';
+                } else {
+                    optionNota = String(propuesta.nota);
+                }
+            } catch {
+                optionNota = String(propuesta.nota);
+            }
+        }
+
+        const notaProforma = optionNota && optionNota.trim()
+            ? `Generado desde Propuesta #${propuesta.numero} (Opción ${letra}). ${optionNota}`
+            : `Generado desde Propuesta #${propuesta.numero} (Opción ${letra})`;
+
         const createProformaDto: CreateProformaDto = {
             pacienteId: propuesta.pacienteId,
             usuarioId: usuarioId || 1,
-            nota: `Generado desde Propuesta #${propuesta.numero} (Opción ${letra}). ${propuesta.nota || ''}`,
+            nota: notaProforma,
             fecha: new Date().toISOString().split('T')[0],
             detalles: activeDetails.map(d => ({
                 arancelId: d.arancelId,

@@ -255,12 +255,26 @@ const PropuestasList: React.FC = () => {
         finalY += 10;
 
         // 5.1 Propuesta Note
+        let noteToDisplay = '';
         if (propuesta.nota) {
+            try {
+                const parsed = JSON.parse(propuesta.nota);
+                if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                    noteToDisplay = letra ? (parsed[letra] || '') : (parsed['A'] || '');
+                } else {
+                    noteToDisplay = String(propuesta.nota);
+                }
+            } catch {
+                noteToDisplay = String(propuesta.nota);
+            }
+        }
+
+        if (noteToDisplay && noteToDisplay.trim()) {
             doc.setFont('helvetica', 'bold');
             doc.text('NOTA:', 14, finalY);
 
             doc.setFont('helvetica', 'normal');
-            const splitNote = doc.splitTextToSize(propuesta.nota, 165);
+            const splitNote = doc.splitTextToSize(noteToDisplay, 165);
             doc.text(splitNote, 30, finalY);
 
             finalY += (splitNote.length * 5) + 5;
