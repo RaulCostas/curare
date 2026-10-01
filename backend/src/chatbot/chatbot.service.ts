@@ -39,8 +39,9 @@ interface SessionState {
     intentionalDisconnect: boolean;
     initializationStartTime: number | null;
     initializationTimeout: NodeJS.Timeout | null;
-    userSessions: Map<string, { type: string, timestamp: number, citaId?: number }>;
+    userSessions: Map<string, { type: string, timestamp: number, citaId?: number, attempts?: number }>;
     pollStore: Map<string, { message: any, citaId: number }>;
+    processedMessageIds: Set<string>;
 }
 
 @Injectable()
@@ -77,9 +78,23 @@ export class ChatbotService implements OnModuleInit, OnModuleDestroy {
                 initializationTimeout: null,
                 userSessions: new Map(),
                 pollStore: new Map(),
+                processedMessageIds: new Set(),
             });
         }
         return this.sessions.get(1)!;
+    }
+
+    private clearUserSession(session: SessionState, jid: string) {
+        if (!jid) return;
+        session.userSessions.delete(jid);
+        const clean = jid.split('@')[0].split(':')[0].replace(/\D/g, '');
+        if (clean && clean.length >= 7) {
+            for (const key of Array.from(session.userSessions.keys())) {
+                if (key.includes(clean)) {
+                    session.userSessions.delete(key);
+                }
+            }
+        }
     }
 
     async onModuleInit() {
@@ -210,7 +225,37 @@ export class ChatbotService implements OnModuleInit, OnModuleDestroy {
             session.sock.ev.on('creds.update', saveCreds);
 
             session.sock.ev.on('messages.upsert', async (m: any) => {
+                // Solo procesar mensajes entrantes en tiempo real ('notify'), ignorar sincronización de historial ('append')
+                if (m.type !== 'notify') return;
+
                 for (const msg of m.messages) {
+                    const msgId = msg.key?.id;
+                    if (msgId) {
+                        if (session.processedMessageIds.has(msgId)) {
+                            continue;
+                        }
+                        session.processedMessageIds.add(msgId);
+                        if (session.processedMessageIds.size > 1000) {
+                            const firstItem = session.processedMessageIds.values().next().value;
+                            if (firstItem) session.processedMessageIds.delete(firstItem);
+                        }
+                    }
+
+                    // Ignorar mensajes antiguos con más de 90 segundos de antigüedad (ej. tras reconexiones)
+                    const msgTimestamp = (typeof msg.messageTimestamp === 'number' ? msg.messageTimestamp : Number(msg.messageTimestamp)) * 1000;
+                    if (msgTimestamp && (Date.now() - msgTimestamp > 90000)) {
+                        continue;
+                    }
+
+                    // Si el mensaje fue enviado por el personal de la clínica desde WhatsApp Web / Móvil:
+                    if (msg.key.fromMe) {
+                        const targetJid = msg.key?.remoteJid;
+                        if (targetJid) {
+                            this.clearUserSession(session, targetJid);
+                        }
+                        continue;
+                    }
+
                     const pollUpdateMessage = msg.message?.pollUpdateMessage || msg.message?.messageContextInfo?.message?.pollUpdateMessage;
                     if (pollUpdateMessage) {
                         try {
@@ -243,7 +288,6 @@ export class ChatbotService implements OnModuleInit, OnModuleDestroy {
                         }
                     }
 
-                    if (msg.key.fromMe) continue;
                     await this.handleMessage(msg);
                 }
             });
@@ -378,29 +422,69 @@ export class ChatbotService implements OnModuleInit, OnModuleDestroy {
         console.log(`[Chatbot] [CURARE] New message from ${senderJid} in ${remoteJid}: "${text}"`);
 
         // ─── PRIORIDAD 1: Sesiones de espera activas ─────
-        const currentSession = session.userSessions.get(remoteJid);
+        const cleanPhonePart = phone.replace(/\D/g, '');
+        let currentSession: any = session.userSessions.get(remoteJid);
+        if (!currentSession && msg.key?.remoteJid) {
+            currentSession = session.userSessions.get(msg.key.remoteJid);
+        }
+        if (!currentSession && cleanPhonePart) {
+            for (const [key, val] of session.userSessions.entries()) {
+                if (key.includes(cleanPhonePart)) {
+                    currentSession = val;
+                    break;
+                }
+            }
+        }
 
         if (currentSession && currentSession.type === 'waiting_agenda_response' && currentSession.citaId) {
-            const respuesta = normalizedText.trim();
-            if (respuesta === 'a') {
-                try {
-                    await this.agendaService.update(currentSession.citaId, { estado: 'confirmado' } as any);
-                    await this.sendMessage(remoteJid, '¡Muchas gracias! Su cita ha sido confirmada satisfactoriamente. ✅');
-                } catch (err) {
-                    await this.sendMessage(remoteJid, 'Ocurrió un error al confirmar su cita. Por favor, contáctenos directamente.');
-                }
-                session.userSessions.delete(remoteJid);
-                return;
-            } else if (respuesta === 'b') {
-                try {
-                    await this.agendaService.update(currentSession.citaId, { estado: 'cancelado' } as any);
-                    await this.sendMessage(remoteJid, 'Por favor, comuníquese con la Clínica para agendar su cita en otra fecha y horario');
-                } catch (err) {}
-                session.userSessions.delete(remoteJid);
-                return;
+            // Expirar si pasaron más de 24 horas desde que se envió el recordatorio
+            if (Date.now() - currentSession.timestamp > 24 * 60 * 60 * 1000) {
+                this.clearUserSession(session, remoteJid);
             } else {
-                await this.sendMessage(remoteJid, 'Por favor responda *A* para confirmar o *B* para cancelar su cita.');
-                return;
+                const cleanText = normalizedText.trim().replace(/[.,!?;:]+$/, '');
+
+                const isConfirm = 
+                    cleanText === 'a' ||
+                    cleanText === 'a.' ||
+                    cleanText === 'a)' ||
+                    cleanText.startsWith('a ') ||
+                    cleanText.startsWith('a,') ||
+                    cleanText === 'opcion a' ||
+                    cleanText === 'opción a' ||
+                    /^(si\b|sí\b|confirmo\b|confirmar\b|confirmado\b|afirmativo\b)/i.test(cleanText);
+
+                const isCancel = 
+                    cleanText === 'b' ||
+                    cleanText === 'b.' ||
+                    cleanText === 'b)' ||
+                    cleanText.startsWith('b ') ||
+                    cleanText.startsWith('b,') ||
+                    cleanText === 'opcion b' ||
+                    cleanText === 'opción b' ||
+                    /^(no\b|cancelar\b|cancelo\b|cancelada\b)/i.test(cleanText);
+
+                if (isConfirm) {
+                    try {
+                        await this.agendaService.update(currentSession.citaId, { estado: 'confirmado' } as any);
+                        await this.sendMessage(remoteJid, '¡Muchas gracias! Su cita ha sido confirmada satisfactoriamente. ✅');
+                    } catch (err) {
+                        await this.sendMessage(remoteJid, 'Ocurrió un error al confirmar su cita. Por favor, contáctenos directamente.');
+                    }
+                    this.clearUserSession(session, remoteJid);
+                    return;
+                } else if (isCancel) {
+                    try {
+                        await this.agendaService.update(currentSession.citaId, { estado: 'cancelado' } as any);
+                        await this.sendMessage(remoteJid, 'Por favor, comuníquese con el Consultorio para agendar su cita en otra fecha y horario.');
+                    } catch (err) {}
+                    this.clearUserSession(session, remoteJid);
+                    return;
+                } else {
+                    // El paciente escribió un mensaje libre o texto distinto a A o B.
+                    // Liberamos la sesión de espera inmediatamente y no enviamos ningún mensaje para no interferir con la atención humana.
+                    this.clearUserSession(session, remoteJid);
+                    return;
+                }
             }
         }
 
