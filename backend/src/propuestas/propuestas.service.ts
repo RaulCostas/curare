@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Inject, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { CreatePropuestaDto } from './dto/create-propuesta.dto';
@@ -7,6 +7,7 @@ import { Propuesta } from './entities/propuesta.entity';
 import { PropuestaDetalle } from './entities/propuesta-detalle.entity';
 import { ProformasService } from '../proformas/proformas.service';
 import { CreateProformaDto } from '../proformas/dto/create-proforma.dto';
+import { ChatbotService } from '../chatbot/chatbot.service';
 
 @Injectable()
 export class PropuestasService {
@@ -17,6 +18,8 @@ export class PropuestasService {
         private readonly detalleRepository: Repository<PropuestaDetalle>,
         private readonly dataSource: DataSource,
         private readonly proformasService: ProformasService,
+        @Inject(forwardRef(() => ChatbotService))
+        private readonly chatbotService: ChatbotService,
     ) { }
 
     async convertToProforma(id: number, letra: string, usuarioId?: number) {
@@ -251,5 +254,46 @@ export class PropuestasService {
     async remove(id: number) {
         const propuesta = await this.findOne(id);
         return this.propuestaRepository.remove(propuesta);
+    }
+
+    async sendWhatsApp(id: number, fileBuffer: Buffer, letra?: string) {
+        const propuesta = await this.findOne(id);
+        const paciente = propuesta.paciente;
+
+        if (!paciente || !paciente.celular) {
+            throw new NotFoundException('El paciente no tiene número de celular registrado');
+        }
+
+        const chatbotStatus = this.chatbotService.getStatus();
+        if (chatbotStatus.status !== 'connected') {
+            throw new Error('El chatbot no está conectado. Por favor, conecte el chatbot primero desde Configuración > Chatbot (WhatsApp).');
+        }
+
+        let phone = paciente.celular.replace(/\D/g, '');
+        if (phone.length === 8) {
+            phone = '591' + phone;
+        } else if (!phone.startsWith('591')) {
+            phone = '591' + phone;
+        }
+        const jid = `${phone}@s.whatsapp.net`;
+
+        const patientName = `${paciente.nombre || ''} ${paciente.paterno || ''}`.trim() || 'Paciente';
+        const docName = letra 
+            ? `Propuesta_${propuesta.numero}_Opcion_${letra}.pdf`
+            : `Propuesta_${propuesta.numero}.pdf`;
+        const caption = `Estimado(a) ${patientName}, le enviamos la propuesta de tratamiento odontológico${letra ? ` (Opción ${letra})` : ''} de CURARE Centro Dental.`;
+
+        try {
+            await this.chatbotService.sendMessage(jid, {
+                document: fileBuffer,
+                mimetype: 'application/pdf',
+                fileName: docName,
+                caption: caption
+            });
+            return { success: true, message: 'Propuesta enviada por WhatsApp exitosamente' };
+        } catch (error: any) {
+            console.error('Error sending WhatsApp propuesta:', error);
+            throw new Error(error?.message || 'Error al enviar mensaje de WhatsApp');
+        }
     }
 }

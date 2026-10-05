@@ -1,4 +1,5 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { PropuestasService } from './propuestas.service';
 import { CreatePropuestaDto } from './dto/create-propuesta.dto';
 import { UpdatePropuestaDto } from './dto/update-propuesta.dto';
@@ -19,6 +20,19 @@ export class PropuestasController {
         @Body() body: { letra: string, usuarioId?: number }
     ) {
         return this.propuestasService.convertToProforma(+id, body.letra, body.usuarioId);
+    }
+
+    @Post(':id/send-whatsapp')
+    @UseInterceptors(FileInterceptor('file'))
+    async sendWhatsApp(
+        @Param('id') id: string,
+        @UploadedFile() file: any,
+        @Body('letra') letra?: string,
+    ) {
+        if (!file || !file.buffer) {
+            throw new BadRequestException('No se recibió el archivo PDF para enviar');
+        }
+        return this.propuestasService.sendWhatsApp(+id, file.buffer, letra);
     }
 
     @Get()

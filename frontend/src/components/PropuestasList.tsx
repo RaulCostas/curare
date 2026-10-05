@@ -29,12 +29,12 @@ const PropuestasList: React.FC = () => {
             content: 'Gestión de múltiples opciones de tratamiento para el paciente. Puede crear hasta 6 variantes (A-F).'
         },
         {
-            title: 'Opciones de Propuesta',
-            content: 'Cada columna (Total A, Total B, etc.) muestra el costo total de esa opción. Si está vacía o en cero, no se ha cargado nada en esa letra.'
+            title: 'Opciones de Propuesta (Columnas A - F)',
+            content: 'Cada columna muestra el costo total de esa opción:\n\n- **Botón Gris (Imprimir):** Genera la vista de impresión del PDF para esa opción.\n- **Botón Morado (Pasar a Presupuesto):** Convierte directamente la opción en un Presupuesto / Plan de Tratamiento oficial.\n- **Botón Verde (WhatsApp):** Envía el documento PDF de la opción seleccionada al WhatsApp del paciente mediante el Chatbot.'
         },
         {
-            title: 'Acciones',
-            content: 'Use los botones para Ver (Ojo), Editar (Lápiz), Imprimir (Impresora) o Eliminar (Basurero) una propuesta.'
+            title: 'Acciones Generales',
+            content: 'Use los botones de la derecha para Ver (Ojo), Editar (Lápiz) o Eliminar (Basurero) una propuesta completa.'
         },
         {
             title: 'Crear Nueva',
@@ -111,7 +111,125 @@ const PropuestasList: React.FC = () => {
         }
     };
 
-    const generatePDF = (propuesta: Propuesta, action: 'print' | 'download', letra?: string) => {
+    const handleConvertToBudget = async (propuesta: Propuesta, letra: string) => {
+        const result = await Swal.fire({
+            title: `¿Pasar Propuesta ${letra} a Plan de Tratamiento?`,
+            text: `Se creará un nuevo Plan de Tratamiento oficial con los tratamientos de la Opción ${letra} de la Propuesta #${propuesta.numero}.`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#9333ea',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: 'Sí, Pasar a Plan de Tratamiento',
+            cancelButtonText: 'Cancelar',
+            background: document.documentElement.classList.contains('dark') ? '#1f2937' : '#fff',
+            color: document.documentElement.classList.contains('dark') ? '#f3f4f6' : '#000',
+        });
+
+        if (result.isConfirmed) {
+            try {
+                const userStr = localStorage.getItem('user');
+                const currentUser = userStr ? JSON.parse(userStr) : null;
+                const usuarioId = currentUser?.id || 1;
+
+                const response = await api.post(`/propuestas/${propuesta.id}/convert-to-budget`, {
+                    letra,
+                    usuarioId
+                });
+
+                const newNumber = response.data?.numero || response.data?.id;
+
+                await Swal.fire({
+                    icon: 'success',
+                    title: '¡Plan de Tratamiento Creado!',
+                    text: `Se ha generado exitosamente el Plan de Tratamiento #${newNumber}`,
+                    timer: 2000,
+                    showConfirmButton: false,
+                    background: document.documentElement.classList.contains('dark') ? '#1f2937' : '#fff',
+                    color: document.documentElement.classList.contains('dark') ? '#f3f4f6' : '#000',
+                });
+
+                if (id) {
+                    fetchPropuestas(Number(id));
+                }
+            } catch (error: any) {
+                console.error('Error converting propuesta to budget:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: error.response?.data?.message || 'No se pudo convertir la propuesta a plan de tratamiento',
+                    background: document.documentElement.classList.contains('dark') ? '#1f2937' : '#fff',
+                    color: document.documentElement.classList.contains('dark') ? '#f3f4f6' : '#000',
+                });
+            }
+        }
+    };
+
+    const handleSendWhatsApp = async (propuesta: Propuesta, letra: string) => {
+        const patientName = paciente ? `${paciente.paterno || ''} ${paciente.materno || ''} ${paciente.nombre || ''}`.trim() : 'el paciente';
+        const phone = paciente?.celular;
+
+        const result = await Swal.fire({
+            title: `¿Enviar Propuesta ${letra} por WhatsApp?`,
+            text: `Se enviará el documento PDF de la Opción ${letra} al paciente ${patientName}${phone ? ` (${phone})` : ''} utilizando el Chatbot.`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#16a34a',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: 'Sí, Enviar por WhatsApp',
+            cancelButtonText: 'Cancelar',
+            background: document.documentElement.classList.contains('dark') ? '#1f2937' : '#fff',
+            color: document.documentElement.classList.contains('dark') ? '#f3f4f6' : '#000',
+        });
+
+        if (!result.isConfirmed) return;
+
+        Swal.fire({
+            title: 'Enviando...',
+            text: `Enviando propuesta (Opción ${letra}) por WhatsApp...`,
+            allowOutsideClick: false,
+            didOpen: () => { Swal.showLoading(); }
+        });
+
+        try {
+            const pdfBlob = generatePDF(propuesta, 'blob', letra);
+            if (!pdfBlob || !(pdfBlob instanceof Blob)) {
+                throw new Error('Error al generar el archivo PDF');
+            }
+
+            const safePatientName = `${paciente?.paterno || ''}_${paciente?.nombre || ''}`.trim().replace(/[/\\?%*:|"<> ]/g, '_');
+            const safeDocName = `Propuesta_${propuesta.numero}_${letra}_${safePatientName}`.replace(/[/\\?%*:|"<>]/g, '');
+
+            const formData = new FormData();
+            formData.append('file', pdfBlob, `${safeDocName}.pdf`);
+            formData.append('letra', letra);
+
+            const response = await api.post(`/propuestas/${propuesta.id}/send-whatsapp`, formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+
+            Swal.fire({
+                icon: 'success',
+                title: '¡Enviado!',
+                text: response.data?.message || `La Propuesta (Opción ${letra}) se envió correctamente por WhatsApp`,
+                timer: 2000,
+                showConfirmButton: false,
+                background: document.documentElement.classList.contains('dark') ? '#1f2937' : '#fff',
+                color: document.documentElement.classList.contains('dark') ? '#f3f4f6' : '#000',
+            });
+        } catch (error: any) {
+            console.error('Error sending WhatsApp propuesta:', error);
+            const errorMsg = error.response?.data?.message || error.message || 'Error al enviar por WhatsApp. Verifique que el chatbot esté conectado.';
+            Swal.fire({
+                icon: 'error',
+                title: 'Error al Enviar',
+                text: errorMsg,
+                background: document.documentElement.classList.contains('dark') ? '#1f2937' : '#fff',
+                color: document.documentElement.classList.contains('dark') ? '#f3f4f6' : '#000',
+            });
+        }
+    };
+
+    const generatePDF = (propuesta: Propuesta, action: 'print' | 'download' | 'blob', letra?: string) => {
         const doc = new jsPDF();
 
         // 1. Date (Right aligned)
@@ -355,6 +473,8 @@ const PropuestasList: React.FC = () => {
 
         if (action === 'print') {
             printPdf(doc);
+        } else if (action === 'blob') {
+            return doc.output('blob');
         } else {
             const fileName = letra
                 ? `propuesta_${propuesta.numero}_${letra}_${paciente?.paterno}.pdf`
@@ -443,19 +563,44 @@ const PropuestasList: React.FC = () => {
                                     {['A', 'B', 'C', 'D', 'E', 'F'].map(letra => {
                                         const total = calculateTotalByLetra(letra);
                                         return (
-                                            <td key={letra} className="px-5 py-4 whitespace-nowrap text-sm text-center">
+                                            <td key={letra} className="px-3 py-4 whitespace-nowrap text-sm text-center">
                                                 {total > 0 ? (
-                                                    <div className="flex flex-col items-center gap-1">
+                                                    <div className="flex flex-col items-center gap-1.5">
                                                         <span className="font-bold text-gray-800 dark:text-gray-200">{formatCurrency(total)}</span>
-                                                        <button
-                                                            onClick={() => generatePDF(propuesta, 'print', letra)}
-                                                            className="p-1 bg-slate-600 hover:bg-slate-700 active:scale-95 text-white rounded-lg shadow-md transition-all transform hover:-translate-y-0.5 cursor-pointer"
-                                                            title={`Imprimir Opción ${letra}`}
-                                                        >
-                                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                                                            </svg>
-                                                        </button>
+                                                        <div className="flex items-center justify-center gap-1">
+                                                            {/* Botón 1: Imprimir */}
+                                                            <button
+                                                                onClick={() => generatePDF(propuesta, 'print', letra)}
+                                                                className="p-1.5 bg-slate-600 hover:bg-slate-700 active:scale-95 text-white rounded-lg shadow-md transition-all transform hover:-translate-y-0.5 cursor-pointer inline-flex items-center justify-center"
+                                                                title={`Imprimir Opción ${letra}`}
+                                                            >
+                                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                                                </svg>
+                                                            </button>
+
+                                                            {/* Botón 2: Pasar a Presupuesto */}
+                                                            <button
+                                                                onClick={() => handleConvertToBudget(propuesta, letra)}
+                                                                className="p-1.5 bg-purple-600 hover:bg-purple-700 active:scale-95 text-white rounded-lg shadow-md transition-all transform hover:-translate-y-0.5 cursor-pointer inline-flex items-center justify-center"
+                                                                title={`Pasar Opción ${letra} a Presupuesto`}
+                                                            >
+                                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                                                                </svg>
+                                                            </button>
+
+                                                            {/* Botón 3: Enviar PDF por WhatsApp con Chatbot */}
+                                                            <button
+                                                                onClick={() => handleSendWhatsApp(propuesta, letra)}
+                                                                className="p-1.5 bg-green-500 hover:bg-green-600 active:scale-95 text-white rounded-lg shadow-md transition-all transform hover:-translate-y-0.5 cursor-pointer inline-flex items-center justify-center"
+                                                                title={`Enviar Opción ${letra} por WhatsApp`}
+                                                            >
+                                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                                                                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" />
+                                                                </svg>
+                                                            </button>
+                                                        </div>
                                                     </div>
                                                 ) : (
                                                     <span className="text-gray-400 dark:text-gray-600">-</span>
