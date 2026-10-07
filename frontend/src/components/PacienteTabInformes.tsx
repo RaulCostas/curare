@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Trash2, Printer, Search, Calendar, FileText, Eye, Edit, Image as ImageIcon, XCircle, User, Mic, MicOff } from 'lucide-react';
+import { Plus, Trash2, Printer, Search, Calendar, FileText, Eye, Edit, Image as ImageIcon, XCircle, User, Mic, MicOff, X } from 'lucide-react';
 import api from '../services/api';
 import Swal from 'sweetalert2';
 import ReactQuill from 'react-quill-new';
@@ -404,6 +404,74 @@ const PacienteTabInformes: React.FC<PacienteTabInformesProps> = ({ pacienteId, p
         }
     };
 
+    const handleSendWhatsApp = async (informe: any) => {
+        const nombrePaciente = paciente ? formatPaternoMaternoNombre(paciente) : 'el paciente';
+        const celular = paciente?.celular;
+
+        if (!celular) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Atención',
+                text: 'El paciente no tiene un número de celular registrado.',
+                background: document.documentElement.classList.contains('dark') ? '#1f2937' : '#fff',
+                color: document.documentElement.classList.contains('dark') ? '#f3f4f6' : '#000',
+            });
+            return;
+        }
+
+        const result = await Swal.fire({
+            title: '¿Enviar informe por WhatsApp?',
+            text: `Se enviará el documento PDF del informe a ${nombrePaciente} (${celular}) mediante el Chatbot.`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#16a34a',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: 'Sí, Enviar por WhatsApp',
+            cancelButtonText: 'Cancelar',
+            background: document.documentElement.classList.contains('dark') ? '#1f2937' : '#fff',
+            color: document.documentElement.classList.contains('dark') ? '#f3f4f6' : '#000',
+        });
+
+        if (!result.isConfirmed) return;
+
+        Swal.fire({
+            title: 'Enviando...',
+            text: 'Enviando informe en formato PDF por WhatsApp mediante el Chatbot...',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+
+        try {
+            const response = await api.post(`/informes/${informe.id}/send-whatsapp`);
+            Swal.fire({
+                icon: 'success',
+                title: '¡Enviado!',
+                text: response.data?.message || 'Informe enviado por WhatsApp exitosamente',
+                timer: 2000,
+                showConfirmButton: false,
+                background: document.documentElement.classList.contains('dark') ? '#1f2937' : '#fff',
+                color: document.documentElement.classList.contains('dark') ? '#f3f4f6' : '#000',
+            });
+        } catch (error: any) {
+            console.error('Error sending WhatsApp informe:', error);
+            let errorMessage = 'No se pudo enviar el informe por WhatsApp';
+            if (error.response?.data?.message) {
+                errorMessage = error.response.data.message;
+            } else if (error.response?.status === 503) {
+                errorMessage = 'El chatbot no está conectado. Por favor, conecte el chatbot primero desde Configuración > Chatbot (WhatsApp).';
+            }
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: errorMessage,
+                background: document.documentElement.classList.contains('dark') ? '#1f2937' : '#fff',
+                color: document.documentElement.classList.contains('dark') ? '#f3f4f6' : '#000',
+            });
+        }
+    };
+
     const handlePrintInforme = (informe: any) => {
         const nombrePaciente = paciente ? formatPaternoMaternoNombre(paciente) : 'Paciente';
 
@@ -624,64 +692,81 @@ const PacienteTabInformes: React.FC<PacienteTabInformesProps> = ({ pacienteId, p
                 <table className="w-full text-left border-collapse">
                     <thead>
                         <tr className="bg-gray-50 dark:bg-gray-700/50 text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wider border-b border-gray-100 dark:border-gray-700">
-                            <th className="py-3 px-5 font-semibold">Fecha</th>
-                            <th className="py-3 px-5 font-semibold">Título del Informe</th>
-                            <th className="py-3 px-5 font-semibold">Doctor</th>
-                            <th className="py-3 px-5 font-semibold">Resumen</th>
-                            <th className="py-3 px-5 font-semibold text-center">Acciones</th>
+                            <th className="py-3.5 px-6 font-semibold">Fecha</th>
+                            <th className="py-3.5 px-6 font-semibold">Título del Informe</th>
+                            <th className="py-3.5 px-6 font-semibold">Doctor</th>
+                            <th className="py-3.5 px-6 font-semibold">Resumen</th>
+                            <th className="py-3.5 px-6 font-semibold text-center no-print">Acciones</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-100 dark:divide-gray-700/50 text-xs text-gray-800 dark:text-gray-200">
+                    <tbody className="divide-y divide-gray-100 dark:divide-gray-700/50 text-sm text-gray-800 dark:text-gray-200">
                         {isLoading ? (
                             <tr>
                                 <td colSpan={5} className="py-8 text-center text-gray-400">Cargando informes...</td>
                             </tr>
                         ) : paginatedInformes.length > 0 ? (
                             paginatedInformes.map((inf) => (
-                                <tr key={inf.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-700/30 transition-all">
-                                    <td className="py-3.5 px-5 font-semibold text-purple-600 dark:text-purple-400 flex items-center gap-1.5">
-                                        <Calendar size={14} /> {inf.fecha || 'N/A'}
+                                <tr key={inf.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                                    <td className="py-4 px-6 whitespace-nowrap text-gray-700 dark:text-gray-300 font-medium">
+                                        {inf.fecha ? formatDate(inf.fecha) : '-'}
                                     </td>
-                                    <td className="py-3.5 px-5 font-bold">{inf.titulo || 'Informe Odontológico'}</td>
-                                    <td className="py-3.5 px-5 font-medium text-gray-700 dark:text-gray-300">
-                                        {inf.doctor ? `Dr. ${inf.doctor.paterno} ${inf.doctor.materno || ''} ${inf.doctor.nombre}` : '-'}
+                                    <td className="py-4 px-6 font-semibold text-gray-900 dark:text-white">
+                                        {inf.titulo || 'Informe Odontológico'}
                                     </td>
-                                    <td className="py-3.5 px-5 text-gray-500 dark:text-gray-400 max-w-xs truncate">
+                                    <td className="py-4 px-6 text-gray-700 dark:text-gray-300">
+                                        {inf.doctor ? `Dr. ${inf.doctor.paterno} ${inf.doctor.materno || ''} ${inf.doctor.nombre}`.trim() : '-'}
+                                    </td>
+                                    <td className="py-4 px-6 text-gray-500 dark:text-gray-400 max-w-xs truncate">
                                         {stripHtmlTags(inf.contenido)}
                                     </td>
-                                    <td className="py-3.5 px-5 text-center">
+                                    <td className="py-4 px-6 text-center whitespace-nowrap no-print">
                                         <div className="flex items-center justify-center gap-2">
+                                            {/* Ver */}
                                             <button
+                                                type="button"
                                                 onClick={() => setViewingInforme(inf)}
-                                                className="p-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 rounded-lg"
+                                                className="p-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg shadow-md transition-all transform hover:-translate-y-0.5 active:scale-95 inline-flex items-center justify-center cursor-pointer"
                                                 title="Ver Informe"
                                             >
-                                                <Eye size={15} />
+                                                <Eye size={16} />
                                             </button>
+                                            {/* Imprimir */}
                                             <button
+                                                type="button"
                                                 onClick={() => handlePrintInforme(inf)}
-                                                className="p-1.5 bg-purple-50 text-purple-600 hover:bg-purple-100 dark:bg-purple-900/30 dark:text-purple-300 rounded-lg"
+                                                className="p-2 bg-slate-600 hover:bg-slate-700 text-white rounded-lg shadow-md transition-all transform hover:-translate-y-0.5 active:scale-95 inline-flex items-center justify-center cursor-pointer"
                                                 title="Imprimir Informe"
                                             >
-                                                <Printer size={15} />
+                                                <Printer size={16} />
                                             </button>
+                                            {/* WhatsApp */}
                                             <button
+                                                type="button"
+                                                onClick={() => handleSendWhatsApp(inf)}
+                                                className="p-2 bg-green-500 hover:bg-green-600 text-white rounded-lg shadow-md transition-all transform hover:-translate-y-0.5 active:scale-95 inline-flex items-center justify-center cursor-pointer"
+                                                title="Enviar PDF por WhatsApp"
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" />
+                                                </svg>
+                                            </button>
+                                            {/* Editar */}
+                                            <button
+                                                type="button"
                                                 onClick={() => handleOpenEdit(inf)}
-                                                className="bg-[#ffc107] hover:bg-yellow-600 text-white p-2 rounded-lg shadow-md transition-all transform hover:-translate-y-0.5 flex items-center justify-center"
-                                                title="Editar"
+                                                className="p-2 bg-yellow-400 hover:bg-yellow-500 text-white rounded-lg shadow-md transition-all transform hover:-translate-y-0.5 active:scale-95 inline-flex items-center justify-center cursor-pointer"
+                                                title="Editar Informe"
                                             >
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 20 20" fill="currentColor">
-                                                    <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-                                                </svg>
+                                                <Edit size={16} />
                                             </button>
+                                            {/* Eliminar */}
                                             <button
+                                                type="button"
                                                 onClick={() => handleDeleteInforme(inf.id)}
-                                                className="bg-[#dc3545] hover:bg-red-700 text-white p-2 rounded-lg shadow-md transition-all transform hover:-translate-y-0.5 flex items-center justify-center"
-                                                title="Eliminar"
+                                                className="p-2 bg-red-500 hover:bg-red-600 text-white rounded-lg shadow-md transition-all transform hover:-translate-y-0.5 active:scale-95 inline-flex items-center justify-center cursor-pointer"
+                                                title="Eliminar Informe"
                                             >
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 20 20" fill="currentColor">
-                                                    <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-                                                </svg>
+                                                <Trash2 size={16} />
                                             </button>
                                         </div>
                                     </td>
@@ -724,12 +809,10 @@ const PacienteTabInformes: React.FC<PacienteTabInformesProps> = ({ pacienteId, p
                             <button
                                 type="button"
                                 onClick={handleCloseForm}
-                                className="text-gray-400 bg-transparent hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 p-2 rounded-full transition-all"
+                                className="text-gray-400 bg-transparent hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 p-2 rounded-full transition-all cursor-pointer"
                                 title="Cerrar"
                             >
-                                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
-                                </svg>
+                                <X size={20} />
                             </button>
                         </div>
 
@@ -956,12 +1039,22 @@ const PacienteTabInformes: React.FC<PacienteTabInformesProps> = ({ pacienteId, p
                     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
                         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh]">
                             <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-900">
-                                <h3 className="text-lg font-bold text-gray-800 dark:text-white">Seleccionar Registro de Historia Clínica</h3>
-                                {selectedHistoriaItems.length > 0 && (
-                                    <span className="text-xs bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 px-2 py-1 rounded-full font-semibold">
-                                        {selectedHistoriaItems.length} seleccionado(s)
-                                    </span>
-                                )}
+                                <div className="flex items-center gap-3">
+                                    <h3 className="text-lg font-bold text-gray-800 dark:text-white">Seleccionar Registro de Historia Clínica</h3>
+                                    {selectedHistoriaItems.length > 0 && (
+                                        <span className="text-xs bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 px-2 py-1 rounded-full font-semibold">
+                                            {selectedHistoriaItems.length} seleccionado(s)
+                                        </span>
+                                    )}
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => { setShowHistoriaModal(false); setSelectedHistoriaItems([]); }}
+                                    className="text-gray-400 bg-transparent hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 p-2 rounded-full transition-all cursor-pointer"
+                                    title="Cerrar"
+                                >
+                                    <X size={20} />
+                                </button>
                             </div>
 
                             <div className="p-4 overflow-y-auto flex-1 bg-white dark:bg-gray-800 space-y-4">
@@ -1094,6 +1187,14 @@ const PacienteTabInformes: React.FC<PacienteTabInformesProps> = ({ pacienteId, p
                     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[90vh]">
                         <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-900">
                             <h3 className="text-lg font-bold text-gray-800 dark:text-white">Añadir Imagen al Informe</h3>
+                            <button
+                                type="button"
+                                onClick={() => { setShowImageModal(false); setSelectedImages([]); setSelectedProforma(null); setImagenesPorProforma([]); }}
+                                className="text-gray-400 bg-transparent hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 p-2 rounded-full transition-all cursor-pointer"
+                                title="Cerrar"
+                            >
+                                <X size={20} />
+                            </button>
                         </div>
                         <div className="p-4 overflow-y-auto flex-1 bg-white dark:bg-gray-800 space-y-4">
                             {/* Paso 1: seleccionar proforma */}
@@ -1194,32 +1295,73 @@ const PacienteTabInformes: React.FC<PacienteTabInformesProps> = ({ pacienteId, p
             {viewingInforme && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50 transition-opacity">
                     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh]">
-                        <div className="flex justify-between items-center p-5 border-b border-gray-100 dark:border-gray-700">
+                        <div className="flex justify-between items-center p-5 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-700/30">
                             <h3 className="font-bold text-lg text-gray-800 dark:text-white flex items-center gap-2">
-                                <FileText className="text-purple-600" size={20} />
-                                {viewingInforme.titulo || 'Informe Odontológico'}
+                                <FileText className="text-purple-600 dark:text-purple-400" size={20} />
+                                <span>{viewingInforme.titulo || 'Informe Odontológico'}</span>
                                 <span className="text-xs font-normal text-gray-500 dark:text-gray-400 ml-2">
-                                    ({viewingInforme.fecha})
+                                    ({viewingInforme.fecha ? formatDate(viewingInforme.fecha) : 'N/A'})
                                 </span>
                             </h3>
+                            <button
+                                type="button"
+                                onClick={() => setViewingInforme(null)}
+                                className="text-gray-400 bg-transparent hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 p-2 rounded-full transition-all cursor-pointer"
+                                title="Cerrar"
+                            >
+                                <X size={20} />
+                            </button>
                         </div>
 
                         <div className="p-6 overflow-y-auto flex-1 bg-white dark:bg-gray-900">
-                            <div className="report-view prose dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: viewingInforme.contenido }} />
+                            <style>{`
+                                .report-view {
+                                    color: #1f2937;
+                                }
+                                .report-view * {
+                                    color: inherit;
+                                }
+                                .dark .report-view,
+                                .dark .report-view * {
+                                    color: #f3f4f6 !important;
+                                }
+                                .dark .report-view table {
+                                    border-color: #374151 !important;
+                                }
+                                .dark .report-view td {
+                                    border-color: #374151 !important;
+                                    color: #e5e7eb !important;
+                                }
+                                .dark .report-view th {
+                                    background-color: #1e293b !important;
+                                    color: #60a5fa !important;
+                                    border-color: #374151 !important;
+                                }
+                            `}</style>
+                            <div className="report-view text-gray-800 dark:text-gray-100 leading-relaxed text-sm max-w-none" dangerouslySetInnerHTML={{ __html: viewingInforme.contenido }} />
                         </div>
 
                         <div className="p-5 border-t border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 flex justify-end gap-2 rounded-b-xl">
                             <button
-                                onClick={() => handlePrintInforme(viewingInforme)}
-                                className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold flex items-center gap-1.5 shadow"
+                                onClick={() => handleSendWhatsApp(viewingInforme)}
+                                className="px-4 py-2 rounded-xl bg-green-600 hover:bg-green-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-md transition-all transform hover:-translate-y-0.5 active:scale-95 cursor-pointer"
                             >
-                                <Printer size={14} /> Imprimir
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" />
+                                </svg>
+                                Enviar WhatsApp
+                            </button>
+                            <button
+                                onClick={() => handlePrintInforme(viewingInforme)}
+                                className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-md transition-all transform hover:-translate-y-0.5 active:scale-95 cursor-pointer"
+                            >
+                                <Printer size={15} /> Imprimir
                             </button>
                             <button
                                 onClick={() => setViewingInforme(null)}
-                                className="px-4 py-2 rounded-xl bg-gray-500 hover:bg-gray-600 text-white text-xs font-semibold shadow"
+                                className="px-4 py-2 rounded-xl bg-gray-500 hover:bg-gray-600 dark:bg-gray-600 dark:hover:bg-gray-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-md transition-all transform hover:-translate-y-0.5 active:scale-95 cursor-pointer"
                             >
-                                Cerrar
+                                <X size={15} /> Cerrar
                             </button>
                         </div>
                     </div>

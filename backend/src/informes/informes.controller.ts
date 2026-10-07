@@ -1,4 +1,5 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { InformesService } from './informes.service';
 import { CreateInformeDto, UpdateInformeDto } from './dto/informe.dto';
 
@@ -32,5 +33,11 @@ export class InformesController {
     @Delete(':id')
     remove(@Param('id') id: string) {
         return this.informesService.remove(+id);
+    }
+
+    @Post(':id/send-whatsapp')
+    @UseInterceptors(FileInterceptor('file'))
+    async sendWhatsApp(@Param('id') id: string, @UploadedFile() file?: any) {
+        return this.informesService.sendWhatsApp(+id, file ? file.buffer : null);
     }
 }
