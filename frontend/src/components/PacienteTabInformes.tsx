@@ -345,9 +345,23 @@ const PacienteTabInformes: React.FC<PacienteTabInformesProps> = ({ pacienteId, p
 
         setSubmitting(true);
         try {
+            let currentUserId: number | undefined = undefined;
+            try {
+                const storedUser = localStorage.getItem('user');
+                if (storedUser) {
+                    const parsed = JSON.parse(storedUser);
+                    if (parsed.id || parsed.userId) {
+                        currentUserId = Number(parsed.id || parsed.userId);
+                    }
+                }
+            } catch (e) {
+                console.error("Error reading user from localStorage:", e);
+            }
+
             const payload = {
                 pacienteId: Number(pacienteId),
                 doctorId: Number(doctorId),
+                userId: currentUserId,
                 fecha,
                 titulo: titulo.trim() || 'Informe Odontológico',
                 contenido,

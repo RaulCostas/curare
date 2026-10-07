@@ -167,7 +167,7 @@ export class InformesPdfService {
                     {
                         width: '*',
                         stack: [
-                            { text: 'CURARE CENTRO DENTAL', fontSize: 13, bold: true, color: '#0f766e', alignment: 'right' },
+                            { text: 'CURARE CENTRO DENTAL', fontSize: 13, bold: true, color: '#1e40af', alignment: 'right' },
                             { text: 'Especialistas en Odontología Integral', fontSize: 9, color: '#6b7280', alignment: 'right', margin: [0, 2, 0, 0] },
                             { text: 'La Paz - Bolivia', fontSize: 8.5, color: '#9ca3af', alignment: 'right', margin: [0, 1, 0, 0] }
                         ]
@@ -179,7 +179,7 @@ export class InformesPdfService {
             // Divider
             content.push({
                 canvas: [
-                    { type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 2, lineColor: '#0d9488' }
+                    { type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 2, lineColor: '#1e40af' }
                 ],
                 margin: [0, 0, 0, 15]
             });
@@ -189,7 +189,7 @@ export class InformesPdfService {
                 text: (informe.titulo || 'INFORME ODONTOLÓGICO').toUpperCase(),
                 fontSize: 15,
                 bold: true,
-                color: '#0f766e',
+                color: '#1e40af',
                 alignment: 'center',
                 margin: [0, 0, 0, 15]
             });
@@ -215,9 +215,9 @@ export class InformesPdfService {
                                         ]
                                     }
                                 ],
-                                fillColor: '#f0fdfa',
+                                fillColor: '#eff6ff',
                                 border: [true, true, true, true],
-                                borderColor: ['#0d9488', '#0d9488', '#0d9488', '#0d9488'],
+                                borderColor: ['#2563eb', '#2563eb', '#2563eb', '#2563eb'],
                                 margin: [6, 6, 6, 6]
                             }
                         ]
@@ -226,8 +226,8 @@ export class InformesPdfService {
                 layout: {
                     hLineWidth: () => 1,
                     vLineWidth: () => 1,
-                    hLineColor: () => '#0d9488',
-                    vLineColor: () => '#0d9488',
+                    hLineColor: () => '#2563eb',
+                    vLineColor: () => '#2563eb',
                 },
                 margin: [0, 0, 0, 20]
             });

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Query, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query, UseInterceptors, UploadedFile, Req } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { InformesService } from './informes.service';
 import { CreateInformeDto, UpdateInformeDto } from './dto/informe.dto';
@@ -8,7 +8,10 @@ export class InformesController {
     constructor(private readonly informesService: InformesService) {}
 
     @Post()
-    create(@Body() createInformeDto: CreateInformeDto) {
+    create(@Body() createInformeDto: CreateInformeDto, @Req() req?: any) {
+        if (!createInformeDto.userId && req?.user?.id) {
+            createInformeDto.userId = req.user.id;
+        }
         return this.informesService.create(createInformeDto);
     }
 
@@ -26,7 +29,10 @@ export class InformesController {
     }
 
     @Patch(':id')
-    update(@Param('id') id: string, @Body() updateInformeDto: UpdateInformeDto) {
+    update(@Param('id') id: string, @Body() updateInformeDto: UpdateInformeDto, @Req() req?: any) {
+        if (!updateInformeDto.userId && req?.user?.id) {
+            updateInformeDto.userId = req.user.id;
+        }
         return this.informesService.update(+id, updateInformeDto);
     }
 
