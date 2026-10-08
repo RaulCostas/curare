@@ -5,6 +5,7 @@ import { Agenda } from './entities/agenda.entity';
 import { CreateAgendaDto } from './dto/create-agenda.dto';
 import { UpdateAgendaDto } from './dto/update-agenda.dto';
 import { ChatbotService } from '../chatbot/chatbot.service';
+import { formatWhatsAppJid } from '../common/utils/phone.utils';
 
 @Injectable()
 export class AgendaService {
@@ -176,11 +177,10 @@ export class AgendaService {
             throw new BadRequestException(`El paciente ${cita.paciente.nombre} no tiene número de celular registrado`);
         }
 
-        let cleanPhone = celular.replace(/\D/g, '');
-        if (cleanPhone.length === 8) {
-            cleanPhone = '591' + cleanPhone;
+        const jid = formatWhatsAppJid(celular);
+        if (!jid) {
+            throw new BadRequestException(`El paciente ${cita.paciente.nombre} no tiene un número de celular válido`);
         }
-        const jid = `${cleanPhone}@s.whatsapp.net`;
 
         const fechaFormatted = this.formatFechaTexto(cita.fecha);
         const horaFormatted = this.formatHoraTexto(cita.hora);

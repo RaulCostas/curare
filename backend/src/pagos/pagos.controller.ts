@@ -7,6 +7,7 @@ import { ChatbotService } from '../chatbot/chatbot.service';
 import { PagosPdfService } from './pagos-pdf.service';
 import { HistoriaClinicaService } from '../historia_clinica/historia_clinica.service';
 import { deduplicateHistoria } from '../utils/historia-utils';
+import { formatWhatsAppJid } from '../common/utils/phone.utils';
 
 import { PacientesService } from '../pacientes/pacientes.service';
 import { ProformasService } from '../proformas/proformas.service';
@@ -70,10 +71,10 @@ export class PagosController {
                 return { success: false, message: 'El paciente no tiene número de celular registrado.' };
             }
 
-            const cleanPhone = phoneNumber.replace(/\D/g, '');
-            // Assume 591 if missing and length is 8 (Bolivia mobile)
-            const countryCode = cleanPhone.length === 8 ? '591' : '';
-            const jid = `${countryCode}${cleanPhone}@s.whatsapp.net`;
+            const jid = formatWhatsAppJid(phoneNumber);
+            if (!jid) {
+                return { success: false, message: 'El número de celular del paciente no es válido.' };
+            }
 
             await this.chatbotService.sendMessage(jid, {
                 document: pdfBuffer,
@@ -117,9 +118,10 @@ export class PagosController {
                 allPacientePagos
             );
 
-            const cleanPhone = paciente.celular.replace(/\D/g, '');
-            const countryCode = cleanPhone.length === 8 ? '591' : '';
-            const jid = `${countryCode}${cleanPhone}@s.whatsapp.net`;
+            const jid = formatWhatsAppJid(paciente.celular);
+            if (!jid) {
+                return { success: false, message: 'El número de celular del paciente no es válido.' };
+            }
 
             const reciboNum = pago.recibo ? `R-${pago.recibo}` : `#${pago.id}`;
             const montoStr = pago.moneda === 'Dólares' ? `USD ${Number(pago.monto).toFixed(2)}` : `Bs. ${Number(pago.monto).toFixed(2)}`;

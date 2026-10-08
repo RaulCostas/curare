@@ -487,59 +487,224 @@ const PacienteTabInformes: React.FC<PacienteTabInformesProps> = ({ pacienteId, p
     };
 
     const handlePrintInforme = (informe: any) => {
-        const nombrePaciente = paciente ? formatPaternoMaternoNombre(paciente) : 'Paciente';
+        const nombrePaciente = paciente
+            ? `${paciente.paterno || ''} ${paciente.materno || ''} ${paciente.nombre || ''}`.replace(/\s+/g, ' ').trim().toUpperCase()
+            : 'PACIENTE';
 
-        let doctorNombreFirma = 'FIRMA DEL PROFESIONAL ODONTÓLOGO';
-        let doctorEspecialidadFirma = 'Profesional Odontólogo';
-
-        if (informe.doctor) {
-            const docPaterno = informe.doctor.paterno || '';
-            const docMaterno = informe.doctor.materno || '';
-            const docNombre = informe.doctor.nombre || '';
-            doctorNombreFirma = `DR. ${docPaterno} ${docMaterno} ${docNombre}`.replace(/\s+/g, ' ').trim().toUpperCase();
-            if (informe.doctor.especialidad?.especialidad) {
-                doctorEspecialidadFirma = `Odontólogo - ${informe.doctor.especialidad.especialidad}`;
-            }
-        }
+        const docObj = informe.doctor || {};
+        const doctorName = docObj.paterno
+            ? `${docObj.paterno} ${docObj.materno || ''} ${docObj.nombre || ''}`.replace(/\s+/g, ' ').trim()
+            : 'No asignado';
+        const doctorEsp = docObj.especialidad?.especialidad || 'Odontología General';
+        const fechaFormateada = informe.fecha ? formatDate(informe.fecha) : formatDate(getLocalDateString());
+        const logoUrl = `${window.location.origin}/logo-curare.png`;
+        const doctorNombreFirma = docObj.paterno
+            ? `DR. ${docObj.paterno} ${docObj.materno || ''} ${docObj.nombre || ''}`.replace(/\s+/g, ' ').trim().toUpperCase()
+            : 'FIRMA Y SELLO ODONTOLÓGICO';
 
         const htmlContent = `
             <!DOCTYPE html>
             <html>
             <head>
                 <title>${informe.titulo || 'Informe Odontológico'}</title>
+                <meta charset="utf-8" />
                 <style>
-                    body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; padding: 40px; color: #1f2937; line-height: 1.6; }
-                    .header { text-align: center; border-bottom: 2px solid #0d9488; padding-bottom: 20px; margin-bottom: 30px; }
-                    .header h1 { color: #0f766e; margin: 0; font-size: 24px; text-transform: uppercase; }
-                    .header p { color: #6b7280; font-size: 14px; margin-top: 5px; }
-                    .info-box { background-color: #f0fdfa; border-left: 4px solid #0d9488; padding: 15px; margin-bottom: 30px; border-radius: 4px; }
-                    .info-box p { margin: 4px 0; font-size: 14px; }
-                    .content { font-size: 15px; margin-bottom: 60px; min-height: 250px; }
-                    .content table { width: 100%; border-collapse: collapse; margin: 15px 0; }
-                    .content th, .content td { border: 1px solid #cbd5e1; padding: 8px; text-align: left; }
-                    .content th { background-color: #102a6b; color: #ffffff; }
-                    .content img { max-width: 350px; height: auto; border-radius: 6px; margin: 10px; }
-                    .signature-line { margin-top: 80px; text-align: center; }
-                    .signature-box { display: inline-block; border-top: 1px solid #374151; width: 280px; padding-top: 6px; text-align: center; }
+                    @page {
+                        size: A4;
+                        margin: 15mm 15mm 15mm 15mm;
+                    }
+                    * {
+                        box-sizing: border-box;
+                    }
+                    @media print {
+                        html, body {
+                            margin: 0 !important;
+                            padding: 0 !important;
+                            -webkit-print-color-adjust: exact !important;
+                            print-color-adjust: exact !important;
+                        }
+                    }
+                    body {
+                        font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+                        padding: 0;
+                        margin: 0;
+                        color: #1e293b;
+                        line-height: 1.5;
+                        font-size: 13px;
+                    }
+                    .header {
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        margin-bottom: 12px;
+                    }
+                    .logo-img {
+                        max-height: 48px;
+                        max-width: 140px;
+                        object-fit: contain;
+                    }
+                    .clinic-info {
+                        text-align: right;
+                    }
+                    .clinic-title {
+                        font-size: 14px;
+                        font-weight: 700;
+                        color: #1e40af;
+                        margin: 0;
+                        letter-spacing: 0.3px;
+                    }
+                    .clinic-subtitle {
+                        font-size: 9.5px;
+                        color: #6b7280;
+                        margin: 2px 0 0 0;
+                    }
+                    .clinic-location {
+                        font-size: 9px;
+                        color: #9ca3af;
+                        margin: 1px 0 0 0;
+                    }
+                    .divider {
+                        height: 2px;
+                        background-color: #1e40af;
+                        margin-bottom: 15px;
+                        border: none;
+                    }
+                    .report-title {
+                        text-align: center;
+                        color: #1e40af;
+                        font-size: 15px;
+                        font-weight: 700;
+                        margin: 0 0 15px 0;
+                        text-transform: uppercase;
+                        letter-spacing: 0.5px;
+                    }
+                    .info-box {
+                        background-color: #eff6ff;
+                        border: 1px solid #2563eb;
+                        border-radius: 4px;
+                        padding: 8px 12px;
+                        margin-bottom: 20px;
+                    }
+                    .info-row {
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        font-size: 11px;
+                        color: #1f2937;
+                    }
+                    .info-row:not(:last-child) {
+                        margin-bottom: 5px;
+                    }
+                    .info-item {
+                        display: flex;
+                        gap: 6px;
+                    }
+                    .info-label {
+                        font-weight: 700;
+                        color: #1f2937;
+                    }
+                    .content {
+                        font-size: 12px;
+                        line-height: 1.55;
+                        color: #1e293b;
+                        min-height: 200px;
+                        margin-bottom: 30px;
+                    }
+                    .content p {
+                        margin: 0 0 8px 0;
+                    }
+                    .content table {
+                        width: 100%;
+                        border-collapse: collapse;
+                        margin: 10px 0 15px 0;
+                        font-size: 10px;
+                    }
+                    .content th, .content td {
+                        border: 0.5px solid #cbd5e1;
+                        padding: 5px 6px;
+                        text-align: left;
+                    }
+                    .content th {
+                        background-color: #0d9488;
+                        color: #ffffff;
+                        font-weight: 700;
+                    }
+                    .content img {
+                        max-width: 320px;
+                        height: auto;
+                        border-radius: 6px;
+                        margin: 6px;
+                        display: inline-block;
+                    }
+                    .signature-section {
+                        margin-top: 50px;
+                        text-align: center;
+                        page-break-inside: avoid;
+                    }
+                    .signature-line {
+                        display: inline-block;
+                        width: 200px;
+                        border-top: 1px solid #475569;
+                        padding-top: 6px;
+                    }
+                    .signature-name {
+                        font-weight: 700;
+                        font-size: 11px;
+                        color: #111827;
+                        text-transform: uppercase;
+                    }
+                    .signature-sub {
+                        font-size: 9.5px;
+                        color: #64748b;
+                        margin-top: 2px;
+                    }
                 </style>
             </head>
             <body>
                 <div class="header">
-                    <h1>${informe.titulo || 'INFORME ODONTOLÓGICO'}</h1>
-                    <p>Documento de Consulta e Historial Clínico</p>
+                    <img src="${logoUrl}" alt="Curare Logo" class="logo-img" />
+                    <div class="clinic-info">
+                        <div class="clinic-title">CURARE CENTRO DENTAL</div>
+                        <div class="clinic-subtitle">Especialistas en Odontología Integral</div>
+                        <div class="clinic-location">La Paz - Bolivia</div>
+                    </div>
                 </div>
+
+                <div class="divider"></div>
+
+                <div class="report-title">${(informe.titulo || 'INFORME ODONTOLÓGICO').toUpperCase()}</div>
+
                 <div class="info-box">
-                    <p><strong>Paciente:</strong> ${nombrePaciente}</p>
-                    <p><strong>Doctor Tratante:</strong> ${informe.doctor ? `${informe.doctor.paterno} ${informe.doctor.materno || ''} ${informe.doctor.nombre}`.replace(/\s+/g, ' ').trim() : 'No asignado'}</p>
-                    <p><strong>Fecha del Informe:</strong> ${informe.fecha || getLocalDateString()}</p>
+                    <div class="info-row">
+                        <div class="info-item">
+                            <span class="info-label">Paciente:</span>
+                            <span>${nombrePaciente}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Fecha:</span>
+                            <span>${fechaFormateada}</span>
+                        </div>
+                    </div>
+                    <div class="info-row">
+                        <div class="info-item">
+                            <span class="info-label">Doctor Tratante:</span>
+                            <span>Dr. ${doctorName}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Especialidad:</span>
+                            <span>${doctorEsp}</span>
+                        </div>
+                    </div>
                 </div>
+
                 <div class="content">
-                    ${informe.contenido}
+                    ${informe.contenido || ''}
                 </div>
-                <div class="signature-line">
-                    <div class="signature-box">
-                        <div style="font-weight: bold; font-size: 13px; color: #111827;">${doctorNombreFirma}</div>
-                        <div style="font-size: 11px; color: #4b5563; margin-top: 2px;">${doctorEspecialidadFirma}</div>
+
+                <div class="signature-section">
+                    <div class="signature-line">
+                        <div class="signature-name">${doctorNombreFirma}</div>
+                        <div class="signature-sub">Odontólogo - ${doctorEsp}</div>
                     </div>
                 </div>
             </body>

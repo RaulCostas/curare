@@ -9,6 +9,7 @@ import { ProformaDetalle } from './entities/proforma-detalle.entity';
 import { ProformaImagen } from './entities/proforma-imagen.entity';
 import { UsersService } from '../users/users.service';
 import { ChatbotService } from '../chatbot/chatbot.service';
+import { formatWhatsAppJid } from '../common/utils/phone.utils';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -432,11 +433,10 @@ export class ProformasService {
     }
 
     // Clean phone number
-    let phone = paciente.celular.replace(/\D/g, '');
-    if (!phone.startsWith('591')) {
-      phone = '591' + phone;
+    const jid = formatWhatsAppJid(paciente.celular);
+    if (!jid) {
+      throw new NotFoundException('El paciente no tiene un número de celular válido');
     }
-    const jid = `${phone}@s.whatsapp.net`;
 
     try {
       await this.chatbotService.sendMessage(jid, {

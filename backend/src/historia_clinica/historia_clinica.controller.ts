@@ -4,6 +4,7 @@ import { CreateHistoriaClinicaDto } from './dto/create-historia_clinica.dto';
 import { UpdateHistoriaClinicaDto } from './dto/update-historia_clinica.dto';
 import { HistoriaClinicaPdfService } from './historia-clinica-pdf.service';
 import { ChatbotService } from '../chatbot/chatbot.service';
+import { formatWhatsAppJid } from '../common/utils/phone.utils';
 
 @Controller('historia-clinica')
 export class HistoriaClinicaController {
@@ -115,12 +116,10 @@ export class HistoriaClinicaController {
             }
 
             // Format phone number
-            let phone = paciente.celular.replace(/\D/g, '');
-            // If it's a local number (8 digits), add Bolivia country code
-            if (phone.length === 8) {
-                phone = '591' + phone;
+            const jid = formatWhatsAppJid(paciente.celular);
+            if (!jid) {
+                throw new HttpException('El número de celular del paciente no es válido.', HttpStatus.BAD_REQUEST);
             }
-            const jid = phone + '@s.whatsapp.net';
 
             // Generate PDF
             const pdfBuffer = await this.pdfService.generateHistoriaClinicaPdf(+pacienteId, +proformaId);

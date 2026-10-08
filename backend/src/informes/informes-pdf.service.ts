@@ -56,6 +56,53 @@ export class InformesPdfService {
         return `${day}/${month}/${year}`;
     }
 
+    private decodeHtmlEntities(text: string): string {
+        if (!text) return '';
+        return text
+            .replace(/&nbsp;?/gi, ' ')
+            .replace(/&amp;/gi, '&')
+            .replace(/&lt;/gi, '<')
+            .replace(/&gt;/gi, '>')
+            .replace(/&quot;/gi, '"')
+            .replace(/&#39;|&apos;/gi, "'")
+            .replace(/&aacute;/gi, 'á')
+            .replace(/&eacute;/gi, 'é')
+            .replace(/&iacute;/gi, 'í')
+            .replace(/&oacute;/gi, 'ó')
+            .replace(/&uacute;/gi, 'ú')
+            .replace(/&Aacute;/gi, 'Á')
+            .replace(/&Eacute;/gi, 'É')
+            .replace(/&Iacute;/gi, 'Í')
+            .replace(/&Oacute;/gi, 'Ó')
+            .replace(/&Uacute;/gi, 'Ú')
+            .replace(/&ntilde;/gi, 'ñ')
+            .replace(/&Ntilde;/gi, 'Ñ')
+            .replace(/&uuml;/gi, 'ü')
+            .replace(/&Uuml;/gi, 'Ü')
+            .replace(/&#(\d+);?/g, (_, dec) => {
+                try {
+                    return String.fromCodePoint(parseInt(dec, 10));
+                } catch {
+                    return '';
+                }
+            })
+            .replace(/&#x([0-9a-fA-F]+);?/g, (_, hex) => {
+                try {
+                    return String.fromCodePoint(parseInt(hex, 16));
+                } catch {
+                    return '';
+                }
+            })
+            .replace(/\u00a0/g, ' ');
+    }
+
+    private cleanHtmlText(text: string): string {
+        if (!text) return '';
+        const withoutTags = text.replace(/<[^>]+>/g, '');
+        const decoded = this.decodeHtmlEntities(withoutTags);
+        return decoded.replace(/[ \t]+/g, ' ').trim();
+    }
+
     private parseHtmlToPdfContent(html: string): any[] {
         if (!html) return [];
         const contentList: any[] = [];
@@ -64,6 +111,7 @@ export class InformesPdfService {
         let rawHtml = html
             .replace(/<br\s*[\/]?>/gi, '\n')
             .replace(/<\/p>/gi, '\n\n')
+            .replace(/<\/div>/gi, '\n')
             .replace(/<\/h[1-6]>/gi, '\n\n')
             .replace(/<\/li>/gi, '\n');
 
@@ -77,7 +125,7 @@ export class InformesPdfService {
             if (partText) {
                 const paragraphs = partText.split('\n');
                 for (const p of paragraphs) {
-                    const clean = p.replace(/<[^>]+>/g, '').trim();
+                    const clean = this.cleanHtmlText(p);
                     if (clean) {
                         contentList.push({
                             text: clean,
@@ -100,7 +148,7 @@ export class InformesPdfService {
                     const rowCells: any[] = [];
                     let match;
                     while ((match = cellRegex.exec(rHtml)) !== null) {
-                        const cellText = match[1].replace(/<[^>]+>/g, '').trim();
+                        const cellText = this.cleanHtmlText(match[1]);
                         const isTh = /<th/i.test(match[0]);
                         rowCells.push({
                             text: cellText,
@@ -150,9 +198,9 @@ export class InformesPdfService {
             const paciente = informe.paciente || {};
             const doctor = informe.doctor || {};
 
-            const patientName = `${paciente.paterno || ''} ${paciente.materno || ''} ${paciente.nombre || ''}`.replace(/\s+/g, ' ').trim().toUpperCase() || 'PACIENTE';
-            const doctorName = `${doctor.paterno || ''} ${doctor.materno || ''} ${doctor.nombre || ''}`.replace(/\s+/g, ' ').trim() || 'No asignado';
-            const doctorEsp = doctor.especialidad?.especialidad || 'Odontología General';
+            const patientName = this.cleanHtmlText(`${paciente.paterno || ''} ${paciente.materno || ''} ${paciente.nombre || ''}`).toUpperCase() || 'PACIENTE';
+            const doctorName = this.cleanHtmlText(`${doctor.paterno || ''} ${doctor.materno || ''} ${doctor.nombre || ''}`) || 'No asignado';
+            const doctorEsp = this.cleanHtmlText(doctor.especialidad?.especialidad || 'Odontología General');
             const fechaFormateada = this.formatDateSpanish(informe.fecha);
 
             // 1. Header with Logo and Clinic Title
@@ -186,7 +234,7 @@ export class InformesPdfService {
 
             // Title
             content.push({
-                text: (informe.titulo || 'INFORME ODONTOLÓGICO').toUpperCase(),
+                text: this.cleanHtmlText(informe.titulo || 'INFORME ODONTOLÓGICO').toUpperCase(),
                 fontSize: 15,
                 bold: true,
                 color: '#1e40af',
@@ -256,19 +304,11 @@ export class InformesPdfService {
 
             const docDefinition: any = {
                 pageSize: 'A4',
-                pageMargins: [40, 40, 40, 45],
+                pageMargins: [40, 40, 40, 40],
                 content,
                 defaultStyle: {
                     font: 'Helvetica',
                     color: '#1e293b'
-                },
-                footer: (currentPage: number, pageCount: number) => {
-                    return {
-                        columns: [
-                            { text: `Informe Clínico N° ${informe.id}`, fontSize: 8, color: '#94a3b8', margin: [40, 0, 0, 0] },
-                            { text: `Página ${currentPage} de ${pageCount}`, fontSize: 8, color: '#94a3b8', alignment: 'right', margin: [0, 0, 40, 0] }
-                        ]
-                    };
                 }
             };
 

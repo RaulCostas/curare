@@ -1,7 +1,8 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, HttpException, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, HttpException, HttpStatus, BadRequestException } from '@nestjs/common';
 import { RecetaService } from './receta.service';
 import { RecetaPdfService } from './receta-pdf.service';
 import { ChatbotService } from '../chatbot/chatbot.service';
+import { formatWhatsAppJid } from '../common/utils/phone.utils';
 
 @Controller('receta')
 export class RecetaController {
@@ -56,12 +57,10 @@ export class RecetaController {
             }
 
             // Format phone number
-            let phone = receta.paciente.celular.replace(/\D/g, '');
-            // If it's a local number (8 digits), add Bolivia country code
-            if (phone.length === 8) {
-                phone = '591' + phone;
+            const jid = formatWhatsAppJid(receta.paciente.celular);
+            if (!jid) {
+                throw new BadRequestException('El número de celular del paciente no es válido.');
             }
-            const jid = phone + '@s.whatsapp.net';
 
             // Generate PDF
             const pdfBuffer = await this.pdfService.generateRecetaPdf(receta);

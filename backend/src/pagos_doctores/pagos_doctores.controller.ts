@@ -4,6 +4,7 @@ import { CreatePagosDoctoresDto } from './dto/create-pagos_doctores.dto';
 import { UpdatePagosDoctoresDto } from './dto/update-pagos_doctores.dto';
 import { ChatbotService } from '../chatbot/chatbot.service';
 import { RecetaPdfService } from '../receta/receta-pdf.service';
+import { formatWhatsAppJid } from '../common/utils/phone.utils';
 
 @Controller('pagos-doctores')
 export class PagosDoctoresController {
@@ -72,12 +73,10 @@ export class PagosDoctoresController {
             }
 
             // Format phone number
-            let phone = pago.doctor.celular.replace(/\D/g, '');
-            // If it's a local number (8 digits), add Bolivia country code
-            if (phone.length === 8) {
-                phone = '591' + phone;
+            const jid = formatWhatsAppJid(pago.doctor.celular);
+            if (!jid) {
+                throw new HttpException('El doctor no tiene un número de celular válido.', HttpStatus.BAD_REQUEST);
             }
-            const jid = phone + '@s.whatsapp.net';
 
             // Generate PDF
             const pdfBuffer = await this.pdfService.generatePagoDoctorPdf(pago);

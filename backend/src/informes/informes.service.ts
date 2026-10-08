@@ -5,6 +5,7 @@ import { Informe } from './entities/informe.entity';
 import { CreateInformeDto, UpdateInformeDto } from './dto/informe.dto';
 import { InformesPdfService } from './informes-pdf.service';
 import { ChatbotService } from '../chatbot/chatbot.service';
+import { formatWhatsAppJid } from '../common/utils/phone.utils';
 
 @Injectable()
 export class InformesService {
@@ -78,13 +79,10 @@ export class InformesService {
             );
         }
 
-        let phone = paciente.celular.replace(/\D/g, '');
-        if (phone.length === 8) {
-            phone = '591' + phone;
-        } else if (!phone.startsWith('591')) {
-            phone = '591' + phone;
+        const jid = formatWhatsAppJid(paciente.celular);
+        if (!jid) {
+            throw new BadRequestException('El número de celular del paciente no es válido.');
         }
-        const jid = `${phone}@s.whatsapp.net`;
 
         const pdfBuffer = fileBuffer || await this.informesPdfService.generateInformePdf(informe);
 

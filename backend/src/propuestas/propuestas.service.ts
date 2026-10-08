@@ -8,6 +8,7 @@ import { PropuestaDetalle } from './entities/propuesta-detalle.entity';
 import { ProformasService } from '../proformas/proformas.service';
 import { CreateProformaDto } from '../proformas/dto/create-proforma.dto';
 import { ChatbotService } from '../chatbot/chatbot.service';
+import { formatWhatsAppJid } from '../common/utils/phone.utils';
 
 @Injectable()
 export class PropuestasService {
@@ -269,13 +270,10 @@ export class PropuestasService {
             throw new Error('El chatbot no está conectado. Por favor, conecte el chatbot primero desde Configuración > Chatbot (WhatsApp).');
         }
 
-        let phone = paciente.celular.replace(/\D/g, '');
-        if (phone.length === 8) {
-            phone = '591' + phone;
-        } else if (!phone.startsWith('591')) {
-            phone = '591' + phone;
+        const jid = formatWhatsAppJid(paciente.celular);
+        if (!jid) {
+            throw new NotFoundException('El número de celular del paciente no es válido');
         }
-        const jid = `${phone}@s.whatsapp.net`;
 
         const patientName = `${paciente.nombre || ''} ${paciente.paterno || ''}`.trim() || 'Paciente';
         const docName = letra 
