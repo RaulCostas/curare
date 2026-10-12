@@ -9,12 +9,13 @@ interface GastosFijosFormProps {
     onClose: () => void;
     id?: number | null;
     onSaveSuccess: () => void;
+    initialDestino?: string;
 }
 
-const GastosFijosForm: React.FC<GastosFijosFormProps> = ({ isOpen, onClose, id, onSaveSuccess }) => {
+const GastosFijosForm: React.FC<GastosFijosFormProps> = ({ isOpen, onClose, id, onSaveSuccess, initialDestino = 'Consultorio' }) => {
     const isEditing = Boolean(id);
 
-    const [destino, setDestino] = useState('Consultorio');
+    const [destino, setDestino] = useState(initialDestino);
     const [dia, setDia] = useState<number>(1);
     const [anual, setAnual] = useState(false);
     const [mes, setMes] = useState('');
@@ -58,7 +59,7 @@ const GastosFijosForm: React.FC<GastosFijosFormProps> = ({ isOpen, onClose, id, 
                         console.error('Error fetching gasto:', error);
                     });
             } else {
-                setDestino('Consultorio');
+                setDestino(initialDestino || 'Consultorio');
                 setDia(1);
                 setAnual(false);
                 setMes('');

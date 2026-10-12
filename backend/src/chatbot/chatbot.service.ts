@@ -443,15 +443,30 @@ export class ChatbotService implements OnModuleInit, OnModuleDestroy {
             } else {
                 const cleanText = normalizedText.trim().replace(/[.,!?;:]+$/, '');
 
+                // Texto sin emojis (incluyendo ✅, ❌, etc.) y sin puntuación sobrante
+                const textWithoutEmojis = cleanText
+                    .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}]/gu, '')
+                    .trim();
+
                 const isConfirm = 
                     cleanText === 'a' ||
                     cleanText === 'a.' ||
                     cleanText === 'a)' ||
                     cleanText.startsWith('a ') ||
                     cleanText.startsWith('a,') ||
+                    cleanText.startsWith('a-') ||
+                    cleanText.startsWith('a -') ||
+                    cleanText === 'a✅' ||
+                    cleanText.startsWith('a✅') ||
+                    cleanText.startsWith('✅') ||
                     cleanText === 'opcion a' ||
                     cleanText === 'opción a' ||
-                    /^(si\b|sí\b|confirmo\b|confirmar\b|confirmado\b|afirmativo\b)/i.test(cleanText);
+                    textWithoutEmojis === 'a' ||
+                    textWithoutEmojis.startsWith('a ') ||
+                    textWithoutEmojis === 'opcion a' ||
+                    textWithoutEmojis === 'opción a' ||
+                    textWithoutEmojis.startsWith('confirmar') ||
+                    /^(si\b|sí\b|confirmo\b|confirmar\b|confirmado\b|afirmativo\b)/i.test(textWithoutEmojis || cleanText);
 
                 const isCancel = 
                     cleanText === 'b' ||
@@ -459,9 +474,19 @@ export class ChatbotService implements OnModuleInit, OnModuleDestroy {
                     cleanText === 'b)' ||
                     cleanText.startsWith('b ') ||
                     cleanText.startsWith('b,') ||
+                    cleanText.startsWith('b-') ||
+                    cleanText.startsWith('b -') ||
+                    cleanText === 'b❌' ||
+                    cleanText.startsWith('b❌') ||
+                    cleanText.startsWith('❌') ||
                     cleanText === 'opcion b' ||
                     cleanText === 'opción b' ||
-                    /^(no\b|cancelar\b|cancelo\b|cancelada\b)/i.test(cleanText);
+                    textWithoutEmojis === 'b' ||
+                    textWithoutEmojis.startsWith('b ') ||
+                    textWithoutEmojis === 'opcion b' ||
+                    textWithoutEmojis.startsWith('opción b') ||
+                    textWithoutEmojis.startsWith('cancelar') ||
+                    /^(no\b|cancelar\b|cancelo\b|cancelada\b)/i.test(textWithoutEmojis || cleanText);
 
                 if (isConfirm) {
                     try {

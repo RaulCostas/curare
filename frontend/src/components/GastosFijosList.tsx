@@ -22,6 +22,8 @@ const GastosFijosList: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [paymentsSearchTerm, setPaymentsSearchTerm] = useState('');
     const [activeTab, setActiveTab] = useState<'gastos' | 'pagos'>('gastos');
+    const [destinoTab, setDestinoTab] = useState<'consultorio' | 'casa'>('consultorio');
+    const [estadoFilter, setEstadoFilter] = useState<'activo' | 'inactivo' | 'todos'>('activo');
     const [showManual, setShowManual] = useState(false);
 
     // Modal state for GastosFijosForm
@@ -172,28 +174,50 @@ const GastosFijosList: React.FC = () => {
         setCurrentPagosPage(1); // Reset to first page
     };
 
+    // Contadores para pestañas Consultorio y Casa
+    const countConsultorio = gastos.filter(g => (g.destino || '').trim().toLowerCase() === 'consultorio').length;
+    const countCasa = gastos.filter(g => (g.destino || '').trim().toLowerCase() === 'casa').length;
+
+    // Contadores para estados dentro de la pestaña activa (Consultorio o Casa)
+    const gastosDelDestinoActual = gastos.filter(g => (g.destino || '').trim().toLowerCase() === destinoTab);
+    const countActivos = gastosDelDestinoActual.filter(g => (g.estado || 'activo').trim().toLowerCase() === 'activo').length;
+    const countInactivos = gastosDelDestinoActual.filter(g => (g.estado || 'activo').trim().toLowerCase() === 'inactivo').length;
+    const countTodos = gastosDelDestinoActual.length;
+
     const filteredGastos = gastos.filter(gasto => {
         if (!gasto) return false;
+
+        // 1. Filtro por pestaña de destino (Consultorio vs Casa)
+        const d = (gasto.destino || '').trim().toLowerCase();
+        if (destinoTab === 'consultorio' && d !== 'consultorio') {
+            return false;
+        }
+        if (destinoTab === 'casa' && d !== 'casa') {
+            return false;
+        }
+
+        // 2. Filtro por estado (Activos vs Inactivos vs Todos)
+        const estadoGasto = (gasto.estado || 'activo').trim().toLowerCase();
+        if (estadoFilter === 'activo' && estadoGasto !== 'activo') {
+            return false;
+        }
+        if (estadoFilter === 'inactivo' && estadoGasto !== 'inactivo') {
+            return false;
+        }
+
+        // 3. Filtro por término de búsqueda
         const gastoName = gasto.gasto_fijo?.toLowerCase() || '';
         const gastoDestino = gasto.destino?.toLowerCase() || '';
         const search = searchTerm.toLowerCase();
         return gastoName.includes(search) || gastoDestino.includes(search);
     }).sort((a, b) => a.dia - b.dia);
+
     const totalsByCurrency = filteredGastos.reduce((acc, g) => {
-        const currency = g.moneda || 'Bs';
-        const destino = g.destino?.toLowerCase() || 'otros';
+        const currency = (g.moneda || 'BOLIVIANOS').trim().toUpperCase();
         const monto = Number(g.monto) || 0;
-
-        if (!acc[currency]) {
-            acc[currency] = { consultorio: 0, casa: 0, total: 0 };
-        }
-
-        if (destino === 'consultorio') acc[currency].consultorio += monto;
-        else if (destino === 'casa') acc[currency].casa += monto;
-        acc[currency].total += monto;
-
+        acc[currency] = (acc[currency] || 0) + monto;
         return acc;
-    }, {} as Record<string, { consultorio: number; casa: number; total: number }>);
+    }, {} as Record<string, number>);
 
     // Pagination Logic Gastos
     const indexOfLastItem = currentPage * itemsPerPage;
@@ -639,7 +663,7 @@ const GastosFijosList: React.FC = () => {
     const handleOpenPrintModal = (mode: 'print' | 'excel' | 'pdf' = 'print') => {
         setModalMode(mode);
         setShowPrintModal(true);
-        setPrintDestino('todos');
+        setPrintDestino(destinoTab);
         setPrintPeriodo('todos');
     };
 
@@ -971,12 +995,110 @@ const GastosFijosList: React.FC = () => {
             {/* Content Area */}
             {activeTab === 'gastos' && (
                 <>
+                    {/* Sub-pestañas: Consultorio y Casa + Filtro de Activos e Inactivos */}
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 bg-white dark:bg-gray-800 p-2.5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 no-print">
+                        {/* 1. Dos Pestañas para dividir los gastos: Consultorio y Casa */}
+                        <div className="flex gap-2 w-full sm:w-auto">
+                            <button
+                                type="button"
+                                onClick={() => { setDestinoTab('consultorio'); setCurrentPage(1); }}
+                                className={`flex-1 sm:flex-initial flex items-center justify-center gap-2.5 px-5 py-2.5 rounded-xl font-bold text-sm transition-all shadow-sm cursor-pointer ${
+                                    destinoTab === 'consultorio'
+                                        ? 'bg-blue-600 text-white shadow-blue-500/25 shadow-md transform -translate-y-0.5'
+                                        : 'bg-gray-100 dark:bg-gray-700/60 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                                }`}
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                                </svg>
+                                <span>Consultorio</span>
+                                <span className={`text-xs px-2 py-0.5 rounded-full font-black ${
+                                    destinoTab === 'consultorio'
+                                        ? 'bg-white/20 text-white'
+                                        : 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300'
+                                }`}>
+                                    {countConsultorio}
+                                </span>
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={() => { setDestinoTab('casa'); setCurrentPage(1); }}
+                                className={`flex-1 sm:flex-initial flex items-center justify-center gap-2.5 px-5 py-2.5 rounded-xl font-bold text-sm transition-all shadow-sm cursor-pointer ${
+                                    destinoTab === 'casa'
+                                        ? 'bg-emerald-600 text-white shadow-emerald-500/25 shadow-md transform -translate-y-0.5'
+                                        : 'bg-gray-100 dark:bg-gray-700/60 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                                }`}
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                                </svg>
+                                <span>Casa</span>
+                                <span className={`text-xs px-2 py-0.5 rounded-full font-black ${
+                                    destinoTab === 'casa'
+                                        ? 'bg-white/20 text-white'
+                                        : 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300'
+                                }`}>
+                                    {countCasa}
+                                </span>
+                            </button>
+                        </div>
+
+                        {/* 2. Filtro de Activos e Inactivos */}
+                        <div className="flex items-center gap-1.5 bg-gray-100 dark:bg-gray-700/60 p-1.5 rounded-xl border border-gray-200 dark:border-gray-600 w-full sm:w-auto justify-center sm:justify-start">
+                            <span className="text-xs font-bold text-gray-500 dark:text-gray-400 pl-2 pr-1 hidden sm:inline">
+                                Estado:
+                            </span>
+                            <button
+                                type="button"
+                                onClick={() => { setEstadoFilter('activo'); setCurrentPage(1); }}
+                                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
+                                    estadoFilter === 'activo'
+                                        ? 'bg-emerald-600 text-white shadow-sm'
+                                        : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
+                                }`}
+                                title="Mostrar solo gastos activos"
+                            >
+                                <span className={`w-2 h-2 rounded-full ${estadoFilter === 'activo' ? 'bg-white' : 'bg-emerald-500'}`}></span>
+                                <span>Activos ({countActivos})</span>
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={() => { setEstadoFilter('inactivo'); setCurrentPage(1); }}
+                                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
+                                    estadoFilter === 'inactivo'
+                                        ? 'bg-red-600 text-white shadow-sm'
+                                        : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
+                                }`}
+                                title="Mostrar solo gastos dados de baja"
+                            >
+                                <span className={`w-2 h-2 rounded-full ${estadoFilter === 'inactivo' ? 'bg-white' : 'bg-red-500'}`}></span>
+                                <span>Inactivos ({countInactivos})</span>
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={() => { setEstadoFilter('todos'); setCurrentPage(1); }}
+                                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
+                                    estadoFilter === 'todos'
+                                        ? 'bg-blue-600 text-white shadow-sm font-extrabold'
+                                        : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
+                                }`}
+                                title="Mostrar todos los gastos"
+                            >
+                                <span className={`w-2 h-2 rounded-full ${estadoFilter === 'todos' ? 'bg-white' : 'bg-blue-500'}`}></span>
+                                <span>Todos ({countTodos})</span>
+                            </button>
+                        </div>
+                    </div>
+
                     <div className="mb-6 flex flex-wrap gap-4 items-center justify-between bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 no-print">
                         <div className="flex items-center gap-2 flex-grow max-w-md">
                             <div className="relative flex-grow">
                                 <input
                                     type="text"
-                                    placeholder="Buscar por gasto o destino..."
+                                    placeholder={`Buscar en ${destinoTab === 'casa' ? 'Casa' : 'Consultorio'}...`}
                                     value={searchTerm}
                                     onChange={handleSearch}
                                     className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-300 text-gray-800 dark:text-white bg-white dark:bg-gray-700 placeholder-gray-400 dark:placeholder-gray-300"
@@ -989,7 +1111,7 @@ const GastosFijosList: React.FC = () => {
                                 <button
                                     type="button"
                                     onClick={() => { setSearchTerm(''); setCurrentPage(1); }}
-                                    className="px-3 py-2 bg-gray-500 hover:bg-gray-600 text-white font-bold rounded-lg shadow-sm transition-all text-xs flex items-center gap-1 shrink-0"
+                                    className="px-3 py-2 bg-gray-500 hover:bg-gray-600 text-white font-bold rounded-lg shadow-sm transition-all text-xs flex items-center gap-1 shrink-0 cursor-pointer"
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                                         <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
@@ -1003,18 +1125,18 @@ const GastosFijosList: React.FC = () => {
                         <div className="flex gap-2">
                             <button
                                 onClick={() => setShowManual(true)}
-                                className="bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 p-1.5 rounded-full flex items-center justify-center w-[30px] h-[30px] text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                                className="bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 p-1.5 rounded-full flex items-center justify-center w-[30px] h-[30px] text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors cursor-pointer"
                                 title="Ayuda / Manual"
                             >
                                 ?
                             </button>
-                            <button onClick={() => exportGastosToExcel(filteredGastos)} className="bg-[#28a745] hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-xl flex items-center justify-center gap-2 text-sm shadow-md transition-all transform hover:-translate-y-0.5" title="Exportar a Excel">
+                            <button onClick={() => exportGastosToExcel(filteredGastos)} className="bg-[#28a745] hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-xl flex items-center justify-center gap-2 text-sm shadow-md transition-all transform hover:-translate-y-0.5 cursor-pointer" title="Exportar a Excel">
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" /></svg> Excel
                             </button>
-                            <button onClick={() => handleOpenPrintModal('pdf')} className="bg-[#dc3545] hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-xl flex items-center justify-center gap-2 text-sm shadow-md transition-all transform hover:-translate-y-0.5" title="Exportar a PDF">
+                            <button onClick={() => handleOpenPrintModal('pdf')} className="bg-[#dc3545] hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-xl flex items-center justify-center gap-2 text-sm shadow-md transition-all transform hover:-translate-y-0.5 cursor-pointer" title="Exportar a PDF">
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" /></svg> PDF
                             </button>
-                            <button onClick={() => handleOpenPrintModal('print')} className="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded-xl flex items-center justify-center gap-2 text-sm shadow-md transition-all transform hover:-translate-y-0.5" title="Imprimir">
+                            <button onClick={() => handleOpenPrintModal('print')} className="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded-xl flex items-center justify-center gap-2 text-sm shadow-md transition-all transform hover:-translate-y-0.5 cursor-pointer" title="Imprimir">
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5 4v3H4a2 2 0 00-2 2v3a2 2 0 002 2h1v2a2 2 0 002 2h6a2 2 0 002-2v-2h1a2 2 0 002-2V9a2 2 0 00-2-2h-1V4a2 2 0 00-2-2H7a2 2 0 00-2 2zm8 0H7v3h6V4zm0 8H7v4h6v-4z" clipRule="evenodd" /></svg> Imprimir
                             </button>
                             <button
@@ -1022,14 +1144,14 @@ const GastosFijosList: React.FC = () => {
                                     setSelectedGastoFijoId(null);
                                     setIsFormOpen(true);
                                 }}
-                                className="bg-[#3498db] hover:bg-blue-600 text-white font-semibold py-2 px-5 rounded-xl flex items-center gap-2 shadow-md transition-all transform hover:-translate-y-0.5 text-sm"
+                                className="bg-[#3498db] hover:bg-blue-600 text-white font-semibold py-2 px-5 rounded-xl flex items-center gap-2 shadow-md transition-all transform hover:-translate-y-0.5 text-sm cursor-pointer"
                             >
                                 <span className="text-xl">+</span> Nuevo Gasto
                             </button>
                         </div>
                     </div>
                     <div className="text-sm text-gray-500 dark:text-gray-400 mb-4 font-medium no-print">
-                        Mostrando {filteredGastos.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, filteredGastos.length)} de {filteredGastos.length} registros
+                        Mostrando {filteredGastos.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, filteredGastos.length)} de {filteredGastos.length} registros en <strong className="text-gray-800 dark:text-gray-200">{destinoTab === 'casa' ? 'Casa' : 'Consultorio'}</strong> {estadoFilter !== 'todos' ? `(${estadoFilter === 'activo' ? 'Activos' : 'Inactivos'})` : ''}
                     </div>
 
                     <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700 print-container">
@@ -1150,31 +1272,34 @@ const GastosFijosList: React.FC = () => {
                         </div>
                     )}
 
-                    {/* Totals Summary Section (Moved below pagination) */}
+                    {/* Sumatoria separada por moneda */}
                     {Object.keys(totalsByCurrency).length > 0 && (
-                        <div className="mt-6 flex flex-col gap-6 no-print">
-                            {Object.entries(totalsByCurrency).map(([currency, data]) => (
-                                <div key={currency} className="border-t border-gray-200 dark:border-gray-700 pt-4">
-                                    <div className="flex items-center gap-2 mb-4">
-                                        <div className="h-4 w-1 bg-blue-500 rounded-full"></div>
-                                        <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-widest">Resumen en {currency}</h3>
+                        <div className="mt-6 flex flex-wrap justify-end gap-4 no-print">
+                            {Object.entries(totalsByCurrency).map(([currency, totalAmount]) => {
+                                const isDolar = currency.includes('DOLAR') || currency.includes('USD') || currency.includes('$');
+                                return (
+                                    <div
+                                        key={currency}
+                                        className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-4 rounded-2xl shadow-sm flex items-center gap-4 min-w-[240px]"
+                                    >
+                                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-black text-lg ${
+                                            isDolar
+                                                ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400'
+                                                : 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+                                        }`}>
+                                            {isDolar ? '$' : 'Bs'}
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                                Total {currency}
+                                            </span>
+                                            <span className="text-2xl font-black text-gray-900 dark:text-white">
+                                                {formatCurrency(totalAmount)} <span className="text-sm font-semibold text-gray-500 dark:text-gray-400">{isDolar ? '$us' : 'Bs.'}</span>
+                                            </span>
+                                        </div>
                                     </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                        <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col items-center justify-center">
-                                            <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total Consultorio ({currency})</span>
-                                            <span className="text-xl font-bold text-blue-600 dark:text-blue-400">{formatCurrency(data.consultorio)} {currency}</span>
-                                        </div>
-                                        <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col items-center justify-center">
-                                            <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total Casa ({currency})</span>
-                                            <span className="text-xl font-bold text-emerald-600 dark:text-emerald-400">{formatCurrency(data.casa)} {currency}</span>
-                                        </div>
-                                        <div className="bg-[#1e293b] dark:bg-slate-700 p-4 rounded-xl shadow-md flex flex-col items-center justify-center transform hover:scale-105 transition-all duration-300">
-                                            <span className="text-xs font-medium text-slate-300 uppercase tracking-wider">Gran Total {currency}</span>
-                                            <span className="text-xl font-bold text-white tracking-tight">{formatCurrency(data.total)} {currency}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     )}
                 </>
@@ -1341,6 +1466,7 @@ const GastosFijosList: React.FC = () => {
                 isOpen={isFormOpen}
                 onClose={() => setIsFormOpen(false)}
                 id={selectedGastoFijoId}
+                initialDestino={destinoTab === 'casa' ? 'Casa' : 'Consultorio'}
                 onSaveSuccess={() => {
                     fetchGastos();
                     setIsFormOpen(false);
