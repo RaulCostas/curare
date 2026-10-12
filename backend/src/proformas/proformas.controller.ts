@@ -1,10 +1,22 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseInterceptors, UploadedFile, Res, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseInterceptors, UploadedFile, Res, Query, NotFoundException } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
-import { extname } from 'path';
+import { extname, join } from 'path';
+import * as fs from 'fs';
 import { ProformasService } from './proformas.service';
 import { CreateProformaDto } from './dto/create-proforma.dto';
 import { UpdateProformaDto } from './dto/update-proforma.dto';
+
+const getProformasUploadDir = () => {
+  const baseDir = (fs.existsSync('/data') && process.platform !== 'win32')
+    ? '/data'
+    : join(process.cwd(), 'uploads');
+  const targetDir = join(baseDir, 'proformas');
+  if (!fs.existsSync(targetDir)) {
+    fs.mkdirSync(targetDir, { recursive: true });
+  }
+  return targetDir;
+};
 
 @Controller('proformas')
 export class ProformasController {
@@ -54,7 +66,9 @@ export class ProformasController {
   @Post(':id/imagenes')
   @UseInterceptors(FileInterceptor('file', {
     storage: diskStorage({
-      destination: './uploads/proformas',
+      destination: (req, file, cb) => {
+        cb(null, getProformasUploadDir());
+      },
       filename: (req, file, cb) => {
         const randomName = Array(32).fill(null).map(() => (Math.round(Math.random() * 16)).toString(16)).join('');
         return cb(null, `${randomName}${extname(file.originalname)}`);
@@ -72,7 +86,21 @@ export class ProformasController {
 
   @Get('imagenes/file/:filename')
   serveImage(@Param('filename') filename: string, @Res() res) {
-    return res.sendFile(filename, { root: './uploads/proformas' });
+    const cleanName = filename.replace(/[^a-zA-Z0-9.\-_]/g, '');
+    const dir = getProformasUploadDir();
+    const filePath = join(dir, cleanName);
+
+    if (fs.existsSync(filePath)) {
+      return res.sendFile(filePath);
+    }
+
+    // Fallback: buscar en carpeta de uploads local del proceso
+    const fallbackPath = join(process.cwd(), 'uploads', 'proformas', cleanName);
+    if (fs.existsSync(fallbackPath)) {
+      return res.sendFile(fallbackPath);
+    }
+
+    throw new NotFoundException('Imagen no encontrada');
   }
 
   @Patch('imagenes/:id/descripcion')

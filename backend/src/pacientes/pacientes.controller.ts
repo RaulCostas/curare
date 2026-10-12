@@ -1,11 +1,23 @@
-import { UseInterceptors, UploadedFile, Res } from '@nestjs/common';
+import { UseInterceptors, UploadedFile, Res, NotFoundException } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
-import { extname } from 'path';
+import { extname, join } from 'path';
+import * as fs from 'fs';
 import { Controller, Get, Post, Body, Patch, Param, Delete, Query } from '@nestjs/common';
 import { PacientesService } from './pacientes.service';
 import { CreatePacienteDto } from './dto/create-paciente.dto';
 import { UpdatePacienteDto } from './dto/update-paciente.dto';
+
+const getPacientesUploadDir = () => {
+    const baseDir = (fs.existsSync('/data') && process.platform !== 'win32')
+        ? '/data'
+        : join(process.cwd(), 'uploads');
+    const targetDir = join(baseDir, 'pacientes');
+    if (!fs.existsSync(targetDir)) {
+        fs.mkdirSync(targetDir, { recursive: true });
+    }
+    return targetDir;
+};
 
 @Controller('pacientes')
 export class PacientesController {
@@ -92,7 +104,9 @@ export class PacientesController {
     @Post(':id/foto')
     @UseInterceptors(FileInterceptor('file', {
         storage: diskStorage({
-            destination: './uploads/pacientes',
+            destination: (req, file, cb) => {
+                cb(null, getPacientesUploadDir());
+            },
             filename: (req, file, cb) => {
                 const randomName = Array(32).fill(null).map(() => (Math.round(Math.random() * 16)).toString(16)).join('');
                 return cb(null, `${randomName}${extname(file.originalname)}`);
@@ -105,6 +119,19 @@ export class PacientesController {
 
     @Get('foto/file/:filename')
     serveFoto(@Param('filename') filename: string, @Res() res: any) {
-        return res.sendFile(filename, { root: './uploads/pacientes' });
+        const cleanName = filename.replace(/[^a-zA-Z0-9.\-_]/g, '');
+        const dir = getPacientesUploadDir();
+        const filePath = join(dir, cleanName);
+
+        if (fs.existsSync(filePath)) {
+            return res.sendFile(filePath);
+        }
+
+        const fallbackPath = join(process.cwd(), 'uploads', 'pacientes', cleanName);
+        if (fs.existsSync(fallbackPath)) {
+            return res.sendFile(fallbackPath);
+        }
+
+        throw new NotFoundException('Foto no encontrada');
     }
 }

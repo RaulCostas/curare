@@ -30,6 +30,17 @@ const PacienteImagenesTab: React.FC<PacienteImagenesTabProps> = ({ pacienteId })
     const [images, setImages] = useState<Image[]>([]);
     const [loading, setLoading] = useState(true);
     
+    // Helper para resolver URL de imágenes de proformas (con fallback entre endpoint API y ruta de uploads)
+    const resolveProformaImageUrl = (filename: string) => {
+        if (!filename) return '';
+        return getMediaUrl(`proformas/imagenes/file/${filename}`);
+    };
+
+    const resolveProformaFallbackUrl = (filename: string) => {
+        if (!filename) return '';
+        return getMediaUrl(`uploads/proformas/${filename}`);
+    };
+
     // Lightbox modal index (null if closed)
     const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
     const [zoomLevel, setZoomLevel] = useState<number>(1);
@@ -325,15 +336,22 @@ const PacienteImagenesTab: React.FC<PacienteImagenesTabProps> = ({ pacienteId })
                     ) : (
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                             {images.map((img, idx) => {
-                                const fullUrl = getMediaUrl(`uploads/proformas/${img.nombre_archivo}`);
+                                const fullUrl = resolveProformaImageUrl(img.nombre_archivo);
+                                const fallbackUrl = resolveProformaFallbackUrl(img.nombre_archivo);
                                 return (
                                     <div key={img.id} className="group relative bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
                                         <div>
                                             <div className="relative overflow-hidden bg-gray-100 dark:bg-gray-900 cursor-pointer" onClick={() => setSelectedIndex(idx)}>
                                                 <img
                                                     src={fullUrl}
-                                                    alt={img.nombre_archivo}
+                                                    alt={img.descripcion || img.nombre_archivo}
                                                     className="w-full h-44 object-cover group-hover:scale-105 transition-all duration-300"
+                                                    onError={(e) => {
+                                                        const el = e.currentTarget;
+                                                        if (el.src !== fallbackUrl) {
+                                                            el.src = fallbackUrl;
+                                                        }
+                                                    }}
                                                 />
                                                 <button
                                                     onClick={(e) => {
@@ -453,8 +471,8 @@ const PacienteImagenesTab: React.FC<PacienteImagenesTabProps> = ({ pacienteId })
                         onClick={e => e.stopPropagation()}
                     >
                         <img
-                            src={getMediaUrl(`uploads/proformas/${currentImg.nombre_archivo}`)}
-                            alt={currentImg.nombre_archivo}
+                            src={resolveProformaImageUrl(currentImg.nombre_archivo)}
+                            alt={currentImg.descripcion || currentImg.nombre_archivo}
                             style={{
                                 transform: `scale(${zoomLevel}) rotate(${rotation}deg)`,
                                 transition: 'transform 0.2s ease-out'
@@ -462,6 +480,13 @@ const PacienteImagenesTab: React.FC<PacienteImagenesTabProps> = ({ pacienteId })
                             className="max-h-[78vh] max-w-[92vw] rounded-xl object-contain shadow-2xl border border-gray-800 cursor-zoom-in"
                             onDoubleClick={() => setZoomLevel(prev => (prev === 1 ? 1.75 : 1))}
                             title="Haga doble clic para ampliar/restablecer"
+                            onError={(e) => {
+                                const el = e.currentTarget;
+                                const fallback = resolveProformaFallbackUrl(currentImg.nombre_archivo);
+                                if (el.src !== fallback) {
+                                    el.src = fallback;
+                                }
+                            }}
                         />
                         {currentImg.descripcion && (
                             <div className="mt-3 max-w-2xl text-center px-5 py-2.5 bg-gray-900/90 text-white text-xs sm:text-sm font-medium rounded-xl border border-gray-700/80 shadow-2xl backdrop-blur-md z-20">
