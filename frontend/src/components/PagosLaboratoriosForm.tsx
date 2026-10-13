@@ -22,6 +22,7 @@ const PagosLaboratoriosForm: React.FC<PagosLaboratoriosFormProps> = ({ isOpen, o
     const [moneda, setMoneda] = useState('Bolivianos');
     const [tc, setTc] = useState<number | string>(6.96);
     const [idFormaPago, setIdFormaPago] = useState<number | ''>('');
+    const [monto, setMonto] = useState<number | string>('');
 
     const tcNum = parseFloat(String(tc).replace(',', '.')) || 6.96;
 
@@ -47,6 +48,10 @@ const PagosLaboratoriosForm: React.FC<PagosLaboratoriosFormProps> = ({ isOpen, o
             content: 'Si un trabajo de laboratorio tuvo algún inconveniente o por algún acuerdo no se pagará al laboratorio, marque la casilla "Marcar como Trabajo Observado / Traspasado" e indique el motivo. El trabajo no generará pago ni figurará como deuda pendiente.'
         },
         {
+            title: 'Monto a Pagar',
+            content: 'El monto a pagar se inicializa automáticamente con el total del trabajo seleccionado, pero puede editarlo libremente en caso de descuentos, anticipos o acuerdos especiales con el laboratorio.'
+        },
+        {
             title: 'Moneda y Tipo de Cambio',
             content: 'Seleccione la moneda del pago (Bolivianos o Dólares). El tipo de cambio se usa para conversiones y reportes.'
         },
@@ -64,6 +69,7 @@ const PagosLaboratoriosForm: React.FC<PagosLaboratoriosFormProps> = ({ isOpen, o
                 setMoneda('Bolivianos');
                 setTc(6.96);
                 setIdFormaPago('');
+                setMonto('');
                 setSelectedLabId('');
                 setSelectedPatientId('');
                 setIdTrabajosLaboratorios(initialWorkId || '');
@@ -116,6 +122,9 @@ const PagosLaboratoriosForm: React.FC<PagosLaboratoriosFormProps> = ({ isOpen, o
                         setTc(Number(pago.tc) || 6.96);
 
                         if (pago.idforma_pago) setIdFormaPago(pago.idforma_pago);
+                        if (pago.monto !== undefined && pago.monto !== null) {
+                            setMonto(pago.monto);
+                        }
 
                         if (pago.trabajoLaboratorio) {
                             currentPaymentWorkId = pago.trabajoLaboratorio.id;
@@ -141,6 +150,10 @@ const PagosLaboratoriosForm: React.FC<PagosLaboratoriosFormProps> = ({ isOpen, o
                         setSelectedLabId(work.idLaboratorio || work.laboratorio?.id || '');
                         setSelectedPatientId(work.idPaciente || work.paciente?.id || '');
                         setIdTrabajosLaboratorios(work.id);
+                        if (!isEdit) {
+                            const baseAmount = Number(work.total) || 0;
+                            setMonto(baseAmount > 0 ? baseAmount.toFixed(2) : '');
+                        }
                     }
                 } catch (err) {
                     console.error('Error loading current payment work:', err);
@@ -236,16 +249,50 @@ const PagosLaboratoriosForm: React.FC<PagosLaboratoriosFormProps> = ({ isOpen, o
         setIdTrabajosLaboratorios('');
         setEsObservado(false);
         setObservacionTraspaso('');
+        setMonto('');
     };
 
     const handleWorkSelect = (workId: number | '') => {
         setIdTrabajosLaboratorios(workId);
         if (workId) {
             const found = availableWorks.find(w => w.id === Number(workId));
-            if (found && found.traspasado === 'si') {
-                setEsObservado(true);
-                setObservacionTraspaso(found.observacion_traspaso || '');
+            if (found) {
+                if (found.traspasado === 'si') {
+                    setEsObservado(true);
+                    setObservacionTraspaso(found.observacion_traspaso || '');
+                }
+                const baseAmount = Number(found.total) || 0;
+                if (moneda === 'Dólares' && tcNum > 0) {
+                    setMonto((baseAmount / tcNum).toFixed(2));
+                } else {
+                    setMonto(baseAmount.toFixed(2));
+                }
             }
+        } else {
+            setMonto('');
+        }
+    };
+
+    const handleMonedaChange = (newMoneda: string) => {
+        setMoneda(newMoneda);
+        const selectedWork = availableWorks.find(w => w.id === Number(idTrabajosLaboratorios));
+        if (selectedWork) {
+            const baseAmount = Number(selectedWork.total) || 0;
+            if (newMoneda === 'Dólares' && tcNum > 0) {
+                setMonto((baseAmount / tcNum).toFixed(2));
+            } else {
+                setMonto(baseAmount.toFixed(2));
+            }
+        }
+    };
+
+    const handleTcChange = (newTc: string) => {
+        setTc(newTc);
+        const parsedTc = parseFloat(String(newTc).replace(',', '.')) || 0;
+        const selectedWork = availableWorks.find(w => w.id === Number(idTrabajosLaboratorios));
+        if (moneda === 'Dólares' && selectedWork && parsedTc > 0) {
+            const baseAmount = Number(selectedWork.total) || 0;
+            setMonto((baseAmount / parsedTc).toFixed(2));
         }
     };
 
@@ -288,17 +335,32 @@ const PagosLaboratoriosForm: React.FC<PagosLaboratoriosFormProps> = ({ isOpen, o
             return;
         }
 
-        const selectedWork = availableWorks.find(w => w.id === Number(idTrabajosLaboratorios));
-        const amountInBs = selectedWork ? Number(selectedWork.total) : 0;
-        const finalMonto = moneda === 'Dólares' && tcNum > 0 ? Number((amountInBs / tcNum).toFixed(2)) : amountInBs;
+        const parsedMonto = parseFloat(String(monto).replace(',', '.'));
+        if (isNaN(parsedMonto) || parsedMonto < 0) {
+            Swal.fire('Error', 'Por favor ingrese un monto a pagar válido', 'warning');
+            return;
+        }
 
-        const payload = {
+        const selectedWorkItem = availableWorks.find(w => w.id === Number(idTrabajosLaboratorios));
+        const selectedFp = formasPago.find(f => Number(f.id) === Number(idFormaPago));
+        const fpNormalized = (selectedFp?.forma_pago || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const isDepositoOrTransferencia = fpNormalized.includes('deposito') || fpNormalized.includes('transferencia');
+
+        let bancoCalculado = '';
+        if (isDepositoOrTransferencia && selectedWorkItem?.laboratorio) {
+            const labBanco = (selectedWorkItem.laboratorio.banco || '').trim();
+            const labCuenta = (selectedWorkItem.laboratorio.numero_cuenta || '').trim();
+            bancoCalculado = [labBanco, labCuenta].filter(Boolean).join(' ').trim();
+        }
+
+        const payload: any = {
             fecha,
             idTrabajos_Laboratorios: Number(idTrabajosLaboratorios),
-            monto: finalMonto,
+            monto: parsedMonto,
             moneda,
             tc: moneda === 'Dólares' ? tcNum : 0,
-            idforma_pago: Number(idFormaPago)
+            idforma_pago: Number(idFormaPago),
+            banco: isDepositoOrTransferencia ? bancoCalculado : ''
         };
 
         try {
@@ -333,6 +395,13 @@ const PagosLaboratoriosForm: React.FC<PagosLaboratoriosFormProps> = ({ isOpen, o
     const selectedWork = availableWorks.find(w => w.id === idTrabajosLaboratorios);
     const amountInBs = selectedWork ? Number(selectedWork.total) : 0;
     const amountToPay = moneda === 'Dólares' && tcNum > 0 ? amountInBs / tcNum : amountInBs;
+
+    const selectedFormaPagoObj = formasPago.find(f => Number(f.id) === Number(idFormaPago));
+    const fpNameNormalized = (selectedFormaPagoObj?.forma_pago || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const isCurrentDepositoOrTransferencia = fpNameNormalized.includes('deposito') || fpNameNormalized.includes('transferencia');
+    const currentLabBancoInfo = selectedWork?.laboratorio
+        ? [selectedWork.laboratorio.banco, selectedWork.laboratorio.numero_cuenta].filter(Boolean).join(' ').trim()
+        : '';
 
     if (!isOpen) return null;
 
@@ -394,6 +463,7 @@ const PagosLaboratoriosForm: React.FC<PagosLaboratoriosFormProps> = ({ isOpen, o
                                 setIdTrabajosLaboratorios('');
                                 setEsObservado(false);
                                 setObservacionTraspaso('');
+                                setMonto('');
                             }}
                             placeholder="-- Seleccione un Laboratorio --"
                             searchPlaceholder="Buscar laboratorio..."
@@ -491,13 +561,13 @@ const PagosLaboratoriosForm: React.FC<PagosLaboratoriosFormProps> = ({ isOpen, o
 
                     {!esObservado && (
                         <>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="block mb-1 font-bold text-sm text-gray-700 dark:text-gray-300">Moneda:</label>
                                     <select
                                         value={moneda}
-                                        onChange={(e) => setMoneda(e.target.value)}
-                                        className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-2 focus:outline-none focus:ring-blue-500 font-medium cursor-pointer"
+                                        onChange={(e) => handleMonedaChange(e.target.value)}
+                                        className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-2 focus:outline-none focus:ring-blue-500 font-medium cursor-pointer h-[38px]"
                                     >
                                         <option value="Bolivianos">Bolivianos</option>
                                         <option value="Dólares">Dólares</option>
@@ -511,51 +581,89 @@ const PagosLaboratoriosForm: React.FC<PagosLaboratoriosFormProps> = ({ isOpen, o
                                             type="text"
                                             inputMode="decimal"
                                             value={tc}
-                                            onChange={(e) => setTc(e.target.value)}
+                                            onChange={(e) => handleTcChange(e.target.value)}
                                             placeholder="Ej: 6.96 o 6,96"
-                                            className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-2 focus:outline-none focus:ring-blue-500 font-medium"
+                                            className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-2 focus:outline-none focus:ring-blue-500 font-medium h-[38px]"
                                         />
                                     </div>
                                 )}
                             </div>
 
-                            {/* Forma de Pago con Botón de agregar "+" */}
-                            <div>
-                                <label className="block mb-1 font-bold text-sm text-gray-700 dark:text-gray-300">Forma de Pago:</label>
-                                <div className="flex items-center gap-2">
-                                    <div className="relative flex-grow">
-                                        <select
-                                            value={idFormaPago}
-                                            onChange={(e) => setIdFormaPago(Number(e.target.value) || '')}
+                            {/* Fila alineada: Monto a Pagar, Forma de Pago y Botón + */}
+                            <div className="flex items-end gap-3 w-full">
+                                <div className="w-[42%] shrink-0">
+                                    <label className="block mb-1 font-bold text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                                        Monto a Pagar ({moneda === 'Dólares' ? '$us' : 'Bs'}): <span className="text-red-500">*</span>
+                                    </label>
+                                    <div className="relative">
+                                        <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500 dark:text-gray-400 font-bold text-sm">
+                                            {moneda === 'Dólares' ? '$us' : 'Bs.'}
+                                        </span>
+                                        <input
+                                            type="text"
+                                            inputMode="decimal"
+                                            value={monto}
+                                            onChange={(e) => setMonto(e.target.value)}
                                             required={!esObservado}
-                                            className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-2 focus:outline-none focus:ring-blue-500 font-medium cursor-pointer"
-                                        >
-                                            <option value="">Seleccione Forma de Pago...</option>
-                                            {formasPago.map((fp) => (
-                                                <option key={fp.id} value={fp.id}>
-                                                    {fp.forma_pago}
-                                                </option>
-                                            ))}
-                                        </select>
+                                            placeholder="0.00"
+                                            className="w-full pl-12 pr-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-2 focus:outline-none focus:ring-blue-500 font-bold h-[38px]"
+                                        />
                                     </div>
-                                    <button
-                                        type="button"
-                                        onClick={() => setIsFormaPagoModalOpen(true)}
-                                        className="py-2.5 px-4 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold shadow-md transition-all transform hover:-translate-y-0.5 active:scale-95 flex items-center justify-center text-lg shrink-0 border border-orange-500 hover:border-orange-600 cursor-pointer"
-                                        title="Agregar Nueva Forma de Pago"
-                                    >
-                                        +
-                                    </button>
+                                </div>
+
+                                <div className="flex-1 min-w-0">
+                                    <label className="block mb-1 font-bold text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                                        Forma de Pago: <span className="text-red-500">*</span>
+                                    </label>
+                                    <div className="flex items-center gap-2">
+                                        <div className="relative flex-grow min-w-0">
+                                            <select
+                                                value={idFormaPago}
+                                                onChange={(e) => setIdFormaPago(Number(e.target.value) || '')}
+                                                required={!esObservado}
+                                                className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-2 focus:outline-none focus:ring-blue-500 font-medium cursor-pointer h-[38px]"
+                                            >
+                                                <option value="">Seleccione Forma de Pago...</option>
+                                                {formasPago.map((fp) => (
+                                                    <option key={fp.id} value={fp.id}>
+                                                        {fp.forma_pago}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsFormaPagoModalOpen(true)}
+                                            className="h-[38px] w-[38px] rounded-lg bg-orange-500 hover:bg-orange-600 text-white font-bold shadow-md transition-all transform hover:-translate-y-0.5 active:scale-95 flex items-center justify-center text-lg shrink-0 border border-orange-500 hover:border-orange-600 cursor-pointer"
+                                            title="Agregar Nueva Forma de Pago"
+                                        >
+                                            +
+                                        </button>
+                                    </div>
+                                    {isCurrentDepositoOrTransferencia && (
+                                        <div className="mt-1 text-xs text-blue-600 dark:text-blue-400 font-semibold flex items-center gap-1.5">
+                                            <span>🏦 Cuenta:</span>
+                                            <span>{currentLabBancoInfo || 'Sin banco/cuenta registrado en el laboratorio'}</span>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
                             {selectedWork && (
-                                <div className="bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-xl p-4 text-right">
-                                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase mr-2">Monto Base:</span>
-                                    <span className="font-bold text-gray-800 dark:text-gray-200">Bs. {amountInBs.toFixed(2)}</span>
-                                    <div className="mt-1 text-lg font-extrabold text-gray-900 dark:text-white">
-                                        Total a Pagar: <span className="text-green-600 dark:text-green-400">
-                                            {moneda === 'Dólares' ? '$us ' : 'Bs. '} {amountToPay.toFixed(2)}
+                                <div className="bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-xl p-4 flex flex-col sm:flex-row justify-between sm:items-center gap-2">
+                                    <div>
+                                        <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase mr-2">Monto Base del Trabajo:</span>
+                                        <span className="font-bold text-gray-800 dark:text-gray-200">Bs. {amountInBs.toFixed(2)}</span>
+                                        {moneda === 'Dólares' && tcNum > 0 && (
+                                            <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">
+                                                (equiv. $us {(amountInBs / tcNum).toFixed(2)})
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div className="sm:text-right">
+                                        <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase block">Total a Pagar a Registrar:</span>
+                                        <span className="text-lg font-extrabold text-green-600 dark:text-green-400">
+                                            {moneda === 'Dólares' ? '$us ' : 'Bs. '} {parseFloat(String(monto).replace(',', '.')) ? parseFloat(String(monto).replace(',', '.')).toFixed(2) : '0.00'}
                                         </span>
                                     </div>
                                 </div>

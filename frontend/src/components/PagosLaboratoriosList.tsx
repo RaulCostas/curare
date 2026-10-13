@@ -364,7 +364,10 @@ const PagosLaboratoriosList: React.FC = () => {
                                     <td style="text-align: right;">${formatAmount(pUnit)}</td>
                                     <td style="text-align: center;">${cant}</td>
                                     <td style="text-align: right;">${formatAmount(total)}</td>
-                                    <td>${p.formaPago?.nombre || p.formaPago?.forma_pago || '-'}</td>
+                                    <td>
+                                        ${p.formaPago?.nombre || p.formaPago?.forma_pago || '-'}
+                                        ${p.banco ? `<br/><small style="color: #2563eb; font-weight: 600;">${p.banco}</small>` : ''}
+                                    </td>
                                 </tr>
                                 `;
                             }).join('')}
@@ -508,7 +511,7 @@ const PagosLaboratoriosList: React.FC = () => {
                     formatAmount(pUnit),
                     cant.toString(),
                     formatAmount(total),
-                    p.formaPago ? (p.formaPago.nombre || p.formaPago.forma_pago || '-') : '-'
+                    p.formaPago ? `${p.formaPago.nombre || p.formaPago.forma_pago || '-'}${p.banco ? ` (${p.banco})` : ''}` : '-'
                 ];
             });
 
@@ -770,7 +773,12 @@ const PagosLaboratoriosList: React.FC = () => {
                                         {formatAmount(total)}
                                     </td>
                                     <td className="p-3 text-gray-700 dark:text-gray-300">
-                                        {pago.formaPago ? (pago.formaPago.nombre || pago.formaPago.forma_pago || '-') : '-'}
+                                        <div className="font-medium">{pago.formaPago ? (pago.formaPago.nombre || pago.formaPago.forma_pago || '-') : '-'}</div>
+                                        {pago.banco && (
+                                            <span className="text-xs text-blue-600 dark:text-blue-400 font-semibold block mt-0.5">
+                                                {pago.banco}
+                                            </span>
+                                        )}
                                     </td>
                                     <td className="p-3 flex gap-2 justify-center">
                                         <button

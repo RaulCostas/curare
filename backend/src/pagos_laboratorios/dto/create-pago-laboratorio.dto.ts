@@ -5,4 +5,5 @@ export class CreatePagoLaboratorioDto {
     moneda: string;
     idforma_pago: number;
     tc?: number;
+    banco?: string;
 }
