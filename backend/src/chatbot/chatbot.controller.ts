@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, BadRequestException, HttpException } from '@nestjs/common';
 import { ChatbotService } from './chatbot.service';
 
 @Controller('chatbot')
@@ -38,7 +38,14 @@ export class ChatbotController {
 
     @Post('send-birthday/:id')
     async sendBirthday(@Param('id') id: string) {
-        return this.chatbotService.sendBirthdayGreeting(+id);
+        try {
+            return await this.chatbotService.sendBirthdayGreeting(+id);
+        } catch (error: any) {
+            if (error instanceof HttpException) {
+                throw error;
+            }
+            throw new BadRequestException(error.message || 'Error al enviar felicitación');
+        }
     }
 
     @Post('send')

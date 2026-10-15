@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import Swal from 'sweetalert2';
@@ -21,6 +21,7 @@ const Home: React.FC = () => {
     const [planesPendientes, setPlanesPendientes] = useState<RecordatorioPlan[]>([]);
     const [birthdaySentIds, setBirthdaySentIds] = useState<Set<number>>(new Set());
     const [birthdayLoadingIds, setBirthdayLoadingIds] = useState<Set<number>>(new Set());
+    const birthdayLoadingRef = useRef<Set<number>>(new Set());
 
     // Permission Logic
     const userString = localStorage.getItem('user');
@@ -525,7 +526,8 @@ const Home: React.FC = () => {
                                     <div className="flex items-center gap-3">
                                         <button
                                             onClick={async () => {
-                                                if (isSent || isLoading) return;
+                                                if (isSent || isLoading || birthdayLoadingRef.current.has(paciente.id)) return;
+                                                birthdayLoadingRef.current.add(paciente.id);
                                                 setBirthdayLoadingIds(prev => new Set(prev).add(paciente.id));
                                                 try {
                                                     await api.post(`/chatbot/send-birthday/${paciente.id}`);
@@ -538,17 +540,28 @@ const Home: React.FC = () => {
                                                         showConfirmButton: false,
                                                     });
                                                 } catch (err: any) {
-                                                    const errorMsg = err.response?.data?.message || 'Verifica que el chatbot esté conectado a WhatsApp.';
-                                                    Swal.fire({
-                                                        icon: 'error',
-                                                        title: 'Error al enviar mensaje',
-                                                        text: errorMsg,
-                                                        confirmButtonText: 'OK',
-                                                    });
-                                                    if (errorMsg.includes('ya recibió la felicitación')) {
+                                                    const errorMsg = err.response?.data?.message || err.message || 'Verifica que el chatbot esté conectado a WhatsApp.';
+                                                    const errorLower = String(errorMsg).toLowerCase();
+                                                    const isAlreadySent = errorLower.includes('ya recibió') || errorLower.includes('ya recibio');
+
+                                                    if (isAlreadySent) {
                                                         setBirthdaySentIds(prev => new Set(prev).add(paciente.id));
+                                                        Swal.fire({
+                                                            icon: 'info',
+                                                            title: 'Felicitación ya enviada',
+                                                            text: `El paciente ${formatPaternoMaternoNombre(paciente)} ya recibió la felicitación de cumpleaños.`,
+                                                            confirmButtonText: 'OK',
+                                                        });
+                                                    } else {
+                                                        Swal.fire({
+                                                            icon: 'error',
+                                                            title: 'Error al enviar mensaje',
+                                                            text: errorMsg,
+                                                            confirmButtonText: 'OK',
+                                                        });
                                                     }
                                                 } finally {
+                                                    birthdayLoadingRef.current.delete(paciente.id);
                                                     setBirthdayLoadingIds(prev => { const s = new Set(prev); s.delete(paciente.id); return s; });
                                                 }
                                             }}

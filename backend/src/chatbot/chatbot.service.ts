@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit, OnModuleDestroy, Inject, forwardRef } from '@nestjs/common';
+import { Injectable, OnModuleInit, OnModuleDestroy, Inject, forwardRef, BadRequestException, NotFoundException, HttpException } from '@nestjs/common';
 import makeWASocket, {
     DisconnectReason,
     fetchLatestBaileysVersion,
@@ -47,6 +47,7 @@ interface SessionState {
 @Injectable()
 export class ChatbotService implements OnModuleInit, OnModuleDestroy {
     private sessions = new Map<number, SessionState>();
+    private sendingBirthdayIds = new Set<number>();
 
     constructor(
         private readonly pacientesService: PacientesService,
@@ -830,33 +831,38 @@ export class ChatbotService implements OnModuleInit, OnModuleDestroy {
     }
 
     async sendBirthdayGreeting(pacienteId: number) {
-        const paciente = await this.pacientesService.findOne(pacienteId);
-        if (!paciente) {
-            throw new Error('Paciente no encontrado');
+        if (this.sendingBirthdayIds.has(pacienteId)) {
+            throw new BadRequestException('Ya se está procesando el envío de felicitación para este paciente.');
         }
-
-        const currentYear = new Date().getFullYear();
-        if (paciente.fecha_felicitacion_cumpleanos) {
-            const envioYear = new Date(paciente.fecha_felicitacion_cumpleanos).getFullYear();
-            if (envioYear === currentYear) {
-                throw new Error('El paciente ya recibió la felicitación de cumpleaños este año');
-            }
-        }
-
-        let rawPhone = (paciente as any).telefono_celular || paciente.celular || paciente.telefono;
-        let celular = rawPhone?.replace(/\D/g, '');
-        if (!celular) {
-            throw new Error('El paciente no tiene número de celular registrado');
-        }
-
-        if (!celular.startsWith('591') && celular.length === 8) {
-            celular = `591${celular}`;
-        }
-        const jid = `${celular}@s.whatsapp.net`;
-        const primerNombre = (paciente.nombre || '').trim();
-        const text = `¡Feliz cumpleaños ${primerNombre}!\n\nTodo el equipo de Curare Centro Dental le enviamos nuestros mejores deseos, que tenga un día hermoso.\nGracias por confiar en nosotros para cuidar su sonrisa.\nQue este nuevo año de vida esté lleno de salud, alegría y razones para seguir sonriendo.`;
+        this.sendingBirthdayIds.add(pacienteId);
 
         try {
+            const paciente = await this.pacientesService.findOne(pacienteId);
+            if (!paciente) {
+                throw new NotFoundException('Paciente no encontrado');
+            }
+
+            const currentYear = new Date().getFullYear();
+            if (paciente.fecha_felicitacion_cumpleanos) {
+                const envioYear = new Date(paciente.fecha_felicitacion_cumpleanos).getFullYear();
+                if (envioYear === currentYear) {
+                    throw new BadRequestException('El paciente ya recibió la felicitación de cumpleaños este año');
+                }
+            }
+
+            let rawPhone = (paciente as any).telefono_celular || paciente.celular || paciente.telefono;
+            let celular = rawPhone?.replace(/\D/g, '');
+            if (!celular) {
+                throw new BadRequestException('El paciente no tiene número de celular registrado');
+            }
+
+            if (!celular.startsWith('591') && celular.length === 8) {
+                celular = `591${celular}`;
+            }
+            const jid = `${celular}@s.whatsapp.net`;
+            const primerNombre = (paciente.nombre || '').trim();
+            const text = `¡Feliz cumpleaños ${primerNombre}!\n\nTodo el equipo de Curare Centro Dental le enviamos nuestros mejores deseos, que tenga un día hermoso.\nGracias por confiar en nosotros para cuidar su sonrisa.\nQue este nuevo año de vida esté lleno de salud, alegría y razones para seguir sonriendo.`;
+
             let imageBuffer: Buffer | null = null;
             const possibleDirs = [
                 path.join(process.cwd(), 'uploads'),
@@ -884,33 +890,47 @@ export class ChatbotService implements OnModuleInit, OnModuleDestroy {
                 imageBuffer = Buffer.from(BIRTHDAY_IMAGE_BASE64, 'base64');
             }
 
-            if (imageBuffer) {
-                console.log(`[Chatbot] Enviando imagen de cumpleaños (${imageBuffer.length} bytes) con caption a ${jid}`);
-                await this.sendMessage(jid, {
-                    image: imageBuffer,
-                    caption: text,
-                    mimetype: 'image/jpeg'
-                });
-            } else {
-                console.warn(`[Chatbot] No se pudo obtener buffer de imagen de cumpleaños, enviando texto`);
-                await this.sendMessage(jid, text);
+            try {
+                if (imageBuffer) {
+                    console.log(`[Chatbot] Enviando imagen de cumpleaños (${imageBuffer.length} bytes) con caption a ${jid}`);
+                    await this.sendMessage(jid, {
+                        image: imageBuffer,
+                        caption: text,
+                        mimetype: 'image/jpeg'
+                    });
+                } else {
+                    console.warn(`[Chatbot] No se pudo obtener buffer de imagen de cumpleaños, enviando texto`);
+                    await this.sendMessage(jid, text);
+                }
+            } catch (error) {
+                console.error(`[Chatbot] Error enviando imagen de cumpleaños, reintentando como texto:`, error);
+                try {
+                    await this.sendMessage(jid, text);
+                } catch (fallbackErr: any) {
+                    console.error(`[Chatbot] Error enviando texto de cumpleaños fallback:`, fallbackErr);
+                    throw new BadRequestException(fallbackErr?.message || 'Error al enviar mensaje por WhatsApp');
+                }
             }
-        } catch (error) {
-            console.error(`[Chatbot] Error enviando imagen de cumpleaños:`, error);
-            await this.sendMessage(jid, text);
+
+            // Registrar la fecha de envío en la BD para evitar duplicados
+            try {
+                await this.pacientesService.updateFechaFelicitacion(pacienteId, new Date());
+            } catch (dbError) {
+                console.error(`[Chatbot] Error al registrar fecha de felicitación en base de datos:`, dbError);
+                // Si el mensaje de WhatsApp ya se envió exitosamente, no interrumpimos la respuesta exitosa
+            }
+
+            return { success: true, message: 'Felicitación enviada exitosamente' };
+        } finally {
+            this.sendingBirthdayIds.delete(pacienteId);
         }
-
-        // Registrar la fecha de envío en la BD para evitar duplicados
-        await this.pacientesService.updateFechaFelicitacion(pacienteId, new Date());
-
-        return { success: true };
     }
 
     async sendMessage(jid: string, content: string | any) {
         const session = this.getSession();
         if (session.status !== 'connected' || !session.sock) {
             console.warn(`[Chatbot] [CURARE] Cannot send message to ${jid}: Not connected (status: ${session.status})`);
-            throw new Error('El chatbot no está conectado a WhatsApp');
+            throw new BadRequestException('El chatbot no está conectado a WhatsApp');
         }
 
         try {
