@@ -33,6 +33,10 @@ class CreateProformaDetalleDto {
 
     @IsBoolean()
     posible: boolean;
+
+    @IsOptional()
+    @IsString()
+    precio?: string;
 }
 
 export class CreateProformaDto {
@@ -61,6 +65,10 @@ export class CreateProformaDto {
     @IsOptional()
     @IsString()
     fecha_aprobado?: string;
+
+    @IsOptional()
+    @IsString()
+    fecha_envio?: string;
 
     @IsArray()
     @ValidateNested({ each: true })

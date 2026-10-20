@@ -7,6 +7,7 @@ import { Proforma } from './entities/proforma.entity';
 import { User } from '../users/entities/user.entity';
 import { ProformaDetalle } from './entities/proforma-detalle.entity';
 import { ProformaImagen } from './entities/proforma-imagen.entity';
+import { Arancel } from '../arancel/entities/arancel.entity';
 import { UsersService } from '../users/users.service';
 import { ChatbotService } from '../chatbot/chatbot.service';
 import { formatWhatsAppJid } from '../common/utils/phone.utils';
@@ -169,6 +170,11 @@ export class ProformasService {
           ? updateProformaDto.fecha_aprobado.split('T')[0]
           : null;
       }
+      if (updateProformaDto.fecha_envio !== undefined) {
+        proforma.fecha_envio = updateProformaDto.fecha_envio
+          ? new Date(updateProformaDto.fecha_envio)
+          : null;
+      }
 
       // Recalculate total if details are provided
       if (updateProformaDto.detalles) {
@@ -222,9 +228,48 @@ export class ProformasService {
           detalle.descuento = item.descuento;
           detalle.total = item.total;
           detalle.posible = item.posible;
+          if (item.precio) {
+            detalle.precio = item.precio;
+          }
 
           const savedDetalle = await queryRunner.manager.save(ProformaDetalle, detalle);
           savedDetalles.push(savedDetalle);
+
+          // Actualizar el precio en la tabla historia_clinica asociada a este tratamiento
+          if (savedDetalle.id) {
+            await queryRunner.manager.query(
+              `UPDATE historia_clinica
+               SET precio = ROUND(($1::numeric * COALESCE(NULLIF(cantidad, 0), 1) * (1 - COALESCE($2::numeric, 0) / 100.0)), 2)
+               WHERE "proformaDetalleId" = $3`,
+              [savedDetalle.precioUnitario, savedDetalle.descuento || 0, savedDetalle.id]
+            );
+
+            if (savedDetalle.arancelId) {
+              const arancel = await queryRunner.manager.findOne(Arancel, { where: { id: savedDetalle.arancelId } });
+              if (arancel && arancel.detalle) {
+                await queryRunner.manager.query(
+                  `UPDATE historia_clinica
+                   SET precio = ROUND(($1::numeric * COALESCE(NULLIF(cantidad, 0), 1) * (1 - COALESCE($2::numeric, 0) / 100.0)), 2),
+                       "proformaDetalleId" = $3,
+                       "arancelId" = COALESCE("arancelId", $5)
+                   WHERE "proformaId" = $4
+                     AND "proformaDetalleId" IS NULL
+                     AND (
+                       "arancelId" = $5
+                       OR LOWER(TRIM(tratamiento)) = LOWER(TRIM($6))
+                     )`,
+                  [
+                    savedDetalle.precioUnitario,
+                    savedDetalle.descuento || 0,
+                    savedDetalle.id,
+                    proforma.id,
+                    savedDetalle.arancelId,
+                    arancel.detalle
+                  ]
+                );
+              }
+            }
+          }
         }
 
         // Update proforma total
@@ -445,7 +490,12 @@ export class ProformasService {
         fileName: `Presupuesto_${proforma.numero}.pdf`,
         caption: `Estimado(a) ${paciente.nombre}, aquí tiene el detalle de su presupuesto (N° ${proforma.numero}).`
       });
-      return { success: true, message: 'Enviado correctamente' };
+
+      const now = new Date();
+      proforma.fecha_envio = now;
+      await this.proformaRepository.save(proforma);
+
+      return { success: true, message: 'Enviado correctamente', fecha_envio: now };
     } catch (error) {
       console.error('Error sending WhatsApp:', error);
       throw new Error('Error al enviar mensaje de WhatsApp');

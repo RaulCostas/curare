@@ -21,6 +21,7 @@ interface DetalleItem {
     descuento: number;
     total: number;
     posible: boolean;
+    precio?: string;
 }
 
 interface PresupuestoFormProps {
@@ -144,7 +145,8 @@ const PresupuestoForm: React.FC<PresupuestoFormProps> = ({
                     subTotal: Number(d.subTotal || 0),
                     descuento: Number(d.descuento || 0),
                     total: Number(d.total || 0),
-                    posible: Boolean(d.posible)
+                    posible: Boolean(d.posible),
+                    precio: d.precio
                 }));
                 setDetalles(mappedDetalles);
             }
@@ -226,7 +228,8 @@ const PresupuestoForm: React.FC<PresupuestoFormProps> = ({
             subTotal,
             descuento: descNum,
             total,
-            posible
+            posible,
+            precio: precioType === 'precio1' ? '1' : '2'
         };
 
         if (editingIndex !== null) {
@@ -236,6 +239,7 @@ const PresupuestoForm: React.FC<PresupuestoFormProps> = ({
             setEditingIndex(null);
         } else {
             setDetalles([...detalles, newItem]);
+            setAprobado(false);
         }
 
         setSelectedArancelId(0);
@@ -244,7 +248,6 @@ const PresupuestoForm: React.FC<PresupuestoFormProps> = ({
         setCantidad(1);
         setDescuento(0);
         setPosible(false);
-        setAprobado(false);
     };
 
     const handleRemoveItem = (index: number) => {
@@ -272,8 +275,12 @@ const PresupuestoForm: React.FC<PresupuestoFormProps> = ({
         setPosible(item.posible);
 
         const arancel = aranceles.find(a => a.id === item.arancelId);
-        if (arancel) {
-            if (item.precioUnitario === Number(arancel.precio2)) {
+        if (item.precio === '2' || item.precio === 'precio2') {
+            setPrecioType('precio2');
+        } else if (item.precio === '1' || item.precio === 'precio1') {
+            setPrecioType('precio1');
+        } else if (arancel) {
+            if (Number(item.precioUnitario) === Number(arancel.precio2)) {
                 setPrecioType('precio2');
             } else {
                 setPrecioType('precio1');
@@ -318,6 +325,19 @@ const PresupuestoForm: React.FC<PresupuestoFormProps> = ({
     };
 
     const isItemCompleted = (item: DetalleItem) => {
+        // Check if matching history has estadoPresupuesto = 'terminado'
+        const presupuestoTerminado = historiaClinica.some(h => {
+            if (h.estadoPresupuesto !== 'terminado') return false;
+            if (h.proformaDetalleId && item.id) {
+                return h.proformaDetalleId === item.id;
+            }
+            if (proformaId && h.proformaId === Number(proformaId)) {
+                return h.tratamiento === item.tratamiento;
+            }
+            return false;
+        });
+        if (presupuestoTerminado) return true;
+
         const matchingHistory = historiaClinica.filter(h => {
             if (h.estadoTratamiento !== 'terminado') return false;
             if (h.proformaDetalleId) {
@@ -371,7 +391,8 @@ const PresupuestoForm: React.FC<PresupuestoFormProps> = ({
                     subTotal: d.subTotal,
                     descuento: d.descuento,
                     total: d.total,
-                    posible: d.posible
+                    posible: d.posible,
+                    precio: d.precio
                 }))
             };
 
@@ -584,7 +605,7 @@ const PresupuestoForm: React.FC<PresupuestoFormProps> = ({
 
                             <div className="mt-4 flex items-center gap-6">
                                 <span className="text-sm font-bold text-gray-700 dark:text-gray-300 uppercase">Precio:</span>
-                                <label className={`inline-flex items-center cursor-pointer group ${editingIndex !== null && detalles[editingIndex] && isItemCompleted(detalles[editingIndex]) ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                                <label className="inline-flex items-center cursor-pointer group">
                                     <div className="relative flex items-center">
                                         <input
                                             type="radio"
@@ -592,7 +613,6 @@ const PresupuestoForm: React.FC<PresupuestoFormProps> = ({
                                             value="precio1"
                                             checked={precioType === 'precio1'}
                                             onChange={() => handlePrecioTypeChange('precio1')}
-                                            disabled={editingIndex !== null && detalles[editingIndex] && isItemCompleted(detalles[editingIndex])}
                                             className="peers sr-only"
                                         />
                                         <div className={`w-5 h-5 border-2 border-gray-400 rounded-full group-hover:border-blue-500 transition-colors ${precioType === 'precio1' ? 'border-blue-600 bg-white' : ''}`}>
@@ -603,7 +623,7 @@ const PresupuestoForm: React.FC<PresupuestoFormProps> = ({
                                         Precio 1{selectedArancelId && aranceles.find(a => a.id === Number(selectedArancelId))?.precio1 ? ` (Bs. ${formatCurrency(aranceles.find(a => a.id === Number(selectedArancelId))!.precio1)})` : ''}
                                     </span>
                                 </label>
-                                <label className={`inline-flex items-center cursor-pointer group ${editingIndex !== null && detalles[editingIndex] && isItemCompleted(detalles[editingIndex]) ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                                <label className="inline-flex items-center cursor-pointer group">
                                     <div className="relative flex items-center">
                                         <input
                                             type="radio"
@@ -611,7 +631,6 @@ const PresupuestoForm: React.FC<PresupuestoFormProps> = ({
                                             value="precio2"
                                             checked={precioType === 'precio2'}
                                             onChange={() => handlePrecioTypeChange('precio2')}
-                                            disabled={editingIndex !== null && detalles[editingIndex] && isItemCompleted(detalles[editingIndex])}
                                             className="peer sr-only"
                                         />
                                         <div className={`w-5 h-5 border-2 border-gray-400 rounded-full group-hover:border-blue-500 transition-colors ${precioType === 'precio2' ? 'border-blue-600 bg-white' : ''}`}>
@@ -637,7 +656,6 @@ const PresupuestoForm: React.FC<PresupuestoFormProps> = ({
                                     value={customPrecioUnitario}
                                     onChange={(e) => setCustomPrecioUnitario(e.target.value)}
                                     placeholder="0.00"
-                                    disabled={editingIndex !== null && detalles[editingIndex] && isItemCompleted(detalles[editingIndex])}
                                     className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 transition-colors disabled:bg-gray-100 dark:disabled:bg-gray-900 disabled:cursor-not-allowed"
                                 />
                             </div>

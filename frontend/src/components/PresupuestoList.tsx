@@ -26,6 +26,7 @@ interface Proforma {
     detalles: any[];
     usuarioAprobado?: { name: string };
     fecha_aprobado?: string;
+    fecha_envio?: string | null;
     tieneFirma?: boolean;
 }
 
@@ -50,6 +51,18 @@ const PresupuestoList: React.FC = () => {
     // Pagination
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 10;
+
+    const formatDateTime = (dateInput: string | Date | undefined | null): string => {
+        if (!dateInput) return '';
+        const d = new Date(dateInput);
+        if (isNaN(d.getTime())) return '';
+        const day = String(d.getDate()).padStart(2, '0');
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const year = d.getFullYear();
+        const hours = String(d.getHours()).padStart(2, '0');
+        const minutes = String(d.getMinutes()).padStart(2, '0');
+        return `${day}/${month}/${year} ${hours}:${minutes}`;
+    };
 
     // User permissions for WhatsApp budget sending
     const [userPermisos, setUserPermisos] = useState<string[]>(() => {
@@ -358,6 +371,10 @@ const PresupuestoList: React.FC = () => {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
 
+            if (id) {
+                fetchProformas(Number(id));
+            }
+
             Swal.fire({
                 icon: 'success',
                 title: '¡Enviado!',
@@ -379,7 +396,12 @@ const PresupuestoList: React.FC = () => {
         }
     };
 
-    const generatePDF = async (proforma: Proforma, action: 'print' | 'download' | 'blob', includePaymentInfo: boolean = true) => {
+    const generatePDF = async (
+        proforma: Proforma,
+        action: 'print' | 'download' | 'blob',
+        includePaymentInfo: boolean = true,
+        includeSentDate: boolean = false
+    ) => {
         // Show loading alert because we are not opening a window immediately
         if (action !== 'blob') {
             Swal.fire({
@@ -428,7 +450,17 @@ const PresupuestoList: React.FC = () => {
         const preNumY = introY + 7;
         const tableStartY = preNumY + 4;
 
-        // 1. Date (Right aligned)
+        // 1. Sent date by WhatsApp (Above main date if requested)
+        if (includeSentDate && proforma.fecha_envio) {
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(8);
+            doc.setTextColor(70, 70, 70);
+            doc.text(`Enviado por WhatsApp: ${formatDateTime(proforma.fecha_envio)}`, 196, dateY - 4.5, { align: 'right' });
+            doc.setTextColor(0);
+        }
+
+        // 1.1 Main Date (Right aligned)
+        doc.setFont('helvetica', 'normal');
         doc.setFontSize(9);
         doc.setTextColor(0);
         const dateStr = formatDateSpanish(proforma.fecha);
@@ -690,6 +722,18 @@ const PresupuestoList: React.FC = () => {
         doc.line(120, sigY, 180, sigY);
         doc.text(patientName, 125, sigY + 5);
 
+        if (includeSentDate && proforma.fecha_envio) {
+            const pageCount = (doc as any).internal.getNumberOfPages();
+            for (let i = 1; i <= pageCount; i++) {
+                doc.setPage(i);
+                doc.setFont('helvetica', 'italic');
+                doc.setFontSize(7);
+                doc.setTextColor(110, 110, 110);
+                doc.text(`Enviado por WhatsApp: ${formatDateTime(proforma.fecha_envio)}`, 14, 290);
+            }
+            doc.setTextColor(0);
+        }
+
         if (action !== 'blob') {
             if (Swal.isVisible()) Swal.close();
         }
@@ -703,6 +747,94 @@ const PresupuestoList: React.FC = () => {
         } else if (action === 'blob') {
             return doc.output('blob');
         }
+    };
+
+    const handlePrint = async (proforma: Proforma, includePaymentInfo: boolean) => {
+        let includeSentDate = false;
+
+        if (proforma.fecha_envio) {
+            const result = await Swal.fire({
+                title: 'Opciones de Impresión',
+                html: `
+                    <div class="text-left text-sm space-y-3">
+                        <div class="p-3 bg-emerald-50 dark:bg-emerald-950/40 rounded-lg border border-emerald-200 dark:border-emerald-800">
+                            <div class="text-xs text-emerald-700 dark:text-emerald-300 font-semibold mb-0.5">Fecha y hora de envío registrada:</div>
+                            <div class="text-emerald-800 dark:text-emerald-200 font-bold">${formatDateTime(proforma.fecha_envio)}</div>
+                        </div>
+                        <p class="text-gray-700 dark:text-gray-300">
+                            ¿Desea incluir la constancia <strong>"Enviado por WhatsApp"</strong> en el documento impreso?
+                        </p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">
+                            • <strong>Sí:</strong> Se mostrará <em>"Enviado por WhatsApp: ${formatDateTime(proforma.fecha_envio)}"</em> encima de la fecha.<br/>
+                            • <strong>No (Hoja membretada):</strong> Se imprimirá limpio sin datos de envío (ideal para entregar al paciente en papel membretado).
+                        </p>
+                    </div>
+                `,
+                icon: 'question',
+                showCancelButton: true,
+                showDenyButton: true,
+                confirmButtonText: 'Sí, incluir fecha de envío',
+                denyButtonText: 'No (Hoja membretada)',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#16a34a',
+                denyButtonColor: '#4b5563',
+                cancelButtonColor: '#9ca3af',
+                background: document.documentElement.classList.contains('dark') ? '#1f2937' : '#fff',
+                color: document.documentElement.classList.contains('dark') ? '#f3f4f6' : '#000',
+            });
+
+            if (result.isDismissed) {
+                return;
+            }
+
+            includeSentDate = result.isConfirmed;
+        }
+
+        await generatePDF(proforma, 'print', includePaymentInfo, includeSentDate);
+    };
+
+    const handleDownload = async (proforma: Proforma, includePaymentInfo: boolean) => {
+        let includeSentDate = false;
+
+        if (proforma.fecha_envio) {
+            const result = await Swal.fire({
+                title: 'Opciones de Descarga',
+                html: `
+                    <div class="text-left text-sm space-y-3">
+                        <div class="p-3 bg-emerald-50 dark:bg-emerald-950/40 rounded-lg border border-emerald-200 dark:border-emerald-800">
+                            <div class="text-xs text-emerald-700 dark:text-emerald-300 font-semibold mb-0.5">Fecha y hora de envío registrada:</div>
+                            <div class="text-emerald-800 dark:text-emerald-200 font-bold">${formatDateTime(proforma.fecha_envio)}</div>
+                        </div>
+                        <p class="text-gray-700 dark:text-gray-300">
+                            ¿Desea incluir la constancia <strong>"Enviado por WhatsApp"</strong> en el PDF descargado?
+                        </p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">
+                            • <strong>Sí:</strong> Se incluirá <em>"Enviado por WhatsApp: ${formatDateTime(proforma.fecha_envio)}"</em> encima de la fecha.<br/>
+                            • <strong>No:</strong> Se descargará limpio sin datos de envío.
+                        </p>
+                    </div>
+                `,
+                icon: 'question',
+                showCancelButton: true,
+                showDenyButton: true,
+                confirmButtonText: 'Sí, incluir fecha de envío',
+                denyButtonText: 'No (Sin fecha de envío)',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#16a34a',
+                denyButtonColor: '#4b5563',
+                cancelButtonColor: '#9ca3af',
+                background: document.documentElement.classList.contains('dark') ? '#1f2937' : '#fff',
+                color: document.documentElement.classList.contains('dark') ? '#f3f4f6' : '#000',
+            });
+
+            if (result.isDismissed) {
+                return;
+            }
+
+            includeSentDate = result.isConfirmed;
+        }
+
+        await generatePDF(proforma, 'download', includePaymentInfo, includeSentDate);
     };
 
     return (
@@ -851,12 +983,22 @@ const PresupuestoList: React.FC = () => {
                                                     </svg>
                                                 </button>
                                             </div>
+                                            {proforma.fecha_envio && (
+                                                <div className="mt-1.5 flex flex-col items-center">
+                                                    <span className="text-[10px] text-gray-500 dark:text-gray-400 font-medium leading-tight">
+                                                        Enviado:
+                                                    </span>
+                                                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold leading-tight">
+                                                        {formatDateTime(proforma.fecha_envio)}
+                                                    </span>
+                                                </div>
+                                            )}
                                         </td>
                                     )}
                                     <td className="px-5 py-4 whitespace-nowrap text-center no-print">
                                         <div className="flex gap-2 justify-center">
                                             <button
-                                                onClick={() => generatePDF(proforma, 'print', true)}
+                                                onClick={() => handlePrint(proforma, true)}
                                                 className="p-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 shadow-md transition-all transform hover:-translate-y-0.5"
                                                 title="Con Pago"
                                             >
@@ -865,7 +1007,7 @@ const PresupuestoList: React.FC = () => {
                                                 </svg>
                                             </button>
                                             <button
-                                                onClick={() => generatePDF(proforma, 'print', false)}
+                                                onClick={() => handlePrint(proforma, false)}
                                                 className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-md transition-all transform hover:-translate-y-0.5"
                                                 title="Sin pago"
                                             >
@@ -878,7 +1020,7 @@ const PresupuestoList: React.FC = () => {
                                     <td className="px-5 py-4 whitespace-nowrap text-center no-print">
                                         <div className="flex gap-2 justify-center">
                                             <button
-                                                onClick={() => generatePDF(proforma, 'download', true)}
+                                                onClick={() => handleDownload(proforma, true)}
                                                 className="p-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 shadow-md transition-all transform hover:-translate-y-0.5"
                                                 title="Con pago"
                                             >
@@ -887,7 +1029,7 @@ const PresupuestoList: React.FC = () => {
                                                 </svg>
                                             </button>
                                             <button
-                                                onClick={() => generatePDF(proforma, 'download', false)}
+                                                onClick={() => handleDownload(proforma, false)}
                                                 className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-md transition-all transform hover:-translate-y-0.5"
                                                 title="Sin pago"
                                             >

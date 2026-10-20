@@ -27,6 +27,7 @@ backups/
 !backend/scripts/migration_traspasado_produccion.sql
 !backend/scripts/migration_cumpleanos_produccion.sql
 !backend/scripts/actualizar_pagado_doctores.sql
+!backend/scripts/add_fecha_envio_to_proformas.sql
 
 # Uploads
 backend/uploads/*

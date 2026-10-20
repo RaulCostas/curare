@@ -268,6 +268,7 @@ export interface Proforma {
     total: number;
     detalles: ProformaDetalle[];
     estado?: string;
+    fecha_envio?: string | null;
     createdAt: string;
     updatedAt: string;
 }
@@ -520,6 +521,8 @@ export interface Proforma {
     usuario_aprobado?: number;
     usuarioAprobado?: User;
     fecha_aprobado?: string;
+    fecha_envio?: string | null;
+    tieneFirma?: boolean;
     detalles: ProformaDetalle[];
     createdAt: string;
     updatedAt: string;

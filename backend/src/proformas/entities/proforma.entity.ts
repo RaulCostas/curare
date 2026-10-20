@@ -80,6 +80,9 @@ export class Proforma {
     @Column({ type: 'text', nullable: true })
     deuda_observada_observacion: string;
 
+    @Column({ type: 'timestamp', nullable: true })
+    fecha_envio: Date | null;
+
     @CreateDateColumn()
     createdAt: Date;
 
