@@ -267,7 +267,7 @@ export class HistoriaClinicaService {
         });
 
         // Compute total sums for paid treatments matching criteria
-        const allMatching = await queryBuilder.skip(0).take(10000).getMany();
+        const allMatching = await queryBuilder.skip(0).take(100000).getMany();
         let sumSubTotal = 0;
         let sumTotalNeto = 0;
         let sumCostoLab = 0;

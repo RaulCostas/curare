@@ -8,6 +8,7 @@ import ManualModal, { type ManualSection } from './ManualModal';
 import Pagination from './Pagination';
 import SearchableSelect, { type Option } from './SearchableSelect';
 import { formatCurrency } from '../utils/formatters';
+import Swal from 'sweetalert2';
 
 interface TrabajosNoPagadosResponse {
     data: any[];
@@ -65,6 +66,7 @@ const TrabajosRealizadosList: React.FC = () => {
     // Search and loading
     const [searchTerm, setSearchTerm] = useState<string>('');
     const [loading, setLoading] = useState<boolean>(false);
+    const [exporting, setExporting] = useState<boolean>(false);
     const [showManual, setShowManual] = useState<boolean>(false);
 
     const limit = 10;
@@ -225,38 +227,124 @@ const TrabajosRealizadosList: React.FC = () => {
         return `${d}/${m}/${y}`;
     };
 
-    const exportToExcel = () => {
-        if (!selectedDoctorId) return;
+    const fetchAllForExport = async (tab: 'no-pagados' | 'pagados') => {
+        if (!selectedDoctorId) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Atención',
+                text: 'Por favor, seleccione un doctor primero.'
+            });
+            return null;
+        }
+
+        const params = new URLSearchParams({
+            doctorId: selectedDoctorId.toString(),
+            page: '1',
+            limit: '100000'
+        });
+        if (searchTerm.trim()) params.append('search', searchTerm.trim());
+
+        if (tab === 'no-pagados') {
+            const response = await api.get<TrabajosNoPagadosResponse>(
+                `/historia-clinica/trabajos-realizados/no-pagados?${params}`
+            );
+            return {
+                type: 'no-pagados' as const,
+                data: response.data?.data || [],
+                total: response.data?.total || 0,
+                sumTotal: response.data?.sumTotal || 0
+            };
+        } else {
+            const response = await api.get<TrabajosPagadosResponse>(
+                `/historia-clinica/trabajos-realizados/pagados?${params}`
+            );
+            return {
+                type: 'pagados' as const,
+                data: response.data?.data || [],
+                total: response.data?.total || 0,
+                sumTotalNeto: response.data?.sumTotalNeto || 0,
+                sumCostoLab: response.data?.sumCostoLab || 0,
+                sumSubTotal: response.data?.sumSubTotal || 0
+            };
+        }
+    };
+
+    const exportToExcel = async () => {
+        if (!selectedDoctorId) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Atención',
+                text: 'Por favor, seleccione un doctor para exportar.'
+            });
+            return;
+        }
+
         try {
+            setExporting(true);
+            const result = await fetchAllForExport(activeTab);
+            if (!result || result.data.length === 0) {
+                Swal.fire({
+                    icon: 'info',
+                    title: 'Sin datos',
+                    text: 'No hay registros para exportar.'
+                });
+                return;
+            }
+
             const docName = selectedDoctor ? `${selectedDoctor.paterno}_${selectedDoctor.nombre}` : 'Doctor';
             let excelData: any[] = [];
             let fileName = '';
 
-            if (activeTab === 'no-pagados') {
+            if (result.type === 'no-pagados') {
                 fileName = `Trabajos_No_Pagados_${docName}_${new Date().toISOString().split('T')[0]}.xlsx`;
-                excelData = noPagados.map((item, idx) => ({
-                    '#': (currentPage - 1) * limit + idx + 1,
+                excelData = result.data.map((item, idx) => ({
+                    '#': idx + 1,
                     'Fecha Cita': formatDateDisplay(item.fecha),
                     'Paciente': formatPatientName(item.paciente),
-                    'Tratamiento': item.tratamiento || item.proformaDetalle?.arancel?.detalle || 'N/A',
+                    'Tratamiento': item.tratamiento || item.proformaDetalle?.arancel?.detalle || 'Sin tratamiento',
                     'Elemento(s) Dental(es)': item.pieza || '-',
                     'Cant': item.cantidad || 1,
                     'Total Bs': Number(item.precio) || 0
                 }));
+
+                // Fila de totales
+                excelData.push({
+                    '#': '',
+                    'Fecha Cita': '',
+                    'Paciente': '',
+                    'Tratamiento': '',
+                    'Elemento(s) Dental(es)': '',
+                    'Cant': 'TOTAL BS:',
+                    'Total Bs': Number(result.sumTotal) || 0
+                });
             } else {
                 fileName = `Trabajos_Pagados_${docName}_${new Date().toISOString().split('T')[0]}.xlsx`;
-                excelData = pagados.map((item, idx) => ({
-                    '#': (currentPage - 1) * limit + idx + 1,
+                excelData = result.data.map((item, idx) => ({
+                    '#': idx + 1,
                     'Fecha Pago': formatDateDisplay(item.fechaPago),
                     'Paciente': formatPatientName(item.paciente),
                     'Tratamiento': item.tratamiento,
                     'Elemento(s) Dental(es)': item.pieza || '-',
                     'Cant': item.cantidad || 1,
                     'Total Neto Bs': item.totalNeto,
-                    'Desc. %': item.descuento,
+                    'Desc. %': item.descuento ? `${item.descuento}%` : '0%',
                     'Costo Lab Bs': item.costoLab,
                     'Sub Total Bs': item.subTotal
                 }));
+
+                // Fila de totales
+                excelData.push({
+                    '#': '',
+                    'Fecha Pago': '',
+                    'Paciente': '',
+                    'Tratamiento': '',
+                    'Elemento(s) Dental(es)': '',
+                    'Cant': 'TOTALES BS:',
+                    'Total Neto Bs': Number(result.sumTotalNeto) || 0,
+                    'Desc. %': '',
+                    'Costo Lab Bs': Number(result.sumCostoLab) || 0,
+                    'Sub Total Bs': Number(result.sumSubTotal) || 0
+                });
             }
 
             const ws = XLSX.utils.json_to_sheet(excelData);
@@ -265,12 +353,38 @@ const TrabajosRealizadosList: React.FC = () => {
             XLSX.writeFile(wb, fileName);
         } catch (err) {
             console.error('Error exporting to Excel:', err);
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Error al exportar a Excel'
+            });
+        } finally {
+            setExporting(false);
         }
     };
 
-    const exportToPDF = () => {
-        if (!selectedDoctorId) return;
+    const exportToPDF = async () => {
+        if (!selectedDoctorId) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Atención',
+                text: 'Por favor, seleccione un doctor para exportar.'
+            });
+            return;
+        }
+
         try {
+            setExporting(true);
+            const result = await fetchAllForExport(activeTab);
+            if (!result || result.data.length === 0) {
+                Swal.fire({
+                    icon: 'info',
+                    title: 'Sin datos',
+                    text: 'No hay registros para exportar.'
+                });
+                return;
+            }
+
             const doc = new jsPDF('landscape');
             const docName = selectedDoctor ? `Dr(a). ${selectedDoctor.paterno} ${selectedDoctor.nombre}` : '';
             const title = activeTab === 'no-pagados' ? 'Trabajos No Pagados' : 'Trabajos Pagados';
@@ -278,14 +392,14 @@ const TrabajosRealizadosList: React.FC = () => {
             doc.setFontSize(16);
             doc.text(`${title} - ${docName}`, 14, 15);
             doc.setFontSize(10);
-            doc.text(`Fecha de emisión: ${new Date().toLocaleDateString()}`, 14, 22);
+            doc.text(`Fecha de emisión: ${new Date().toLocaleDateString()} | Total registros: ${result.data.length}`, 14, 22);
 
-            if (activeTab === 'no-pagados') {
-                const tableData = noPagados.map((item, idx) => [
-                    ((currentPage - 1) * limit + idx + 1).toString(),
+            if (result.type === 'no-pagados') {
+                const tableData = result.data.map((item, idx) => [
+                    (idx + 1).toString(),
                     formatDateDisplay(item.fecha),
                     formatPatientName(item.paciente),
-                    item.tratamiento || item.proformaDetalle?.arancel?.detalle || 'N/A',
+                    item.tratamiento || item.proformaDetalle?.arancel?.detalle || 'Sin tratamiento',
                     item.pieza || '-',
                     (item.cantidad || 1).toString(),
                     `Bs ${formatCurrency(item.precio)}`
@@ -295,10 +409,18 @@ const TrabajosRealizadosList: React.FC = () => {
                     startY: 28,
                     head: [['#', 'Fecha Cita', 'Paciente', 'Tratamiento', 'Elemento(s) Dental(es)', 'Cant', 'Total Bs']],
                     body: tableData,
+                    foot: [[
+                        '', '', '', '', 'Total Pendiente:', '', `Bs ${formatCurrency(result.sumTotal)}`
+                    ]],
+                    footStyles: {
+                        fillColor: [238, 242, 255],
+                        textColor: [67, 56, 202],
+                        fontStyle: 'bold'
+                    }
                 });
             } else {
-                const tableData = pagados.map((item, idx) => [
-                    ((currentPage - 1) * limit + idx + 1).toString(),
+                const tableData = result.data.map((item, idx) => [
+                    (idx + 1).toString(),
                     formatDateDisplay(item.fechaPago),
                     formatPatientName(item.paciente),
                     item.tratamiento,
@@ -314,12 +436,28 @@ const TrabajosRealizadosList: React.FC = () => {
                     startY: 28,
                     head: [['#', 'Fecha Pago', 'Paciente', 'Tratamiento', 'Elemento(s) Dental(es)', 'Cant', 'Total Neto', 'Desc.', 'Costo Lab', 'Sub Total']],
                     body: tableData,
+                    foot: [[
+                        '', '', '', '', 'Totales:', '', `Bs ${formatCurrency(result.sumTotalNeto)}`, '', `Bs ${formatCurrency(result.sumCostoLab)}`, `Bs ${formatCurrency(result.sumSubTotal)}`
+                    ]],
+                    footStyles: {
+                        fillColor: [240, 253, 244],
+                        textColor: [21, 128, 61],
+                        fontStyle: 'bold'
+                    }
                 });
             }
 
-            doc.save(`Trabajos_${activeTab}_${new Date().toISOString().split('T')[0]}.pdf`);
+            const safeDoctorName = selectedDoctor ? `${selectedDoctor.paterno}_${selectedDoctor.nombre}` : 'Doctor';
+            doc.save(`Trabajos_${activeTab}_${safeDoctorName}_${new Date().toISOString().split('T')[0]}.pdf`);
         } catch (err) {
             console.error('Error exporting to PDF:', err);
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Error al exportar a PDF'
+            });
+        } finally {
+            setExporting(false);
         }
     };
 
@@ -361,7 +499,8 @@ const TrabajosRealizadosList: React.FC = () => {
                     </button>
                     <button
                         onClick={exportToExcel}
-                        className="bg-[#28a745] hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-xl shadow-md transition-all transform hover:-translate-y-0.5 flex items-center justify-center gap-2 text-sm"
+                        disabled={exporting}
+                        className="bg-[#28a745] hover:bg-green-600 disabled:opacity-50 text-white font-semibold py-2 px-4 rounded-xl shadow-md transition-all transform hover:-translate-y-0.5 flex items-center justify-center gap-2 text-sm"
                         title="Exportar a Excel"
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -370,7 +509,8 @@ const TrabajosRealizadosList: React.FC = () => {
                     </button>
                     <button
                         onClick={exportToPDF}
-                        className="bg-[#dc3545] hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-xl shadow-md transition-all transform hover:-translate-y-0.5 flex items-center justify-center gap-2 text-sm"
+                        disabled={exporting}
+                        className="bg-[#dc3545] hover:bg-red-700 disabled:opacity-50 text-white font-semibold py-2 px-4 rounded-xl shadow-md transition-all transform hover:-translate-y-0.5 flex items-center justify-center gap-2 text-sm"
                         title="Exportar a PDF"
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
