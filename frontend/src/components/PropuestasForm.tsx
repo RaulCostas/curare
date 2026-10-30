@@ -5,6 +5,7 @@ import type { Paciente, Arancel } from '../types';
 import ManualModal, { type ManualSection } from './ManualModal';
 import SearchableSelect from './SearchableSelect';
 import { formatCurrency } from '../utils/formatters';
+import { countDentalPieces } from './PresupuestoForm';
 
 interface DetalleItem {
     id?: number;
@@ -68,7 +69,7 @@ const PropuestasForm: React.FC<PropuestasFormProps> = ({
     const [precioType, setPrecioType] = useState<'precio1' | 'precio2'>('precio1');
     const [customPrecioUnitario, setCustomPrecioUnitario] = useState<number | ''>('');
     const [piezas, setPiezas] = useState('');
-    const [cantidad, setCantidad] = useState(1);
+    const [cantidad, setCantidad] = useState<number | string>(1);
     const [descuento, setDescuento] = useState(0);
     const [posible, setPosible] = useState(false);
     const [showManual, setShowManual] = useState(false);
@@ -220,8 +221,9 @@ const PropuestasForm: React.FC<PropuestasFormProps> = ({
             : (precioType === 'precio1' ? Number(arancel.precio1) : Number(arancel.precio2));
 
         const descNum = isNaN(parsedDesc) ? 0 : parsedDesc;
+        const cantNum = Math.max(1, Number(cantidad) || 1);
 
-        const subTotal = precio * cantidad;
+        const subTotal = precio * cantNum;
         const descuentoAmount = (subTotal * descNum) / 100;
         const total = subTotal - descuentoAmount;
 
@@ -234,7 +236,7 @@ const PropuestasForm: React.FC<PropuestasFormProps> = ({
             precioUnitario: precio,
             tc: Number(arancel.tc),
             piezas,
-            cantidad,
+            cantidad: cantNum,
             subTotal,
             descuento: descNum,
             total,
@@ -654,7 +656,11 @@ const PropuestasForm: React.FC<PropuestasFormProps> = ({
                                     <input
                                         type="text"
                                         value={piezas}
-                                        onChange={(e) => setPiezas(e.target.value)}
+                                        onChange={(e) => {
+                                            const val = e.target.value;
+                                            setPiezas(val);
+                                            setCantidad(countDentalPieces(val));
+                                        }}
                                         placeholder="Ej: 18, 24"
                                         className="w-full pl-10 pr-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-800 dark:text-white font-medium transition-all shadow-sm"
                                     />
@@ -672,7 +678,10 @@ const PropuestasForm: React.FC<PropuestasFormProps> = ({
                                         type="number"
                                         min="1"
                                         value={cantidad}
-                                        onChange={(e) => setCantidad(Number(e.target.value))}
+                                        onChange={(e) => {
+                                            const val = e.target.value;
+                                            setCantidad(val === '' ? ('' as any) : Number(val));
+                                        }}
                                         className="w-full pl-8 pr-2 py-2.5 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-800 dark:text-white font-medium transition-all shadow-sm"
                                     />
                                 </div>

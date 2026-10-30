@@ -8,6 +8,17 @@ import SearchableSelect from './SearchableSelect';
 import PresupuestoVoiceAssistant from './PresupuestoVoiceAssistant';
 import type { ParsedVoicePresupuestoItem } from '../utils/speechPresupuestoParser';
 
+export const countDentalPieces = (str?: string | null): number => {
+    if (!str || !str.trim()) return 1;
+    const pieces = str
+        .replace(/\b(?:piezas?|dientes?|elementos?)\b/gi, ' ')
+        .replace(/\b(?:y|e)\b/gi, ' ')
+        .split(/[/,;\-\s]+/)
+        .map(p => p.trim())
+        .filter(Boolean);
+    return pieces.length > 0 ? pieces.length : 1;
+};
+
 interface DetalleItem {
     id?: number;
     arancelId: number;
@@ -62,7 +73,7 @@ const PresupuestoForm: React.FC<PresupuestoFormProps> = ({
     const [precioType, setPrecioType] = useState<'precio1' | 'precio2'>('precio1');
     const [customPrecioUnitario, setCustomPrecioUnitario] = useState<number | string>('');
     const [piezas, setPiezas] = useState('');
-    const [cantidad, setCantidad] = useState(1);
+    const [cantidad, setCantidad] = useState<number | string>(1);
     const [descuento, setDescuento] = useState(0);
     const [posible, setPosible] = useState(false);
     const [showManual, setShowManual] = useState(false);
@@ -211,8 +222,9 @@ const PresupuestoForm: React.FC<PresupuestoFormProps> = ({
             : (precioType === 'precio1' ? Number(arancel.precio1) : Number(arancel.precio2));
 
         const descNum = isNaN(parsedDesc) ? 0 : parsedDesc;
+        const cantNum = Math.max(1, Number(cantidad) || 1);
 
-        const subTotal = precio * cantidad;
+        const subTotal = precio * cantNum;
         const descuentoAmount = (subTotal * descNum) / 100;
         const total = subTotal - descuentoAmount;
 
@@ -224,7 +236,7 @@ const PresupuestoForm: React.FC<PresupuestoFormProps> = ({
             precioUnitario: precio,
             tc: Number(arancel.tc),
             piezas,
-            cantidad,
+            cantidad: cantNum,
             subTotal,
             descuento: descNum,
             total,
@@ -675,7 +687,11 @@ const PresupuestoForm: React.FC<PresupuestoFormProps> = ({
                                     <input
                                         type="text"
                                         value={piezas}
-                                        onChange={(e) => setPiezas(e.target.value)}
+                                        onChange={(e) => {
+                                            const val = e.target.value;
+                                            setPiezas(val);
+                                            setCantidad(countDentalPieces(val));
+                                        }}
                                         placeholder="Ej. 11, 12, 13..."
                                         className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 transition-colors"
                                     />
@@ -693,7 +709,10 @@ const PresupuestoForm: React.FC<PresupuestoFormProps> = ({
                                         type="number"
                                         min="1"
                                         value={cantidad}
-                                        onChange={(e) => setCantidad(Number(e.target.value))}
+                                        onChange={(e) => {
+                                            const val = e.target.value;
+                                            setCantidad(val === '' ? ('' as any) : Number(val));
+                                        }}
                                         placeholder="1"
                                         className="w-full pl-8 pr-2 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 transition-colors"
                                     />
@@ -826,7 +845,7 @@ const PresupuestoForm: React.FC<PresupuestoFormProps> = ({
                                 });
 
                                 // Parse pieces from presupuesto
-                                const allPiezas = item.piezas ? item.piezas.split('/').map(p => p.trim()) : [];
+                                const allPiezas = item.piezas ? item.piezas.split(/[/,\-\s]+/).map(p => p.trim()).filter(Boolean) : [];
                                 const allPiecesCompleted = allPiezas.length > 0 && allPiezas.every(p => completedPieces.includes(p));
 
                                 // For treatments without specific pieces, use quantity-based completion
@@ -993,4 +1012,4 @@ const PresupuestoForm: React.FC<PresupuestoFormProps> = ({
         </div>
     );
 };
-export default PresupuestoForm; PresupuestoForm;
+export default PresupuestoForm;
