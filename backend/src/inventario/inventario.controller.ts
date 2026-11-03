@@ -22,8 +22,17 @@ export class InventarioController {
         @Query('page') page?: string,
         @Query('limit') limit?: string,
         @Query('expirationStatus') expirationStatus?: string,
+        @Query('idgrupo_inventario') idgrupo_inventario?: string,
+        @Query('grupoId') grupoId?: string,
     ) {
-        return this.inventarioService.findAll(search, page ? +page : 1, limit ? +limit : 10, expirationStatus);
+        const grupo = idgrupo_inventario || grupoId;
+        return this.inventarioService.findAll(
+            search,
+            page ? +page : 1,
+            limit ? +limit : 10,
+            expirationStatus,
+            grupo && grupo !== 'all' ? +grupo : undefined,
+        );
     }
 
     @Get('alertas/bajo-stock')

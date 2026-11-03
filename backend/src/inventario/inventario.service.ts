@@ -17,13 +17,17 @@ export class InventarioService {
         return this.inventarioRepository.save(inventario);
     }
 
-    async findAll(search?: string, page: number = 1, limit: number = 10, expirationStatus?: string) {
+    async findAll(search?: string, page: number = 1, limit: number = 10, expirationStatus?: string, idgrupo_inventario?: number) {
         const queryBuilder = this.inventarioRepository.createQueryBuilder('inventario')
             .leftJoinAndSelect('inventario.especialidad', 'especialidad')
             .leftJoinAndSelect('inventario.grupoInventario', 'grupoInventario');
 
         if (search) {
             queryBuilder.andWhere('inventario.descripcion ILIKE :search', { search: `%${search}%` });
+        }
+
+        if (idgrupo_inventario) {
+            queryBuilder.andWhere('inventario.idgrupo_inventario = :idgrupo_inventario', { idgrupo_inventario });
         }
 
         if (expirationStatus) {

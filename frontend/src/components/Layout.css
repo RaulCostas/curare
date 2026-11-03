@@ -118,6 +118,9 @@ body {
   background-color: var(--background-color);
   overflow: hidden;
   position: relative;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
 }
 
 .top-header {
@@ -207,6 +210,11 @@ html.dark .hamburger-btn:hover {
   flex: 1;
   padding: 30px;
   overflow-y: auto;
+  overflow-x: hidden;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 /* Scrollbar Styling */
@@ -235,6 +243,9 @@ html.dark .hamburger-btn:hover {
   border-radius: 10px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
   margin-bottom: 20px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 /* User Profile Header */
@@ -350,6 +361,8 @@ html.dark .hamburger-btn:hover {
 
   .dashboard-container {
     flex-direction: column;
+    width: 100%;
+    max-width: 100vw;
   }
 
   .sidebar {
@@ -357,15 +370,13 @@ html.dark .hamburger-btn:hover {
     left: 0;
     top: 0;
     height: 100vh;
-    width: 250px;
+    width: 260px;
     transform: translateX(-100%);
-    /* Hide off-screen */
     box-shadow: 2px 0 10px rgba(0, 0, 0, 0.2);
   }
 
   .sidebar.active {
     transform: translateX(0);
-    /* Slide in */
   }
 
   .close-sidebar-btn {
@@ -383,19 +394,37 @@ html.dark .hamburger-btn:hover {
   .header-actions {
     justify-content: space-between;
     width: 100%;
-    gap: 10px;
+    gap: 8px;
   }
 
   .top-header {
-    padding: 0 15px;
+    padding: 0 12px;
+    height: 60px;
   }
 
   .content-area {
-    padding: 15px;
+    padding: 12px 10px 80px 10px;
+    overflow-x: hidden;
   }
 
-  /* Adjust header buttons spacing */
+  .content-card {
+    padding: 16px 12px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+  }
+
+  /* Header action buttons wrap cleanly on mobile */
+  .content-card > div:first-child {
+    align-items: flex-start;
+  }
+
+  .content-card > div:first-child > div:last-child {
+    flex-wrap: wrap;
+    width: 100%;
+    justify-content: flex-start;
+  }
+
   .header-buttons {
-    gap: 5px;
+    gap: 4px;
   }
 }

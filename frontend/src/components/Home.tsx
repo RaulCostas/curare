@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import Swal from 'sweetalert2';
@@ -21,6 +21,9 @@ const Home: React.FC = () => {
     const [planesPendientes, setPlanesPendientes] = useState<RecordatorioPlan[]>([]);
     const [birthdaySentIds, setBirthdaySentIds] = useState<Set<number>>(new Set());
     const [birthdayLoadingIds, setBirthdayLoadingIds] = useState<Set<number>>(new Set());
+    const [selectedDestinoGasto, setSelectedDestinoGasto] = useState<string>('todos');
+    const [selectedGrupoStock, setSelectedGrupoStock] = useState<string>('todos');
+    const [grupos, setGrupos] = useState<any[]>([]);
     const birthdayLoadingRef = useRef<Set<number>>(new Set());
 
     // Permission Logic
@@ -45,6 +48,7 @@ const Home: React.FC = () => {
         fetchRecordatorios();
         fetchTratamientosPendientes();
         fetchPlanesPendientes();
+        fetchGrupos();
     }, []);
 
     const fetchPlanesPendientes = async () => {
@@ -181,6 +185,45 @@ const Home: React.FC = () => {
             console.error('Error fetching low stock items:', error);
         }
     };
+
+    const fetchGrupos = async () => {
+        try {
+            const response = await api.get<any>('/grupo-inventario?limit=1000');
+            const data = Array.isArray(response.data) ? response.data : (response.data?.data || []);
+            const sorted = [...data].sort((a: any, b: any) => (a.grupo || '').localeCompare(b.grupo || ''));
+            setGrupos(sorted);
+        } catch (error) {
+            console.error('Error fetching grupos:', error);
+        }
+    };
+
+    const destinosDisponibles = ['Casa', 'Consultorio'];
+
+    const filteredDueGastos = useMemo(() => {
+        if (selectedDestinoGasto === 'todos') return dueGastos;
+        return dueGastos.filter(g => (g.destino || '').trim().toUpperCase() === selectedDestinoGasto.trim().toUpperCase());
+    }, [dueGastos, selectedDestinoGasto]);
+
+    const gruposStockDisponibles = useMemo(() => {
+        if (grupos.length > 0) return grupos;
+        const map = new Map<number, string>();
+        lowStockItems.forEach(item => {
+            if (item.grupoInventario?.id && item.grupoInventario?.grupo) {
+                map.set(item.grupoInventario.id, item.grupoInventario.grupo);
+            }
+        });
+        return Array.from(map.entries())
+            .map(([id, grupo]) => ({ id, grupo }))
+            .sort((a, b) => a.grupo.localeCompare(b.grupo));
+    }, [grupos, lowStockItems]);
+
+    const filteredLowStockItems = useMemo(() => {
+        if (selectedGrupoStock === 'todos') return lowStockItems;
+        return lowStockItems.filter(item => 
+            item.idgrupo_inventario?.toString() === selectedGrupoStock ||
+            item.grupoInventario?.id?.toString() === selectedGrupoStock
+        );
+    }, [lowStockItems, selectedGrupoStock]);
 
     const [noRegistrados, setNoRegistrados] = useState<any[]>([]);
     const [currentPage, setCurrentPage] = useState(1);
@@ -444,36 +487,59 @@ const Home: React.FC = () => {
 
             {/* Expenses Due Today Section */}
             {hasAccess('dashboard_gastos_vencidos') && dueGastos.length > 0 && (
-                <div className="mb-8 bg-pink-50 dark:bg-pink-900/20 border-l-4 border-pink-500 p-6 rounded-r-lg shadow-sm">
-                    <h2 className="text-xl font-bold text-pink-700 dark:text-pink-400 mb-4 flex items-center gap-2">
-                        <span>⚠️</span> Gastos Fijos por Pagar Hoy
-                    </h2>
-                    <div className="space-y-3">
-                        {dueGastos.map(gasto => (
-                            <div
-                                key={gasto.id}
-                                className="flex justify-between items-center bg-white dark:bg-gray-700 p-4 rounded-lg shadow-sm border border-gray-100 dark:border-gray-600"
+                <div className="mb-8 bg-pink-50 dark:bg-pink-900/20 border-l-4 border-pink-500 p-4 sm:p-6 rounded-r-lg shadow-sm">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                        <h2 className="text-xl font-bold text-pink-700 dark:text-pink-400 flex items-center gap-2">
+                            <span>⚠️</span> Gastos Fijos por Pagar Hoy
+                        </h2>
+                        <div className="w-full sm:w-60">
+                            <select
+                                value={selectedDestinoGasto}
+                                onChange={(e) => setSelectedDestinoGasto(e.target.value)}
+                                className="w-full py-1.5 px-3 border border-pink-300 dark:border-pink-700 rounded-lg text-sm font-medium text-gray-800 dark:text-white bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-pink-500 cursor-pointer shadow-sm"
+                                title="Filtrar gastos por destino"
                             >
-                                <div>
-                                    <h3 className="font-semibold text-gray-800 dark:text-white mb-1">
-                                        {gasto.gasto_fijo}
-                                    </h3>
-                                    <p className="text-sm text-gray-500 dark:text-gray-300">
-                                        Destino: {gasto.destino} - <strong className="text-pink-600 dark:text-pink-300">{gasto.moneda === 'DOLARES' || gasto.moneda === '$us' ? '$us' : 'Bs.'} {formatCurrency(gasto.monto)}</strong>
-                                    </p>
-                                </div>
-                                <div className="text-2xl text-pink-500 dark:text-pink-400">
-                                    💸
-                                </div>
+                                <option value="todos">Todos los Destinos</option>
+                                {destinosDisponibles.map(dest => (
+                                    <option key={dest} value={dest}>
+                                        {dest}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+                    <div className="space-y-3">
+                        {filteredDueGastos.length === 0 ? (
+                            <div className="text-center py-4 text-sm text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-700 rounded-lg border border-gray-100 dark:border-gray-600">
+                                No hay gastos fijos pendientes hoy para el destino "{selectedDestinoGasto}".
                             </div>
-                        ))}
+                        ) : (
+                            filteredDueGastos.map(gasto => (
+                                <div
+                                    key={gasto.id}
+                                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-gray-700 p-3 sm:p-4 rounded-lg shadow-sm border border-gray-100 dark:border-gray-600"
+                                >
+                                    <div className="min-w-0 flex-1">
+                                        <h3 className="font-semibold text-gray-800 dark:text-white mb-1 break-words">
+                                            {gasto.gasto_fijo}
+                                        </h3>
+                                        <p className="text-sm text-gray-500 dark:text-gray-300">
+                                            Destino: {gasto.destino} - <strong className="text-pink-600 dark:text-pink-300">{gasto.moneda === 'DOLARES' || gasto.moneda === '$us' ? '$us' : 'Bs.'} {formatCurrency(gasto.monto)}</strong>
+                                        </p>
+                                    </div>
+                                    <div className="text-2xl text-pink-500 dark:text-pink-400 self-end sm:self-center shrink-0">
+                                        💸
+                                    </div>
+                                </div>
+                            ))
+                        )}
                     </div>
                 </div>
             )}
 
             {/* Birthday Section */}
             {hasAccess('dashboard_cumpleanos') && birthdays.length > 0 && (
-                <div className="mb-8 bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-400 p-6 rounded-r-lg shadow-sm">
+                <div className="mb-8 bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-400 p-4 sm:p-6 rounded-r-lg shadow-sm">
                     <h2 className="text-xl font-bold text-blue-700 dark:text-blue-300 mb-4 flex items-center gap-2">
                         <span>🎉</span> Cumpleaños de Personal Hoy
                     </h2>
@@ -481,17 +547,17 @@ const Home: React.FC = () => {
                         {birthdays.map(person => (
                             <div
                                 key={person.id}
-                                className="flex justify-between items-center bg-white dark:bg-gray-700 p-4 rounded-lg shadow-sm border border-gray-100 dark:border-gray-600"
+                                className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-gray-700 p-3 sm:p-4 rounded-lg shadow-sm border border-gray-100 dark:border-gray-600"
                             >
-                                <div>
-                                    <h3 className="font-semibold text-gray-800 dark:text-white mb-1">
+                                <div className="min-w-0 flex-1">
+                                    <h3 className="font-semibold text-gray-800 dark:text-white mb-1 break-words">
                                         {formatPaternoMaternoNombre(person)}
                                     </h3>
                                     <p className="text-sm text-gray-500 dark:text-gray-300">
                                         Cumple {calculateAge(person.fecha_nacimiento)} años hoy
                                     </p>
                                 </div>
-                                <div className="text-3xl animate-bounce">
+                                <div className="text-2xl sm:text-3xl animate-bounce self-end sm:self-center shrink-0">
                                     🎂
                                 </div>
                             </div>
@@ -502,7 +568,7 @@ const Home: React.FC = () => {
 
             {/* Patient Birthday Section */}
             {hasAccess('dashboard_cumpleanos') && stats.birthdayPacientes.length > 0 && (
-                <div className="mb-8 bg-green-50 dark:bg-green-900/20 border-l-4 border-green-500 p-6 rounded-r-lg shadow-sm">
+                <div className="mb-8 bg-green-50 dark:bg-green-900/20 border-l-4 border-green-500 p-4 sm:p-6 rounded-r-lg shadow-sm">
                     <h2 className="text-xl font-bold text-green-700 dark:text-green-300 mb-4 flex items-center gap-2">
                         <span>🎉</span> Cumpleaños de Pacientes Hoy
                     </h2>
@@ -513,17 +579,17 @@ const Home: React.FC = () => {
                             return (
                                 <div
                                     key={paciente.id}
-                                    className="flex justify-between items-center bg-white dark:bg-gray-700 p-4 rounded-lg shadow-sm border border-gray-100 dark:border-gray-600"
+                                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-gray-700 p-3 sm:p-4 rounded-lg shadow-sm border border-gray-100 dark:border-gray-600"
                                 >
-                                    <div>
-                                        <h3 className="font-semibold text-gray-800 dark:text-white mb-1">
+                                    <div className="min-w-0 flex-1">
+                                        <h3 className="font-semibold text-gray-800 dark:text-white mb-1 break-words">
                                             {formatPaternoMaternoNombre(paciente)}
                                         </h3>
                                         <p className="text-sm text-gray-500 dark:text-gray-300">
                                             Cumple {calculateAge(paciente.fecha_nacimiento)} años hoy
                                         </p>
                                     </div>
-                                    <div className="flex items-center gap-3">
+                                    <div className="flex items-center justify-between sm:justify-end gap-2.5 shrink-0 w-full sm:w-auto">
                                         <button
                                             onClick={async () => {
                                                 if (isSent || isLoading || birthdayLoadingRef.current.has(paciente.id)) return;
@@ -567,7 +633,7 @@ const Home: React.FC = () => {
                                             }}
                                             disabled={isSent || isLoading}
                                             title={isSent ? 'Felicitación enviada' : 'Enviar felicitación por WhatsApp'}
-                                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold shadow transition-all transform hover:-translate-y-0.5 ${
+                                            className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold shadow transition-all transform hover:-translate-y-0.5 ${
                                                 isSent
                                                     ? 'bg-gray-200 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed'
                                                     : 'bg-[#25D366] hover:bg-[#1ebe57] active:scale-95 text-white cursor-pointer'
@@ -591,7 +657,7 @@ const Home: React.FC = () => {
                                             )}
                                             {isSent ? 'Enviado' : isLoading ? 'Enviando...' : 'Enviar Felicitaciones'}
                                         </button>
-                                        <div className="text-3xl animate-bounce">🎈</div>
+                                        <div className="text-2xl sm:text-3xl animate-bounce shrink-0">🎈</div>
                                     </div>
                                 </div>
                             );
@@ -635,43 +701,66 @@ const Home: React.FC = () => {
 
             {/* Low Stock Alert Section */}
             {hasAccess('dashboard_stock_minimo') && lowStockItems.length > 0 && (
-                <div className="mb-8 bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 p-6 rounded-r-lg shadow-sm">
-                    <h2 className="text-xl font-bold text-red-700 dark:text-red-400 mb-4 flex items-center gap-2">
-                        <span>⚠️</span> Alerta de Stock Bajo
-                    </h2>
-                    <div className="space-y-3">
-                        {lowStockItems.map(item => (
-                            <div
-                                key={item.id}
-                                className="flex justify-between items-center bg-white dark:bg-gray-700 p-4 rounded-lg shadow-sm border border-gray-100 dark:border-gray-600"
+                <div className="mb-8 bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 p-4 sm:p-6 rounded-r-lg shadow-sm">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                        <h2 className="text-xl font-bold text-red-700 dark:text-red-400 flex items-center gap-2">
+                            <span>⚠️</span> Alerta de Stock Bajo
+                        </h2>
+                        <div className="w-full sm:w-60">
+                            <select
+                                value={selectedGrupoStock}
+                                onChange={(e) => setSelectedGrupoStock(e.target.value)}
+                                className="w-full py-1.5 px-3 border border-red-300 dark:border-red-700 rounded-lg text-sm font-medium text-gray-800 dark:text-white bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-red-500 cursor-pointer shadow-sm"
+                                title="Filtrar stock bajo por grupo"
                             >
-                                <div>
-                                    <h3 className="font-semibold text-gray-800 dark:text-white mb-1">{item.descripcion}</h3>
-                                    <p className="text-sm text-gray-500 dark:text-gray-300">
-                                        Cantidad: <span className="font-bold text-red-500 dark:text-red-400">{item.cantidad_existente}</span> | Mínimo Requerido: {item.stock_minimo}
-                                    </p>
-                                    <p className="text-xs text-gray-400 dark:text-gray-400 mt-1">
-                                        Especialidad: {item.especialidad?.especialidad} | Grupo: {item.grupoInventario?.grupo}
-                                    </p>
-                                </div>
-                                <div className="text-2xl text-red-500 dark:text-red-400">
-                                    📉
-                                </div>
+                                <option value="todos">Todos los Grupos</option>
+                                {gruposStockDisponibles.map(g => (
+                                    <option key={g.id} value={g.id.toString()}>
+                                        {g.grupo}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+                    <div className="space-y-3">
+                        {filteredLowStockItems.length === 0 ? (
+                            <div className="text-center py-4 text-sm text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-700 rounded-lg border border-gray-100 dark:border-gray-600">
+                                No hay productos con stock bajo para este grupo.
                             </div>
-                        ))}
+                        ) : (
+                            filteredLowStockItems.map(item => (
+                                <div
+                                    key={item.id}
+                                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-gray-700 p-3 sm:p-4 rounded-lg shadow-sm border border-gray-100 dark:border-gray-600"
+                                >
+                                    <div className="min-w-0 flex-1">
+                                        <h3 className="font-semibold text-gray-800 dark:text-white mb-1 break-words">{item.descripcion}</h3>
+                                        <p className="text-sm text-gray-500 dark:text-gray-300">
+                                            Cantidad: <span className="font-bold text-red-500 dark:text-red-400">{item.cantidad_existente}</span> | Mínimo Requerido: {item.stock_minimo}
+                                        </p>
+                                        <p className="text-xs text-gray-400 dark:text-gray-400 mt-1">
+                                            Especialidad: {item.especialidad?.especialidad} | Grupo: {item.grupoInventario?.grupo || 'Sin Grupo'}
+                                        </p>
+                                    </div>
+                                    <div className="text-2xl text-red-500 dark:text-red-400 self-end sm:self-center shrink-0">
+                                        📉
+                                    </div>
+                                </div>
+                            ))
+                        )}
                     </div>
                 </div>
             )}
 
-            <div className="mt-12 flex justify-center gap-6 flex-wrap">
-                <div className="p-6 bg-blue-500 text-white rounded-xl w-52 text-center shadow-lg hover:shadow-xl transition-shadow transform hover:-translate-y-1 duration-200">
-                    <h3 className="mb-2 text-lg font-medium opacity-90">Pacientes</h3>
-                    <p className="text-3xl font-bold">{stats.totalPacientes}</p>
+            <div className="mt-8 sm:mt-12 flex justify-center gap-4 sm:gap-6 flex-wrap">
+                <div className="p-4 sm:p-6 bg-blue-500 text-white rounded-xl w-full sm:w-52 text-center shadow-lg hover:shadow-xl transition-shadow transform hover:-translate-y-1 duration-200">
+                    <h3 className="mb-1 sm:mb-2 text-base sm:text-lg font-medium opacity-90">Pacientes</h3>
+                    <p className="text-2xl sm:text-3xl font-bold">{stats.totalPacientes}</p>
                 </div>
                 {hasAccess('dashboard_citas_hoy') && (
-                    <div className="p-6 bg-green-500 text-white rounded-xl w-52 text-center shadow-lg hover:shadow-xl transition-shadow transform hover:-translate-y-1 duration-200">
-                        <h3 className="mb-2 text-lg font-medium opacity-90">Citas Hoy</h3>
-                        <p className="text-3xl font-bold">{todayAppointmentsCount}</p>
+                    <div className="p-4 sm:p-6 bg-green-500 text-white rounded-xl w-full sm:w-52 text-center shadow-lg hover:shadow-xl transition-shadow transform hover:-translate-y-1 duration-200">
+                        <h3 className="mb-1 sm:mb-2 text-base sm:text-lg font-medium opacity-90">Citas Hoy</h3>
+                        <p className="text-2xl sm:text-3xl font-bold">{todayAppointmentsCount}</p>
                     </div>
                 )}
             </div>
