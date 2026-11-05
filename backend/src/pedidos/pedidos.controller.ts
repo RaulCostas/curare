@@ -22,6 +22,7 @@ export class PedidosController {
     }
 
     @Put(':id')
+    @Patch(':id')
     update(@Param('id') id: string, @Body() updatePedidoDto: any) {
         // Casting any for now as UpdateDto might need specific structure matching Create
         return this.pedidosService.update(+id, updatePedidoDto);
