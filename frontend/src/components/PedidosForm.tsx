@@ -213,7 +213,7 @@ const PedidosForm: React.FC<PedidosFormProps> = ({ isOpen, onClose, id, onSaveSu
 
         try {
             if (isEditMode && id) {
-                await api.patch(`/pedidos/${id}`, payload);
+                await api.put(`/pedidos/${id}`, payload);
                 await Swal.fire({
                     icon: 'success',
                     title: 'Éxito',
