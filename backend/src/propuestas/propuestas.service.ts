@@ -58,14 +58,14 @@ export class PropuestasService {
             fecha: new Date().toISOString().split('T')[0],
             detalles: activeDetails.map(d => ({
                 arancelId: d.arancelId,
-                precioUnitario: d.precioUnitario,
-                tc: d.tc,
+                precioUnitario: Number(d.precioUnitario) || 0,
+                tc: Number(d.tc) || 1,
                 piezas: d.piezas,
-                cantidad: d.cantidad,
-                subTotal: d.subTotal,
-                descuento: d.descuento,
-                total: d.total,
-                posible: d.posible
+                cantidad: Number(d.cantidad) || 1,
+                subTotal: Number(d.subTotal) || 0,
+                descuento: Number(d.descuento) || 0,
+                total: Number(d.total) || 0,
+                posible: Boolean(d.posible)
             }))
         };
 

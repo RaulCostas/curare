@@ -65,7 +65,7 @@ export class ProformasService {
         : null;
 
       // Calculate total from details
-      const total = createProformaDto.detalles.reduce((sum, item) => sum + (item.posible ? 0 : item.total), 0);
+      const total = createProformaDto.detalles.reduce((sum, item) => sum + (item.posible ? 0 : Number(item.total || 0)), 0);
       proforma.total = total;
 
       const savedProforma = await queryRunner.manager.save(proforma);
@@ -75,13 +75,13 @@ export class ProformasService {
         const detalle = new ProformaDetalle();
         detalle.proforma = savedProforma;
         detalle.arancelId = item.arancelId;
-        detalle.precioUnitario = item.precioUnitario;
+        detalle.precioUnitario = Number(item.precioUnitario) || 0;
         detalle.tc = item.tc;
         detalle.piezas = item.piezas || '';
         detalle.cantidad = item.cantidad;
-        detalle.subTotal = item.subTotal;
-        detalle.descuento = item.descuento;
-        detalle.total = item.total;
+        detalle.subTotal = Number(item.subTotal) || 0;
+        detalle.descuento = Number(item.descuento) || 0;
+        detalle.total = Number(item.total) || 0;
         detalle.posible = item.posible;
         return detalle;
       });
@@ -220,13 +220,13 @@ export class ProformasService {
 
           // Update fields
           detalle.arancelId = item.arancelId;
-          detalle.precioUnitario = item.precioUnitario;
+          detalle.precioUnitario = Number(item.precioUnitario) || 0;
           detalle.tc = item.tc;
           detalle.piezas = item.piezas || '';
           detalle.cantidad = item.cantidad;
-          detalle.subTotal = item.subTotal;
-          detalle.descuento = item.descuento;
-          detalle.total = item.total;
+          detalle.subTotal = Number(item.subTotal) || 0;
+          detalle.descuento = Number(item.descuento) || 0;
+          detalle.total = Number(item.total) || 0;
           detalle.posible = item.posible;
           if (item.precio) {
             detalle.precio = item.precio;
@@ -273,7 +273,7 @@ export class ProformasService {
         }
 
         // Update proforma total
-        proforma.total = savedDetalles.reduce((sum, item) => sum + (item.posible ? 0 : item.total), 0);
+        proforma.total = savedDetalles.reduce((sum, item) => sum + (item.posible ? 0 : Number(item.total || 0)), 0);
 
         // Update reference for return
         proforma.detalles = savedDetalles;
