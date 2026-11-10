@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, SelectQueryBuilder } from 'typeorm';
 import { HistoriaClinica } from './entities/historia_clinica.entity';
 import { Pago } from '../pagos/entities/pago.entity';
 import { ProformaDetalle } from '../proformas/entities/proforma-detalle.entity';
@@ -157,6 +157,26 @@ export class HistoriaClinicaService {
         });
     }
 
+    /**
+     * Applies multi-word search across patient name parts (paterno, materno, nombre)
+     * and treatment name so queries like "paterno materno" match across fields.
+     */
+    private applyTrabajosSearchFilter(
+        queryBuilder: SelectQueryBuilder<HistoriaClinica>,
+        search?: string,
+    ): void {
+        if (!search || !search.trim()) return;
+
+        const words = search.trim().toLowerCase().split(/\s+/).filter(Boolean);
+        words.forEach((word, index) => {
+            const paramName = `searchWord${index}`;
+            queryBuilder.andWhere(
+                `(LOWER(COALESCE(paciente.nombre, '')) LIKE :${paramName} OR LOWER(COALESCE(paciente.paterno, '')) LIKE :${paramName} OR LOWER(COALESCE(paciente.materno, '')) LIKE :${paramName} OR LOWER(COALESCE(hc.tratamiento, '')) LIKE :${paramName} OR LOWER(COALESCE(arancel.detalle, '')) LIKE :${paramName})`,
+                { [paramName]: `%${word}%` },
+            );
+        });
+    }
+
     async findTrabajosNoPagados(doctorId: number, page: number = 1, limit: number = 10, search?: string) {
         const queryBuilder = this.historiaClinicaRepository.createQueryBuilder('hc')
             .leftJoinAndSelect('hc.paciente', 'paciente')
@@ -166,17 +186,12 @@ export class HistoriaClinicaService {
             .leftJoinAndSelect('proformaDetalle.arancel', 'arancel')
             .where('hc.doctorId = :doctorId', { doctorId })
             .andWhere('hc.pagado = :pagado', { pagado: 'NO' })
+            .andWhere('hc.estadoTratamiento = :estadoTratamiento', { estadoTratamiento: 'terminado' })
             .andWhere('COALESCE(hc.precio, 0) > 0')
             .orderBy('hc.fecha', 'DESC')
             .addOrderBy('hc.id', 'DESC');
 
-        if (search && search.trim()) {
-            const term = `%${search.trim().toLowerCase()}%`;
-            queryBuilder.andWhere(
-                '(LOWER(paciente.nombre) LIKE :term OR LOWER(paciente.paterno) LIKE :term OR LOWER(paciente.materno) LIKE :term OR LOWER(hc.tratamiento) LIKE :term OR LOWER(arancel.detalle) LIKE :term)',
-                { term }
-            );
-        }
+        this.applyTrabajosSearchFilter(queryBuilder, search);
 
         const skip = (page - 1) * limit;
         const [data, total] = await queryBuilder.skip(skip).take(limit).getManyAndCount();
@@ -189,15 +204,10 @@ export class HistoriaClinicaService {
             .select('COALESCE(SUM(hc.precio), 0)', 'sumTotal')
             .where('hc.doctorId = :doctorId', { doctorId })
             .andWhere('hc.pagado = :pagado', { pagado: 'NO' })
+            .andWhere('hc.estadoTratamiento = :estadoTratamiento', { estadoTratamiento: 'terminado' })
             .andWhere('COALESCE(hc.precio, 0) > 0');
 
-        if (search && search.trim()) {
-            const term = `%${search.trim().toLowerCase()}%`;
-            totalSumQuery.andWhere(
-                '(LOWER(paciente.nombre) LIKE :term OR LOWER(paciente.paterno) LIKE :term OR LOWER(paciente.materno) LIKE :term OR LOWER(hc.tratamiento) LIKE :term OR LOWER(arancel.detalle) LIKE :term)',
-                { term }
-            );
-        }
+        this.applyTrabajosSearchFilter(totalSumQuery, search);
 
         const rawSum = await totalSumQuery.getRawOne();
         const sumTotal = parseFloat(rawSum?.sumTotal || 0);
@@ -226,13 +236,7 @@ export class HistoriaClinicaService {
             .orderBy('pagoDoctor.fecha', 'DESC')
             .addOrderBy('hc.id', 'DESC');
 
-        if (search && search.trim()) {
-            const term = `%${search.trim().toLowerCase()}%`;
-            queryBuilder.andWhere(
-                '(LOWER(paciente.nombre) LIKE :term OR LOWER(paciente.paterno) LIKE :term OR LOWER(paciente.materno) LIKE :term OR LOWER(hc.tratamiento) LIKE :term OR LOWER(arancel.detalle) LIKE :term)',
-                { term }
-            );
-        }
+        this.applyTrabajosSearchFilter(queryBuilder, search);
 
         const skip = (page - 1) * limit;
         const [rawResults, total] = await queryBuilder.skip(skip).take(limit).getManyAndCount();
