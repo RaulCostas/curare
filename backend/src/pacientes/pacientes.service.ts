@@ -18,24 +18,47 @@ export class PacientesService {
         private pacienteTelevisionRepository: Repository<PacienteTelevision>,
     ) { }
 
+    private async findDuplicatePaciente(
+        nombre: string,
+        paterno: string,
+        materno: string,
+        fechaNacimiento: string,
+        excludeId?: number,
+    ): Promise<Paciente | null> {
+        const qb = this.pacientesRepository.createQueryBuilder('paciente')
+            .where("LOWER(TRIM(COALESCE(paciente.nombre, ''))) = LOWER(TRIM(:nombre))", { nombre: nombre ?? '' })
+            .andWhere("LOWER(TRIM(COALESCE(paciente.paterno, ''))) = LOWER(TRIM(:paterno))", { paterno: paterno ?? '' })
+            .andWhere("LOWER(TRIM(COALESCE(paciente.materno, ''))) = LOWER(TRIM(:materno))", { materno: materno ?? '' })
+            .andWhere('paciente.fecha_nacimiento = :fechaNacimiento', { fechaNacimiento });
+
+        if (excludeId !== undefined) {
+            qb.andWhere('paciente.id != :excludeId', { excludeId });
+        }
+
+        return qb.getOne();
+    }
+
     async create(createPacienteDto: CreatePacienteDto): Promise<Paciente> {
         console.log('Creating Paciente with DTO:', createPacienteDto);
-        
+
+        const materno = createPacienteDto.materno ?? '';
+
         // Verificar duplicados por Nombre + Paterno + Materno + Fecha Nacimiento
-        const existingPaciente = await this.pacientesRepository.findOne({
-            where: {
-                nombre: ILike(createPacienteDto.nombre),
-                paterno: ILike(createPacienteDto.paterno),
-                materno: ILike(createPacienteDto.materno),
-                fecha_nacimiento: createPacienteDto.fecha_nacimiento
-            }
-        });
+        const existingPaciente = await this.findDuplicatePaciente(
+            createPacienteDto.nombre,
+            createPacienteDto.paterno,
+            materno,
+            createPacienteDto.fecha_nacimiento,
+        );
 
         if (existingPaciente) {
             throw new ConflictException('Ya existe un paciente con el mismo nombre y fecha de nacimiento registrado en el sistema.');
         }
 
-        const paciente = this.pacientesRepository.create(createPacienteDto);
+        const paciente = this.pacientesRepository.create({
+            ...createPacienteDto,
+            materno,
+        });
         return await this.pacientesRepository.save(paciente);
     }
 
@@ -151,28 +174,39 @@ export class PacientesService {
 
         // Si estamos actualizando datos personales, verificamos que no colisione con otro paciente
         if (
-            updatePacienteDto.nombre || 
-            updatePacienteDto.paterno || 
-            updatePacienteDto.materno || 
-            updatePacienteDto.fecha_nacimiento
+            updatePacienteDto.nombre !== undefined ||
+            updatePacienteDto.paterno !== undefined ||
+            updatePacienteDto.materno !== undefined ||
+            updatePacienteDto.fecha_nacimiento !== undefined
         ) {
-            const existingPaciente = await this.pacientesRepository.findOne({
-                where: {
-                    nombre: ILike(updatePacienteDto.nombre || paciente.nombre),
-                    paterno: ILike(updatePacienteDto.paterno || paciente.paterno),
-                    materno: ILike(updatePacienteDto.materno || paciente.materno),
-                    fecha_nacimiento: updatePacienteDto.fecha_nacimiento || paciente.fecha_nacimiento
-                }
-            });
+            const nextNombre = updatePacienteDto.nombre ?? paciente.nombre;
+            const nextPaterno = updatePacienteDto.paterno ?? paciente.paterno;
+            const nextMaterno = updatePacienteDto.materno !== undefined
+                ? (updatePacienteDto.materno ?? '')
+                : (paciente.materno ?? '');
+            const nextFechaNacimiento = updatePacienteDto.fecha_nacimiento ?? paciente.fecha_nacimiento;
+
+            const existingPaciente = await this.findDuplicatePaciente(
+                nextNombre,
+                nextPaterno,
+                nextMaterno,
+                nextFechaNacimiento,
+                id,
+            );
 
             // Si existe otro paciente (diferente ID) con los mismos datos
-            if (existingPaciente && existingPaciente.id !== id) {
+            if (existingPaciente) {
                 throw new ConflictException('Ya existe otro paciente con el mismo nombre y fecha de nacimiento registrado en el sistema.');
             }
         }
 
+        const normalizedUpdateDto: UpdatePacienteDto = {
+            ...updatePacienteDto,
+            ...(updatePacienteDto.materno !== undefined ? { materno: updatePacienteDto.materno ?? '' } : {}),
+        };
+
         // Merge main patient data
-        this.pacientesRepository.merge(paciente, updatePacienteDto);
+        this.pacientesRepository.merge(paciente, normalizedUpdateDto);
 
         // Handle nested FichaMedica manually if needed
         if (updatePacienteDto.fichaMedica) {

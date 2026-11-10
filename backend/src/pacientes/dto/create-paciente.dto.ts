@@ -11,7 +11,8 @@ export class CreatePacienteDto {
     paterno: string;
 
     @IsString()
-    materno: string;
+    @IsOptional()
+    materno?: string;
 
     @IsString()
     nombre: string;

@@ -285,6 +285,7 @@ const PacienteCreateView: React.FC = () => {
             const user = JSON.parse(localStorage.getItem('user') || '{}');
             const payload = { 
                 ...formData, 
+                materno: formData.materno || '',
                 celular: finalCelular,
                 usuarioId: user.id,
                 fichaMedica: {
@@ -341,6 +342,7 @@ const PacienteCreateView: React.FC = () => {
             const user = JSON.parse(localStorage.getItem('user') || '{}');
             const payload = {
                 ...formData,
+                materno: formData.materno || '',
                 idCategoria: formData.idCategoria === 0 ? null : formData.idCategoria,
                 celular: finalCelular,
                 usuarioId: user.id,
@@ -445,12 +447,12 @@ const PacienteCreateView: React.FC = () => {
                                 </div>
                             </div>
                             <div>
-                                <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300">Ape. Materno <span className="text-red-500">*</span>:</label>
+                                <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300">Ape. Materno:</label>
                                 <div className="relative flex-1 w-full">
                                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
                                         <FileText className="h-4 w-4" />
                                     </div>
-                                    <input type="text" name="materno" value={formData.materno} onChange={handleChange} required placeholder="Ej: Cordova" className="w-full pl-9 pr-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-2 focus:outline-none focus:ring-blue-500" />
+                                    <input type="text" name="materno" value={formData.materno || ''} onChange={handleChange} placeholder="Ej: Cordova" className="w-full pl-9 pr-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-2 focus:outline-none focus:ring-blue-500" />
                                 </div>
                             </div>
                         </div>
