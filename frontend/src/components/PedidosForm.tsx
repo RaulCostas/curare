@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import api from '../services/api';
 import Swal from 'sweetalert2';
 import type { Proveedor, Inventario } from '../types';
@@ -123,13 +123,32 @@ const PedidosForm: React.FC<PedidosFormProps> = ({ isOpen, onClose, id, onSaveSu
 
     const fetchInventario = async () => {
         try {
-            const response = await api.get('/inventario?limit=1000');
-            const activeInventario = (response.data.data || []).filter((item: any) => item.estado === 'Activo');
+            const response = await api.get('/inventario?limit=100000');
+            const data = response.data;
+            const allItems = Array.isArray(data) ? data : (data?.data || []);
+            const activeInventario = allItems.filter((item: any) => !item.estado || item.estado.toLowerCase() === 'activo');
             setInventarioItems(activeInventario);
         } catch (error) {
             console.error('Error fetching inventario:', error);
         }
     };
+
+    const inventarioOptions: Option[] = useMemo(() => {
+        return inventarioItems
+            .filter((item: any) => !item.estado || item.estado.toLowerCase() === 'activo')
+            .sort((a: any, b: any) => (a.descripcion || '').localeCompare(b.descripcion || '', 'es', { sensitivity: 'base' }))
+            .map(i => {
+                const subLabelParts: string[] = [];
+                if (i.grupoInventario?.grupo) subLabelParts.push(`Grupo: ${i.grupoInventario.grupo}`);
+                if (i.especialidad?.especialidad) subLabelParts.push(`Esp: ${i.especialidad.especialidad}`);
+                return {
+                    id: i.id,
+                    label: i.descripcion,
+                    subLabel: subLabelParts.length > 0 ? subLabelParts.join(' | ') : undefined,
+                    searchString: `${i.descripcion} ${i.grupoInventario?.grupo || ''} ${i.especialidad?.especialidad || ''}`
+                };
+            });
+    }, [inventarioItems]);
 
     const calculateTotals = () => {
         const newSubTotal = detalles.reduce((acc, curr) => acc + (curr.cantidad * curr.precio_unitario), 0);
@@ -379,16 +398,14 @@ const PedidosForm: React.FC<PedidosFormProps> = ({ isOpen, onClose, id, onSaveSu
                             <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
                                 <div className="md:col-span-4">
                                     <label className="block mb-1 font-medium text-xs text-gray-600 dark:text-gray-400">Producto / Ítem:</label>
-                                    <select
+                                    <SearchableSelect
+                                        options={inventarioOptions}
                                         value={tempIdInventario}
-                                        onChange={(e) => setTempIdInventario(Number(e.target.value))}
-                                        className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-2 focus:outline-none focus:ring-blue-500 cursor-pointer"
-                                    >
-                                        <option value={0}>Seleccione Ítem...</option>
-                                        {inventarioItems.map(i => (
-                                            <option key={i.id} value={i.id}>{i.descripcion}</option>
-                                        ))}
-                                    </select>
+                                        onChange={(val) => setTempIdInventario(Number(val))}
+                                        placeholder="-- Seleccione Ítem... --"
+                                        searchPlaceholder="Buscar producto por nombre o grupo..."
+                                        className="text-sm"
+                                    />
                                 </div>
 
                                 <div className="md:col-span-2">

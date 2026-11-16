@@ -50,7 +50,7 @@ const MaterialUtilizadoModal: React.FC<MaterialUtilizadoModalProps> = ({
 
     const fetchInventarios = async () => {
         try {
-            const response = await api.get('/inventario?limit=1000');
+            const response = await api.get('/inventario?limit=100000');
             const data = response.data;
             const items = Array.isArray(data) ? data : (data?.data || []);
             setInventarios(items);
