@@ -42,7 +42,8 @@ export class AgendaService {
             .leftJoinAndSelect('paciente.categoria', 'categoria')
             .leftJoinAndSelect('agenda.doctor', 'doctor')
             .leftJoinAndSelect('agenda.proforma', 'proforma')
-            .leftJoinAndSelect('agenda.usuario', 'usuario')
+            .leftJoin('agenda.usuario', 'usuario')
+            .addSelect(['usuario.id', 'usuario.name', 'usuario.email'])
             .leftJoinAndSelect('agenda.personal', 'personal')
             .where("agenda.estado != 'eliminado'"); // Filter out deleted
 
@@ -74,11 +75,20 @@ export class AgendaService {
     }
 
     async findAllByPaciente(pacienteId: number): Promise<Agenda[]> {
-        return await this.agendaRepository.find({
-            where: { pacienteId }, // Return all history for this patient
-            relations: ['paciente', 'doctor', 'proforma', 'usuario', 'personal'],
-            order: { fecha: 'DESC', hora: 'ASC' }
-        });
+        return await this.agendaRepository.createQueryBuilder('agenda')
+            .leftJoin('agenda.doctor', 'doctor')
+            .addSelect(['doctor.id', 'doctor.nombre', 'doctor.paterno', 'doctor.materno'])
+            .leftJoin('agenda.usuario', 'usuario')
+            .addSelect(['usuario.id', 'usuario.name', 'usuario.email'])
+            .leftJoin('agenda.personal', 'personal')
+            .addSelect(['personal.id', 'personal.nombre', 'personal.paterno'])
+            .leftJoin('agenda.proforma', 'proforma')
+            .addSelect(['proforma.id'])
+            .where('agenda.pacienteId = :pacienteId', { pacienteId })
+            .andWhere("agenda.estado != 'eliminado'")
+            .orderBy('agenda.fecha', 'DESC')
+            .addOrderBy('agenda.hora', 'ASC')
+            .getMany();
     }
 
     async findOne(id: number): Promise<Agenda> {

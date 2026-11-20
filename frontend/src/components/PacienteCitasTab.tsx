@@ -35,6 +35,8 @@ const PacienteCitasTab: React.FC<PacienteCitasTabProps> = ({ pacienteId, pacient
     useEffect(() => {
         if (pacienteId) {
             fetchCitas();
+        } else {
+            setLoading(false);
         }
     }, [pacienteId]);
 
@@ -45,6 +47,7 @@ const PacienteCitasTab: React.FC<PacienteCitasTabProps> = ({ pacienteId, pacient
             setCitas(Array.isArray(res.data) ? res.data : []);
         } catch (error) {
             console.error('Error fetching agenda citas for paciente:', error);
+            setCitas([]);
         } finally {
             setLoading(false);
         }

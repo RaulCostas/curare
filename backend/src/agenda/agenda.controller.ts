@@ -33,14 +33,14 @@ export class AgendaController {
         return this.agendaService.findAll(date, fechaInicio, fechaFinal, pacienteId ? +pacienteId : undefined, usuarioId ? +usuarioId : undefined);
     }
 
-    @Get(':id')
-    findOne(@Param('id') id: string) {
-        return this.agendaService.findOne(+id);
-    }
-
     @Get('paciente/:id')
     findAllByPaciente(@Param('id') id: string) {
         return this.agendaService.findAllByPaciente(+id);
+    }
+
+    @Get(':id')
+    findOne(@Param('id') id: string) {
+        return this.agendaService.findOne(+id);
     }
 
     @Patch(':id')
