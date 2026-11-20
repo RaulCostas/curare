@@ -85,12 +85,19 @@ export class ChatbotService implements OnModuleInit, OnModuleDestroy {
         return this.sessions.get(1)!;
     }
 
-    private clearUserSession(session: SessionState, jid: string) {
+    private clearUserSession(session: SessionState, jid: string, force = false) {
         if (!jid) return;
+        const current = session.userSessions.get(jid);
+        if (!force && current && current.type === 'waiting_agenda_response') {
+            return;
+        }
         session.userSessions.delete(jid);
         const clean = jid.split('@')[0].split(':')[0].replace(/\D/g, '');
         if (clean && clean.length >= 7) {
-            for (const key of Array.from(session.userSessions.keys())) {
+            for (const [key, val] of Array.from(session.userSessions.entries())) {
+                if (!force && val.type === 'waiting_agenda_response') {
+                    continue;
+                }
                 if (key.includes(clean)) {
                     session.userSessions.delete(key);
                 }
@@ -252,7 +259,11 @@ export class ChatbotService implements OnModuleInit, OnModuleDestroy {
                     if (msg.key.fromMe) {
                         const targetJid = msg.key?.remoteJid;
                         if (targetJid) {
-                            this.clearUserSession(session, targetJid);
+                            const existing = session.userSessions.get(targetJid);
+                            // No limpiar sesiones de recordatorio de cita en mensajes salientes
+                            if (!existing || existing.type !== 'waiting_agenda_response') {
+                                this.clearUserSession(session, targetJid);
+                            }
                         }
                         continue;
                     }
@@ -417,99 +428,155 @@ export class ChatbotService implements OnModuleInit, OnModuleDestroy {
         const phone = phonePart.split(':')[0];
         const isGroup = remoteJid.endsWith('@g.us');
 
-        const text = msg.message?.conversation || msg.message?.extendedTextMessage?.text || '';
+        const text = 
+            msg.message?.conversation || 
+            msg.message?.extendedTextMessage?.text || 
+            msg.message?.buttonsResponseMessage?.selectedButtonId ||
+            msg.message?.templateButtonReplyMessage?.selectedId ||
+            msg.message?.listResponseMessage?.singleSelectReply?.selectedRowId ||
+            '';
         const normalizedText = text.toLowerCase();
 
         console.log(`[Chatbot] [CURARE] New message from ${senderJid} in ${remoteJid}: "${text}"`);
 
+        const cleanText = normalizedText.trim().replace(/[.,!?;:]+$/, '');
+
+        // Texto sin emojis (incluyendo ✅, ❌, etc.) y sin puntuación sobrante
+        const textWithoutEmojis = cleanText
+            .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}]/gu, '')
+            .trim();
+
+        const isConfirm = 
+            cleanText === 'a' ||
+            cleanText === 'a.' ||
+            cleanText === 'a)' ||
+            cleanText === 'a-' ||
+            cleanText.startsWith('a ') ||
+            cleanText.startsWith('a,') ||
+            cleanText.startsWith('a-') ||
+            cleanText.startsWith('a -') ||
+            cleanText === 'a✅' ||
+            cleanText.startsWith('a✅') ||
+            cleanText.startsWith('✅') ||
+            cleanText === 'opcion a' ||
+            cleanText === 'opción a' ||
+            textWithoutEmojis === 'a' ||
+            textWithoutEmojis.startsWith('a ') ||
+            textWithoutEmojis === 'opcion a' ||
+            textWithoutEmojis === 'opción a' ||
+            textWithoutEmojis.startsWith('confirmar') ||
+            /^(si\b|sí\b|confirmo\b|confirmar\b|confirmado\b|confirmada\b|afirmativo\b|asistire\b|asistiré\b|de acuerdo\b|ok\b|okay\b|perfecto\b)/i.test(textWithoutEmojis || cleanText);
+
+        const isCancel = 
+            cleanText === 'b' ||
+            cleanText === 'b.' ||
+            cleanText === 'b)' ||
+            cleanText === 'b-' ||
+            cleanText.startsWith('b ') ||
+            cleanText.startsWith('b,') ||
+            cleanText.startsWith('b-') ||
+            cleanText.startsWith('b -') ||
+            cleanText === 'b❌' ||
+            cleanText.startsWith('b❌') ||
+            cleanText.startsWith('❌') ||
+            cleanText === 'opcion b' ||
+            cleanText === 'opción b' ||
+            textWithoutEmojis === 'b' ||
+            textWithoutEmojis.startsWith('b ') ||
+            textWithoutEmojis === 'opcion b' ||
+            textWithoutEmojis.startsWith('opción b') ||
+            textWithoutEmojis.startsWith('cancelar') ||
+            /^(no\b|cancelar\b|cancelo\b|cancelado\b|cancelada\b|anular\b|no puedo\b|no podre\b|no podré\b)/i.test(textWithoutEmojis || cleanText);
+
         // ─── PRIORIDAD 1: Sesiones de espera activas ─────
         const cleanPhonePart = phone.replace(/\D/g, '');
+        const last8Digits = cleanPhonePart.slice(-8);
+
         let currentSession: any = session.userSessions.get(remoteJid);
         if (!currentSession && msg.key?.remoteJid) {
             currentSession = session.userSessions.get(msg.key.remoteJid);
         }
         if (!currentSession && cleanPhonePart) {
+            currentSession = session.userSessions.get(cleanPhonePart);
+        }
+        if (!currentSession && last8Digits && last8Digits.length >= 7) {
+            currentSession = session.userSessions.get(last8Digits);
+        }
+        if (!currentSession && last8Digits && last8Digits.length >= 7) {
             for (const [key, val] of session.userSessions.entries()) {
-                if (key.includes(cleanPhonePart)) {
+                if (key.includes(last8Digits)) {
                     currentSession = val;
                     break;
                 }
             }
         }
 
+        // ─── FALLBACK DE BASE DE DATOS PARA RECORDATORIOS DE AGENDA ───
+        // Si no se encontró sesión en memoria pero el paciente respondió con confirmación (A) o cancelación (B):
+        if (!currentSession && (isConfirm || isCancel)) {
+            console.log(`[Chatbot] [CURARE] Buscando cita pendiente en base de datos para remitente: ${senderJid}, teléfono: ${phone} (últimos 8: ${last8Digits})...`);
+            try {
+                let paciente: any = null;
+                if (cleanPhonePart && cleanPhonePart.length >= 7) {
+                    paciente = await this.pacientesService.findByCelular(cleanPhonePart);
+                    if (!paciente && last8Digits) {
+                        paciente = await this.pacientesService.findByCelular(last8Digits);
+                    }
+                }
+
+                if (paciente) {
+                    const citaPendiente = await this.agendaService.findLatestPendingByPaciente(paciente.id);
+                    if (citaPendiente) {
+                        console.log(`[Chatbot] [CURARE] Cita pendiente encontrada en BD (#${citaPendiente.id}) para paciente ${paciente.nombre} ${paciente.paterno || ''}`);
+                        currentSession = {
+                            type: 'waiting_agenda_response',
+                            timestamp: Date.now(),
+                            citaId: citaPendiente.id,
+                        };
+                    } else if (isConfirm) {
+                        const citaConfirmada = await this.agendaService.findLatestConfirmedByPaciente(paciente.id);
+                        if (citaConfirmada) {
+                            console.log(`[Chatbot] [CURARE] El paciente ${paciente.nombre} ya tenía la cita #${citaConfirmada.id} confirmada.`);
+                            await this.sendMessage(remoteJid, 'Su cita ya se encuentra confirmada. ¡Muchas gracias, le esperamos! 😊');
+                            return;
+                        }
+                    }
+                }
+            } catch (dbErr) {
+                console.error(`[Chatbot] [CURARE] Error buscando cita pendiente en BD:`, dbErr);
+            }
+        }
+
         if (currentSession && currentSession.type === 'waiting_agenda_response' && currentSession.citaId) {
-            // Expirar si pasaron más de 24 horas desde que se envió el recordatorio
-            if (Date.now() - currentSession.timestamp > 24 * 60 * 60 * 1000) {
-                this.clearUserSession(session, remoteJid);
+            // Expirar si pasaron más de 48 horas desde que se envió el recordatorio
+            if (Date.now() - currentSession.timestamp > 48 * 60 * 60 * 1000) {
+                this.clearUserSession(session, remoteJid, true);
             } else {
-                const cleanText = normalizedText.trim().replace(/[.,!?;:]+$/, '');
-
-                // Texto sin emojis (incluyendo ✅, ❌, etc.) y sin puntuación sobrante
-                const textWithoutEmojis = cleanText
-                    .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}]/gu, '')
-                    .trim();
-
-                const isConfirm = 
-                    cleanText === 'a' ||
-                    cleanText === 'a.' ||
-                    cleanText === 'a)' ||
-                    cleanText.startsWith('a ') ||
-                    cleanText.startsWith('a,') ||
-                    cleanText.startsWith('a-') ||
-                    cleanText.startsWith('a -') ||
-                    cleanText === 'a✅' ||
-                    cleanText.startsWith('a✅') ||
-                    cleanText.startsWith('✅') ||
-                    cleanText === 'opcion a' ||
-                    cleanText === 'opción a' ||
-                    textWithoutEmojis === 'a' ||
-                    textWithoutEmojis.startsWith('a ') ||
-                    textWithoutEmojis === 'opcion a' ||
-                    textWithoutEmojis === 'opción a' ||
-                    textWithoutEmojis.startsWith('confirmar') ||
-                    /^(si\b|sí\b|confirmo\b|confirmar\b|confirmado\b|afirmativo\b)/i.test(textWithoutEmojis || cleanText);
-
-                const isCancel = 
-                    cleanText === 'b' ||
-                    cleanText === 'b.' ||
-                    cleanText === 'b)' ||
-                    cleanText.startsWith('b ') ||
-                    cleanText.startsWith('b,') ||
-                    cleanText.startsWith('b-') ||
-                    cleanText.startsWith('b -') ||
-                    cleanText === 'b❌' ||
-                    cleanText.startsWith('b❌') ||
-                    cleanText.startsWith('❌') ||
-                    cleanText === 'opcion b' ||
-                    cleanText === 'opción b' ||
-                    textWithoutEmojis === 'b' ||
-                    textWithoutEmojis.startsWith('b ') ||
-                    textWithoutEmojis === 'opcion b' ||
-                    textWithoutEmojis.startsWith('opción b') ||
-                    textWithoutEmojis.startsWith('cancelar') ||
-                    /^(no\b|cancelar\b|cancelo\b|cancelada\b)/i.test(textWithoutEmojis || cleanText);
-
                 if (isConfirm) {
                     try {
                         await this.agendaService.update(currentSession.citaId, { estado: 'confirmado' } as any);
                         await this.sendMessage(remoteJid, '¡Muchas gracias! Su cita ha sido confirmada satisfactoriamente. ✅');
+                        console.log(`[Chatbot] [CURARE] Cita #${currentSession.citaId} confirmada exitosamente.`);
                     } catch (err) {
+                        console.error(`[Chatbot] [CURARE] Error al confirmar cita #${currentSession.citaId}:`, err);
                         await this.sendMessage(remoteJid, 'Ocurrió un error al confirmar su cita. Por favor, contáctenos directamente.');
                     }
-                    this.clearUserSession(session, remoteJid);
+                    this.clearUserSession(session, remoteJid, true);
                     return;
                 } else if (isCancel) {
                     try {
                         await this.agendaService.update(currentSession.citaId, { estado: 'cancelado' } as any);
                         await this.sendMessage(remoteJid, 'Por favor, comuníquese con el Consultorio para agendar su cita en otra fecha y horario.');
-                    } catch (err) {}
-                    this.clearUserSession(session, remoteJid);
+                        console.log(`[Chatbot] [CURARE] Cita #${currentSession.citaId} cancelada por el paciente.`);
+                    } catch (err) {
+                        console.error(`[Chatbot] [CURARE] Error al cancelar cita #${currentSession.citaId}:`, err);
+                    }
+                    this.clearUserSession(session, remoteJid, true);
                     return;
                 } else {
-                    // El paciente escribió un mensaje libre o texto distinto a A o B.
-                    // Liberamos la sesión de espera inmediatamente y no enviamos ningún mensaje para no interferir con la atención humana.
-                    this.clearUserSession(session, remoteJid);
-                    return;
+                    // El paciente escribió un mensaje libre (ej. saludo o pregunta).
+                    // NO destruimos la sesión para permitir que si luego responde 'A' aún se confirme.
+                    console.log(`[Chatbot] [CURARE] Mensaje no interpretado como A ni B en waiting_agenda_response: "${cleanText}"`);
                 }
             }
         }
@@ -940,9 +1007,9 @@ export class ChatbotService implements OnModuleInit, OnModuleDestroy {
             await session.sock.sendPresenceUpdate('paused', jid);
 
             if (typeof content === 'string') {
-                await session.sock.sendMessage(jid, { text: content });
+                return await session.sock.sendMessage(jid, { text: content });
             } else {
-                await session.sock.sendMessage(jid, content);
+                return await session.sock.sendMessage(jid, content);
             }
         } catch (error) {
             console.error(`[Chatbot] [CURARE] Error sending message:`, error);
@@ -1065,12 +1132,29 @@ export class ChatbotService implements OnModuleInit, OnModuleDestroy {
         if (session.status !== 'connected' || !session.sock) {
             throw new Error('El chatbot no está conectado a WhatsApp');
         }
-        await this.sendMessage(jid, mensajeTexto);
-        session.userSessions.set(jid, {
+        const sentResult = await this.sendMessage(jid, mensajeTexto);
+
+        const cleanDigits = jid.split('@')[0].split(':')[0].replace(/\D/g, '');
+        const last8 = cleanDigits.slice(-8);
+
+        const sessionData = {
             type: 'waiting_agenda_response' as any,
             timestamp: Date.now(),
             citaId,
-        });
+        };
+
+        session.userSessions.set(jid, sessionData);
+        if (cleanDigits) {
+            session.userSessions.set(cleanDigits, sessionData);
+            session.userSessions.set(`${cleanDigits}@s.whatsapp.net`, sessionData);
+        }
+        if (last8 && last8.length >= 7) {
+            session.userSessions.set(last8, sessionData);
+        }
+        if (sentResult?.key?.remoteJid) {
+            session.userSessions.set(sentResult.key.remoteJid, sessionData);
+        }
+        console.log(`[Chatbot] [CURARE] Recordatorio registrado para cita #${citaId} (JID: ${jid}, digits: ${cleanDigits}, last8: ${last8})`);
     }
 
     async handleAgendaPollResponse(selectedOption: string, citaId: number, remoteJid: string) {

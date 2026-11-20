@@ -1075,4 +1075,35 @@ export interface EstudioComplementario {
     updatedAt?: string;
 }
 
+export interface DocumentoGeneral {
+    id: number;
+    nombre: string;
+    descripcion?: string;
+    archivo: string;
+    archivo_original: string;
+    tamano?: number;
+    mimetype?: string;
+    estado?: string;
+    createdAt?: string;
+    updatedAt?: string;
+}
+
+export interface PacienteDocumento {
+    id: number;
+    pacienteId: number;
+    paciente?: Paciente;
+    documentoGeneralId?: number | null;
+    documentoGeneral?: DocumentoGeneral | null;
+    titulo: string;
+    descripcion?: string;
+    archivo: string;
+    archivo_original: string;
+    tamano?: number;
+    mimetype?: string;
+    fecha: string;
+    createdAt?: string;
+    updatedAt?: string;
+}
+
+
 

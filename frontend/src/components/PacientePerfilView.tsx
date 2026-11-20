@@ -13,13 +13,14 @@ import PropuestasList from './PropuestasList';
 import PacienteRecetarioTab from './PacienteRecetarioTab';
 import PacienteTabInformes from './PacienteTabInformes';
 import PacienteTabConsentimientos from './PacienteTabConsentimientos';
+import PacienteTabDocumentos from './PacienteTabDocumentos';
 import { formatCurrency } from '../utils/formatters';
 import {
     User, Calendar, FileText, CreditCard, Image as ImageIcon, ClipboardList,
-    ArrowLeft, Edit, Activity, Heart, CheckCircle, PlusSquare, FileCheck
+    ArrowLeft, Edit, Activity, Heart, CheckCircle, PlusSquare, FileCheck, Files
 } from 'lucide-react';
 
-type TabType = 'ficha-medica' | 'citas' | 'presupuestos' | 'historia-clinica' | 'pagos' | 'imagenes' | 'estudios-complementarios' | 'propuestas' | 'recetario' | 'informes' | 'consentimientos';
+type TabType = 'ficha-medica' | 'citas' | 'presupuestos' | 'historia-clinica' | 'pagos' | 'imagenes' | 'estudios-complementarios' | 'propuestas' | 'recetario' | 'informes' | 'consentimientos' | 'documentos';
 
 const PacientePerfilView: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -51,6 +52,7 @@ const PacientePerfilView: React.FC = () => {
         if (path.includes('/recetario')) return 'recetario';
         if (path.includes('/informes')) return 'informes';
         if (path.includes('/consentimientos')) return 'consentimientos';
+        if (path.includes('/documentos')) return 'documentos';
         if (path.includes('/ficha-medica')) return 'ficha-medica';
         return 'ficha-medica';
     };
@@ -170,6 +172,7 @@ const PacientePerfilView: React.FC = () => {
         { id: 'recetario', label: 'RECETAS', icon: <PlusSquare size={15} /> },
         { id: 'informes', label: 'INFORMES', icon: <FileText size={15} /> },
         { id: 'consentimientos', label: 'CONSENTIMIENTOS', icon: <FileCheck size={15} /> },
+        { id: 'documentos', label: 'DOCUMENTOS', icon: <Files size={15} /> },
     ];
 
     const calcularEdad = (fechaNac?: string) => {
@@ -367,6 +370,9 @@ const PacientePerfilView: React.FC = () => {
                 )}
                 {activeTab === 'consentimientos' && (
                     <PacienteTabConsentimientos pacienteId={pacienteIdNum} paciente={paciente || undefined} />
+                )}
+                {activeTab === 'documentos' && (
+                    <PacienteTabDocumentos pacienteId={pacienteIdNum} paciente={paciente || undefined} />
                 )}
             </div>
 

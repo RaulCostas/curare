@@ -511,6 +511,8 @@ const HistoriaClinica: React.FC = () => {
                                 <HistoriaClinicaList
                                     historia={filteredHistoria}
                                     allHistoria={historia}
+                                    proformas={proformas}
+                                    onHistoriaUpdated={fetchHistoria}
                                     onDelete={handleDelete}
                                     onEdit={handleEdit}
                                     onNewHistoria={() => setShowForm(true)}

@@ -7,6 +7,7 @@ import { formatFullName, cleanConsentimientoHtml } from '../utils/formatters';
 import { printHtml } from '../utils/printUtils';
 import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
+import ManualModal, { type ManualSection } from './ManualModal';
 
 interface PacienteTabConsentimientosProps {
     pacienteId: number;
@@ -45,6 +46,26 @@ const PacienteTabConsentimientos: React.FC<PacienteTabConsentimientosProps> = ({
     const [editTitle, setEditTitle] = useState<string>('');
     const [editContent, setEditContent] = useState<string>('');
     const [savingEdit, setSavingEdit] = useState<boolean>(false);
+    const [showManual, setShowManual] = useState<boolean>(false);
+
+    const manualSections: ManualSection[] = [
+        {
+            title: 'Consentimientos Informados',
+            content: 'Este módulo permite emitir documentos de consentimiento informado personalizados para el paciente, basados en plantillas predefinidas organizadas por especialidad.'
+        },
+        {
+            title: 'Emisión y Personalización',
+            content: 'Seleccione la especialidad y el consentimiento que requiera. El sistema autocompleta los datos del paciente (nombre completo, carnet de identidad, edad y fecha). Si lo necesita, puede habilitar la edición para modificar o agregar cláusulas específicas antes de guardarlo.'
+        },
+        {
+            title: 'Guardar e Imprimir',
+            content: 'Use "Guardar Consentimiento" para registrarlo en el historial del paciente, o "Guardar e Imprimir" para abrir inmediatamente la vista de impresión lista para la firma manuscrita del paciente o tutor.'
+        },
+        {
+            title: 'Historial de Consentimientos Emitidos',
+            content: 'En la sección inferior se archivan todos los consentimientos emitidos para este paciente, permitiendo verlos, volverlos a imprimir, editarlos o eliminarlos según corresponda.'
+        }
+    ];
 
     useEffect(() => {
         if (pacienteId) {
@@ -421,6 +442,14 @@ const PacienteTabConsentimientos: React.FC<PacienteTabConsentimientosProps> = ({
                         Emisión, edición y registro histórico de consentimientos informados firmados por {nombrePaciente}
                     </p>
                 </div>
+
+                <button
+                    onClick={() => setShowManual(true)}
+                    className="bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 p-1.5 rounded-full flex items-center justify-center w-[34px] h-[34px] text-sm font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors shadow-sm cursor-pointer"
+                    title="Ayuda / Manual"
+                >
+                    ?
+                </button>
             </div>
 
             {/* Formulario de selección y generación */}
@@ -847,6 +876,14 @@ const PacienteTabConsentimientos: React.FC<PacienteTabConsentimientosProps> = ({
                     </div>
                 </div>
             )}
+
+            {/* Manual Modal */}
+            <ManualModal
+                isOpen={showManual}
+                onClose={() => setShowManual(false)}
+                title="Manual de Consentimientos Informados"
+                sections={manualSections}
+            />
         </div>
     );
 };

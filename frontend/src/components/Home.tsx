@@ -2,11 +2,12 @@ import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import Swal from 'sweetalert2';
-import type { Personal, GastoFijo, Inventario, Recordatorio, RecordatorioTratamiento, RecordatorioPlan } from '../types';
+import type { Personal, GastoFijo, PagoGastoFijo, Inventario, Recordatorio, RecordatorioTratamiento, RecordatorioPlan } from '../types';
 
 import { getLocalDateString, formatDate } from '../utils/dateUtils';
 import { formatPaternoMaternoNombre, formatCurrency } from '../utils/formatters';
 import Pagination from './Pagination';
+import PagosGastosFijosForm from './PagosGastosFijosForm';
 
 const Home: React.FC = () => {
     const navigate = useNavigate();
@@ -24,6 +25,8 @@ const Home: React.FC = () => {
     const [selectedDestinoGasto, setSelectedDestinoGasto] = useState<string>('todos');
     const [selectedGrupoStock, setSelectedGrupoStock] = useState<string>('todos');
     const [grupos, setGrupos] = useState<any[]>([]);
+    const [selectedGastoForPayment, setSelectedGastoForPayment] = useState<GastoFijo | null>(null);
+    const [showPaymentForm, setShowPaymentForm] = useState(false);
     const birthdayLoadingRef = useRef<Set<number>>(new Set());
 
     // Permission Logic
@@ -137,19 +140,94 @@ const Home: React.FC = () => {
 
     const fetchDueGastos = async () => {
         try {
-            const response = await api.get<GastoFijo[]>('/gastos-fijos');
-            const gastos = response.data;
             const today = new Date();
+            const currentYear = today.getFullYear();
+            const currentMonthIndex = today.getMonth(); // 0 to 11
             const currentDay = today.getDate();
-            const currentMonth = today.toLocaleDateString('es-ES', { month: 'long' }).toLowerCase();
+
+            // Fetch expenses and payments for current year
+            const startOfYear = `${currentYear}-01-01`;
+            const endOfYear = `${currentYear}-12-31`;
+
+            const [gastosRes, pagosRes] = await Promise.all([
+                api.get<GastoFijo[]>('/gastos-fijos'),
+                api.get<PagoGastoFijo[]>('/pagos-gastos-fijos', {
+                    params: { startDate: startOfYear, endDate: endOfYear }
+                })
+            ]);
+
+            const gastos = Array.isArray(gastosRes.data) ? gastosRes.data : [];
+            const pagos = Array.isArray(pagosRes.data) ? pagosRes.data : [];
+
+            const MONTH_NAMES = [
+                'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+                'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
+            ];
+
+            const parseMes = (mes?: string | null): number | null => {
+                if (!mes) return null;
+                const clean = String(mes).trim().toLowerCase();
+                const num = parseInt(clean, 10);
+                if (!isNaN(num) && num >= 1 && num <= 12) return num - 1;
+                const idx = MONTH_NAMES.indexOf(clean);
+                return idx >= 0 ? idx : null;
+            };
 
             const due = gastos.filter(gasto => {
-                if (gasto.dia !== currentDay) return false;
+                // Ignore inactive expenses
+                if (gasto.estado && gasto.estado.toLowerCase() !== 'activo') return false;
+
+                const gastoDia = Number(gasto.dia) || 1;
+
                 if (gasto.anual) {
-                    return gasto.mes?.toLowerCase() === currentMonth;
+                    const gastoMonthIdx = parseMes(gasto.mes);
+                    let isDue = false;
+                    if (gastoMonthIdx !== null) {
+                        if (currentMonthIndex > gastoMonthIdx) {
+                            // The scheduled month has already passed this year
+                            isDue = true;
+                        } else if (currentMonthIndex === gastoMonthIdx) {
+                            // Current month: due if currentDay has reached or passed dia
+                            isDue = currentDay >= gastoDia;
+                        }
+                    } else {
+                        isDue = currentDay >= gastoDia;
+                    }
+
+                    if (!isDue) return false;
+
+                    // Check if already paid this year
+                    const isPaidThisYear = pagos.some(p => {
+                        const targetId = p.gastoFijoId || p.gastoFijo?.id;
+                        if (targetId !== gasto.id) return false;
+                        if (!p.fecha) return false;
+                        const [pYear] = p.fecha.split('T')[0].split('-').map(Number);
+                        return pYear === currentYear;
+                    });
+
+                    return !isPaidThisYear;
+                } else {
+                    // Monthly expense:
+                    // Due if today is on or after the scheduled payment day of this month
+                    const isDue = currentDay >= gastoDia;
+                    if (!isDue) return false;
+
+                    // Check if already paid for current month of current year
+                    const isPaidThisMonth = pagos.some(p => {
+                        const targetId = p.gastoFijoId || p.gastoFijo?.id;
+                        if (targetId !== gasto.id) return false;
+                        if (!p.fecha) return false;
+                        const [pYear, pMonth] = p.fecha.split('T')[0].split('-').map(Number);
+                        return pYear === currentYear && (pMonth - 1) === currentMonthIndex;
+                    });
+
+                    return !isPaidThisMonth;
                 }
-                return true; // Monthly expense matches day
             });
+
+            // Sort due gastos by day ascending
+            due.sort((a, b) => (Number(a.dia) || 0) - (Number(b.dia) || 0));
+
             setDueGastos(due);
         } catch (error) {
             console.error('Error fetching due expenses:', error);
@@ -485,53 +563,96 @@ const Home: React.FC = () => {
                 </div>
             )}
 
-            {/* Expenses Due Today Section */}
+            {/* Expenses Due / Pending Section */}
             {hasAccess('dashboard_gastos_vencidos') && dueGastos.length > 0 && (
                 <div className="mb-8 bg-pink-50 dark:bg-pink-900/20 border-l-4 border-pink-500 p-4 sm:p-6 rounded-r-lg shadow-sm">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-                        <h2 className="text-xl font-bold text-pink-700 dark:text-pink-400 flex items-center gap-2">
-                            <span>⚠️</span> Gastos Fijos por Pagar Hoy
-                        </h2>
-                        <div className="w-full sm:w-60">
-                            <select
-                                value={selectedDestinoGasto}
-                                onChange={(e) => setSelectedDestinoGasto(e.target.value)}
-                                className="w-full py-1.5 px-3 border border-pink-300 dark:border-pink-700 rounded-lg text-sm font-medium text-gray-800 dark:text-white bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-pink-500 cursor-pointer shadow-sm"
-                                title="Filtrar gastos por destino"
+                        <div className="flex items-center gap-2">
+                            <h2 className="text-xl font-bold text-pink-700 dark:text-pink-400 flex items-center gap-2">
+                                <span>⚠️</span> Gastos Fijos por Pagar / Pendientes
+                            </h2>
+                            <span className="bg-pink-200 dark:bg-pink-900 text-pink-800 dark:text-pink-200 text-xs font-bold px-2 py-0.5 rounded-full">
+                                {filteredDueGastos.length}
+                            </span>
+                        </div>
+                        <div className="flex items-center gap-2 w-full sm:w-auto">
+                            <div className="w-full sm:w-60">
+                                <select
+                                    value={selectedDestinoGasto}
+                                    onChange={(e) => setSelectedDestinoGasto(e.target.value)}
+                                    className="w-full py-1.5 px-3 border border-pink-300 dark:border-pink-700 rounded-lg text-sm font-medium text-gray-800 dark:text-white bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-pink-500 cursor-pointer shadow-sm"
+                                    title="Filtrar gastos por destino"
+                                >
+                                    <option value="todos">Todos los Destinos</option>
+                                    {destinosDisponibles.map(dest => (
+                                        <option key={dest} value={dest}>
+                                            {dest}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            <button
+                                onClick={() => navigate('/gastos-fijos')}
+                                className="whitespace-nowrap px-3 py-1.5 bg-pink-600 hover:bg-pink-700 text-white rounded-lg text-xs font-semibold transition-colors shadow-sm cursor-pointer"
+                                title="Ir a Gestión de Gastos Fijos"
                             >
-                                <option value="todos">Todos los Destinos</option>
-                                {destinosDisponibles.map(dest => (
-                                    <option key={dest} value={dest}>
-                                        {dest}
-                                    </option>
-                                ))}
-                            </select>
+                                Gastos Fijos
+                            </button>
                         </div>
                     </div>
                     <div className="space-y-3">
                         {filteredDueGastos.length === 0 ? (
                             <div className="text-center py-4 text-sm text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-700 rounded-lg border border-gray-100 dark:border-gray-600">
-                                No hay gastos fijos pendientes hoy para el destino "{selectedDestinoGasto}".
+                                No hay gastos fijos pendientes para el destino "{selectedDestinoGasto}".
                             </div>
                         ) : (
-                            filteredDueGastos.map(gasto => (
-                                <div
-                                    key={gasto.id}
-                                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-gray-700 p-3 sm:p-4 rounded-lg shadow-sm border border-gray-100 dark:border-gray-600"
-                                >
-                                    <div className="min-w-0 flex-1">
-                                        <h3 className="font-semibold text-gray-800 dark:text-white mb-1 break-words">
-                                            {gasto.gasto_fijo}
-                                        </h3>
-                                        <p className="text-sm text-gray-500 dark:text-gray-300">
-                                            Destino: {gasto.destino} - <strong className="text-pink-600 dark:text-pink-300">{gasto.moneda === 'DOLARES' || gasto.moneda === '$us' ? '$us' : 'Bs.'} {formatCurrency(gasto.monto)}</strong>
-                                        </p>
+                            filteredDueGastos.map(gasto => {
+                                const isDueToday = Number(gasto.dia) === new Date().getDate();
+                                return (
+                                    <div
+                                        key={gasto.id}
+                                        className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-gray-700 p-3 sm:p-4 rounded-lg shadow-sm border border-gray-100 dark:border-gray-600 hover:border-pink-300 dark:hover:border-pink-600 transition-colors"
+                                    >
+                                        <div className="min-w-0 flex-1">
+                                            <div className="flex items-center gap-2 flex-wrap mb-1">
+                                                <h3 className="font-semibold text-gray-800 dark:text-white break-words">
+                                                    {gasto.gasto_fijo}
+                                                </h3>
+                                                <span className="text-xs px-2 py-0.5 rounded font-medium bg-gray-100 dark:bg-gray-600 text-gray-600 dark:text-gray-300">
+                                                    Día {gasto.dia}{gasto.anual ? ` (${gasto.mes || 'Anual'})` : ''}
+                                                </span>
+                                                {isDueToday ? (
+                                                    <span className="text-xs px-2 py-0.5 rounded font-bold bg-pink-100 text-pink-700 dark:bg-pink-900/60 dark:text-pink-300">
+                                                        Vence Hoy
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-xs px-2 py-0.5 rounded font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300">
+                                                        Pendiente
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <p className="text-sm text-gray-500 dark:text-gray-300">
+                                                Destino: {gasto.destino} - <strong className="text-pink-600 dark:text-pink-300">{gasto.moneda === 'DOLARES' || gasto.moneda === '$us' ? '$us' : 'Bs.'} {formatCurrency(gasto.monto)}</strong>
+                                            </p>
+                                        </div>
+                                        <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                                            <button
+                                                onClick={() => {
+                                                    setSelectedGastoForPayment(gasto);
+                                                    setShowPaymentForm(true);
+                                                }}
+                                                className="px-3 py-1.5 bg-pink-50 hover:bg-pink-100 dark:bg-pink-900/40 dark:hover:bg-pink-900/70 text-pink-700 dark:text-pink-300 text-xs font-semibold rounded-lg border border-pink-200 dark:border-pink-800 transition-colors cursor-pointer"
+                                                title="Registrar pago de este gasto"
+                                            >
+                                                Registrar Pago
+                                            </button>
+                                            <div className="text-2xl text-pink-500 dark:text-pink-400">
+                                                💸
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div className="text-2xl text-pink-500 dark:text-pink-400 self-end sm:self-center shrink-0">
-                                        💸
-                                    </div>
-                                </div>
-                            ))
+                                );
+                            })
                         )}
                     </div>
                 </div>
@@ -764,6 +885,25 @@ const Home: React.FC = () => {
                     </div>
                 )}
             </div>
+
+            {/* Modal Registrar Pago de Gasto Fijo */}
+            {showPaymentForm && selectedGastoForPayment && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999] p-4 no-print">
+                    <PagosGastosFijosForm
+                        gastoFijo={selectedGastoForPayment}
+                        existingPayment={null}
+                        onClose={() => {
+                            setShowPaymentForm(false);
+                            setSelectedGastoForPayment(null);
+                        }}
+                        onSave={() => {
+                            setShowPaymentForm(false);
+                            setSelectedGastoForPayment(null);
+                            fetchDueGastos();
+                        }}
+                    />
+                </div>
+            )}
         </div>
     );
 };

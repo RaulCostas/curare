@@ -121,6 +121,28 @@ export class AgendaService {
         });
     }
 
+    async findLatestPendingByPaciente(pacienteId: number): Promise<Agenda | null> {
+        return await this.agendaRepository.createQueryBuilder('a')
+            .leftJoinAndSelect('a.paciente', 'p')
+            .where('a.pacienteId = :pacienteId', { pacienteId })
+            .andWhere('LOWER(a.estado) NOT IN (:...invalidStates)', { invalidStates: ['confirmado', 'cancelado', 'atendido', 'eliminado'] })
+            .andWhere('a.fecha >= CURRENT_DATE - INTERVAL \'1 day\'')
+            .orderBy('a.fechaRecordatorioEnviado', 'DESC', 'NULLS LAST')
+            .addOrderBy('a.fecha', 'ASC')
+            .addOrderBy('a.hora', 'ASC')
+            .getOne();
+    }
+
+    async findLatestConfirmedByPaciente(pacienteId: number): Promise<Agenda | null> {
+        return await this.agendaRepository.createQueryBuilder('a')
+            .where('a.pacienteId = :pacienteId', { pacienteId })
+            .andWhere('LOWER(a.estado) = :estado', { estado: 'confirmado' })
+            .andWhere('a.fecha >= CURRENT_DATE - INTERVAL \'1 day\'')
+            .orderBy('a.fecha', 'DESC')
+            .addOrderBy('a.hora', 'DESC')
+            .getOne();
+    }
+
     private formatFechaTexto(fechaStr: string): string {
         if (!fechaStr) return '';
         try {

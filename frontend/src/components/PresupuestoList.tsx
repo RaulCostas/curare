@@ -1,15 +1,14 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import api, { getMediaUrl } from '../services/api';
 import Swal from 'sweetalert2';
 import type { Paciente } from '../types';
 import jsPDF from 'jspdf';
-import Pagination from './Pagination';
 import autoTable from 'jspdf-autotable';
 import { formatDateSpanish, formatDateUTC, formatCurrency, numberToWords, formatFullName } from '../utils/formatters';
 import ManualModal, { type ManualSection } from './ManualModal';
 import PlanTratamientoModal from './PlanTratamientoModal';
-import { CheckCircle, FileText, Plus, X } from 'lucide-react';
+import { CheckCircle, FileText, Plus, X, ArrowUp, ArrowDown } from 'lucide-react';
 import PresupuestoForm from './PresupuestoForm';
 import SignatureModal from './SignatureModal';
 
@@ -48,9 +47,8 @@ const PresupuestoList: React.FC = () => {
     const [showSignatureModal, setShowSignatureModal] = useState(false);
     const [selectedProformaIdForSignature, setSelectedProformaIdForSignature] = useState<number | null>(null);
 
-    // Pagination
-    const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 10;
+    // Sorting State (# Pres.) - Por defecto orden ascendente (1, 2, 3...)
+    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
     const formatDateTime = (dateInput: string | Date | undefined | null): string => {
         if (!dateInput) return '';
@@ -133,28 +131,29 @@ const PresupuestoList: React.FC = () => {
         }
     ];
 
-    const filteredProformas = proformas.filter(p =>
-        p.numero.toString().includes(searchTerm) ||
-        p.nota.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.fecha.includes(searchTerm)
-    );
+    const filteredProformas = useMemo(() => {
+        return proformas.filter(p =>
+            (p.numero !== undefined && p.numero !== null && p.numero.toString().includes(searchTerm)) ||
+            (p.nota && p.nota.toLowerCase().includes(searchTerm.toLowerCase())) ||
+            (p.fecha && p.fecha.includes(searchTerm))
+        );
+    }, [proformas, searchTerm]);
 
-    // Pagination Logic
-    const indexOfLastItem = currentPage * itemsPerPage;
-    const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-    const currentProformas = filteredProformas.slice(indexOfFirstItem, indexOfLastItem);
+    const sortedProformas = useMemo(() => {
+        return [...filteredProformas].sort((a, b) => {
+            const numA = Number(a.numero) || 0;
+            const numB = Number(b.numero) || 0;
+            return sortOrder === 'asc' ? numA - numB : numB - numA;
+        });
+    }, [filteredProformas, sortOrder]);
 
     useEffect(() => {
         if (id) {
+            setSortOrder('asc');
             fetchPaciente(Number(id));
             fetchProformas(Number(id));
         }
     }, [id]);
-
-    // Reset pagination when search changes
-    useEffect(() => {
-        setCurrentPage(1);
-    }, [searchTerm]);
 
     // ... (rest of functions)
 
@@ -900,9 +899,14 @@ const PresupuestoList: React.FC = () => {
             </div>
 
             {/* Record Count */}
-            {filteredProformas.length > 0 && (
-                <div className="mb-4 px-4 text-sm text-gray-600 dark:text-gray-400">
-                    Mostrando {indexOfFirstItem + 1} a {Math.min(indexOfLastItem, filteredProformas.length)} de {filteredProformas.length} presupuestos
+            {sortedProformas.length > 0 && (
+                <div className="mb-4 px-4 text-sm text-gray-600 dark:text-gray-400 flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                        Mostrando <strong>{sortedProformas.length}</strong> {sortedProformas.length === 1 ? 'presupuesto' : 'presupuestos'}
+                    </div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                        Orden: <strong>{sortOrder === 'desc' ? 'Descendente (# mayor a menor)' : 'Ascendente (# menor a mayor)'}</strong>
+                    </div>
                 </div>
             )}
 
@@ -910,7 +914,36 @@ const PresupuestoList: React.FC = () => {
                 <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                     <thead className="bg-gray-50 dark:bg-gray-700">
                         <tr>
-                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider"># Pres.</th>
+                            <th
+                                className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider select-none cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                                onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
+                                title="Clic para alternar orden ASC / DESC"
+                            >
+                                <div className="flex items-center gap-2">
+                                    <span># Pres.</span>
+                                    <button
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+                                        }}
+                                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-300 border border-blue-200 dark:border-blue-700 hover:bg-blue-100 dark:hover:bg-blue-800 transition-colors"
+                                        title={`Orden: ${sortOrder === 'asc' ? 'Ascendente (1 → 9)' : 'Descendente (9 → 1)'}. Clic para cambiar.`}
+                                    >
+                                        {sortOrder === 'asc' ? (
+                                            <>
+                                                <ArrowUp size={12} strokeWidth={2.5} />
+                                                <span>ASC</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <ArrowDown size={12} strokeWidth={2.5} />
+                                                <span>DESC</span>
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                            </th>
                             <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Fecha</th>
                             <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Registrado Por</th>
                             <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Total (Bs.)</th>
@@ -926,7 +959,7 @@ const PresupuestoList: React.FC = () => {
                         </tr>
                     </thead>
                     <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                        {currentProformas.map((proforma) => {
+                        {sortedProformas.map((proforma) => {
                             const isCompleted = completedBudgets.has(proforma.id);
                             return (
                                 <tr key={proforma.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
@@ -1127,15 +1160,6 @@ const PresupuestoList: React.FC = () => {
                     </tbody>
                 </table>
             </div>
-
-            {/* Pagination */}
-            {filteredProformas.length > 0 && (
-                <Pagination
-                    currentPage={currentPage}
-                    totalPages={Math.ceil(filteredProformas.length / itemsPerPage)}
-                    onPageChange={(page) => setCurrentPage(page)}
-                />
-            )}
 
             <ManualModal
                 isOpen={showManual}

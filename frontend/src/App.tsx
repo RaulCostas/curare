@@ -68,6 +68,7 @@ import CasosClinicosList from './components/CasosClinicosList';
 import DatosCentroDentalList from './components/DatosCentroDentalList';
 import RecetasPredisenadasList from './components/RecetasPredisenadasList';
 import ConsentimientosPlantillasList from './components/ConsentimientosPlantillasList';
+import DocumentosGeneralesList from './components/DocumentosGeneralesList';
 
 import { ThemeProvider } from './context/ThemeContext';
 
@@ -114,6 +115,9 @@ function App() {
                                 </Route>
                                 <Route element={<ProtectedRoute moduleId="recetas-predisenadas" />}>
                                     <Route path="/recetas-predisenadas" element={<RecetasPredisenadasList />} />
+                                </Route>
+                                <Route element={<ProtectedRoute moduleId="documentos-generales" />}>
+                                    <Route path="/documentos-generales" element={<DocumentosGeneralesList />} />
                                 </Route>
                                 <Route element={<ProtectedRoute moduleId="consentimientos-plantillas" />}>
                                     <Route path="/consentimientos-plantillas" element={<ConsentimientosPlantillasList />} />

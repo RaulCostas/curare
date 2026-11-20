@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
-import type { HistoriaClinica } from '../types';
+import type { HistoriaClinica, Proforma } from '../types';
+import api from '../services/api';
+import Swal from 'sweetalert2';
 
 interface HistoriaClinicaListProps {
     historia: HistoriaClinica[];
     allHistoria?: HistoriaClinica[];
+    proformas?: Proforma[];
     onDelete: (id: number) => void;
     onEdit: (item: HistoriaClinica) => void;
     onNewHistoria?: () => void;
@@ -12,22 +15,46 @@ interface HistoriaClinicaListProps {
     onPlanTiempo?: () => void;
     onPrint?: () => void;
     onReminder?: (item: HistoriaClinica) => void;
+    onHistoriaUpdated?: () => void;
 }
 
 import { formatDateUTC } from '../utils/formatters';
 import ManualModal, { type ManualSection } from './ManualModal';
 import ViewMaterialUtilizadoModal from './ViewMaterialUtilizadoModal';
+import CambiarPresupuestoModal from './CambiarPresupuestoModal';
 import Pagination from './Pagination';
-import { X } from 'lucide-react';
+import { X, ArrowUp, ArrowDown, ArrowRightLeft } from 'lucide-react';
 
-const HistoriaClinicaList: React.FC<HistoriaClinicaListProps> = ({ historia, allHistoria, onDelete, onEdit, onNewHistoria, onPrint, onViewPlan, onViewHistorial, onReminder, onPlanTiempo }) => {
+const HistoriaClinicaList: React.FC<HistoriaClinicaListProps> = ({
+    historia,
+    allHistoria,
+    proformas = [],
+    onDelete,
+    onEdit,
+    onNewHistoria,
+    onPrint,
+    onViewPlan,
+    onViewHistorial,
+    onReminder,
+    onPlanTiempo,
+    onHistoriaUpdated
+}) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [searchAllProformas, setSearchAllProformas] = useState(false);
     const [showManual, setShowManual] = useState(false);
     const [showMaterialModal, setShowMaterialModal] = useState(false);
     const [selectedHistoriaId, setSelectedHistoriaId] = useState<number>(0);
     const [currentPage, setCurrentPage] = useState(1);
+    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
     const itemsPerPage = 10;
+
+    const [showCambiarPresupuestoModal, setShowCambiarPresupuestoModal] = useState(false);
+    const [historiaToChangeProforma, setHistoriaToChangeProforma] = useState<HistoriaClinica | null>(null);
+
+    const handleOpenCambiarPresupuesto = (item: HistoriaClinica) => {
+        setHistoriaToChangeProforma(item);
+        setShowCambiarPresupuestoModal(true);
+    };
 
     const manualSections: ManualSection[] = [
         {
@@ -56,11 +83,17 @@ const HistoriaClinicaList: React.FC<HistoriaClinicaListProps> = ({ historia, all
 
     const sortedHistoria = React.useMemo(() => {
         return [...sourceHistory].sort((a, b) => {
-            const dateA = new Date(a.fecha).getTime();
-            const dateB = new Date(b.fecha).getTime();
-            return dateA - dateB;
+            const timeA = new Date(a.fecha).getTime() || 0;
+            const timeB = new Date(b.fecha).getTime() || 0;
+            const dateDiff = timeA - timeB;
+            if (dateDiff !== 0) {
+                return sortOrder === 'asc' ? dateDiff : -dateDiff;
+            }
+            const idA = Number(a.id) || 0;
+            const idB = Number(b.id) || 0;
+            return sortOrder === 'asc' ? idA - idB : idB - idA;
         });
-    }, [sourceHistory]);
+    }, [sourceHistory, sortOrder]);
 
     const filteredHistoria = sortedHistoria.filter(item => {
         if (!searchTerm) return true;
@@ -78,10 +111,16 @@ const HistoriaClinicaList: React.FC<HistoriaClinicaListProps> = ({ historia, all
         currentPage * itemsPerPage
     );
 
-    // Reset to page 1 when search or mode changes
+    // Reset to page 1 when search, mode or sort changes
     React.useEffect(() => {
         setCurrentPage(1);
-    }, [searchTerm, searchAllProformas]);
+    }, [searchTerm, searchAllProformas, sortOrder]);
+
+    // Reset sort order to 'asc' when historia changes (e.g. changing selected budget)
+    React.useEffect(() => {
+        setSortOrder('asc');
+        setCurrentPage(1);
+    }, [historia]);
 
     return (
         <div>
@@ -211,9 +250,12 @@ const HistoriaClinicaList: React.FC<HistoriaClinicaListProps> = ({ historia, all
                 </div>
             </div>
 
-            <div className="flex justify-between items-center mb-4 text-sm text-gray-600 dark:text-gray-400">
+            <div className="flex flex-wrap justify-between items-center mb-4 text-sm text-gray-600 dark:text-gray-400 gap-2">
                 <span className="font-medium">
                     Mostrando <span className="text-gray-800 dark:text-gray-200">{filteredHistoria.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, filteredHistoria.length)}</span> de <span>{filteredHistoria.length}</span> registros
+                </span>
+                <span className="text-xs text-gray-500 dark:text-gray-400">
+                    Orden: <strong>{sortOrder === 'asc' ? 'Ascendente (Cronológico)' : 'Descendente (Más reciente primero)'}</strong>
                 </span>
             </div>
 
@@ -221,7 +263,36 @@ const HistoriaClinicaList: React.FC<HistoriaClinicaListProps> = ({ historia, all
                 <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                     <thead className="bg-gray-50 dark:bg-gray-700">
                         <tr>
-                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Fecha</th>
+                            <th
+                                className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider select-none cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                                onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
+                                title="Clic para alternar orden ASC / DESC"
+                            >
+                                <div className="flex items-center gap-2">
+                                    <span>Fecha</span>
+                                    <button
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+                                        }}
+                                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-300 border border-blue-200 dark:border-blue-700 hover:bg-blue-100 dark:hover:bg-blue-800 transition-colors"
+                                        title={`Orden: ${sortOrder === 'asc' ? 'Ascendente (más antiguo a más reciente)' : 'Descendente (más reciente a más antiguo)'}. Clic para cambiar.`}
+                                    >
+                                        {sortOrder === 'asc' ? (
+                                            <>
+                                                <ArrowUp size={12} strokeWidth={2.5} />
+                                                <span>ASC</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <ArrowDown size={12} strokeWidth={2.5} />
+                                                <span>DESC</span>
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                            </th>
                             <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Elemento Dental</th>
                             <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Tratamiento</th>
                             <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Observaciones</th>
@@ -303,6 +374,14 @@ const HistoriaClinicaList: React.FC<HistoriaClinicaListProps> = ({ historia, all
                                             </button>
                                         )}
                                         <button
+                                            type="button"
+                                            onClick={() => handleOpenCambiarPresupuesto(item)}
+                                            className="p-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg shadow-md transition-all transform hover:-translate-y-0.5 cursor-pointer"
+                                            title="Cambiar / Mover de Presupuesto"
+                                        >
+                                            <ArrowRightLeft size={16} />
+                                        </button>
+                                        <button
                                             onClick={() => onEdit(item)}
                                             className="p-1.5 bg-yellow-400 hover:bg-yellow-500 text-white rounded-lg shadow-md transition-all transform hover:-translate-y-0.5"
                                             title="Editar"
@@ -360,6 +439,22 @@ const HistoriaClinicaList: React.FC<HistoriaClinicaListProps> = ({ historia, all
                 isOpen={showMaterialModal}
                 onClose={() => setShowMaterialModal(false)}
                 historiaClinicaId={selectedHistoriaId}
+            />
+
+            {/* Cambiar Presupuesto Modal */}
+            <CambiarPresupuestoModal
+                isOpen={showCambiarPresupuestoModal}
+                onClose={() => {
+                    setShowCambiarPresupuestoModal(false);
+                    setHistoriaToChangeProforma(null);
+                }}
+                historia={historiaToChangeProforma}
+                proformas={proformas}
+                onSuccess={() => {
+                    if (onHistoriaUpdated) {
+                        onHistoriaUpdated();
+                    }
+                }}
             />
         </div>
     );
