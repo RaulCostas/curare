@@ -18,7 +18,7 @@ import { formatFullName, formatPaternoMaternoNombre } from '../utils/formatters'
 type ValuePiece = Date | null;
 type Value = ValuePiece | [ValuePiece, ValuePiece];
 
-import { Calendar as CalendarIcon, X as CloseIcon, UserCheck, Bell, Contact, Gift, Printer } from 'lucide-react';
+import { Calendar as CalendarIcon, X as CloseIcon, UserCheck, Bell, Contact, Gift, Printer, ChevronRight } from 'lucide-react';
 
 const getStatusColor = (estado?: string) => {
     if (!estado) return '#3498db';
@@ -126,8 +126,10 @@ const AgendaView: React.FC<AgendaViewProps> = ({ defaultPacienteId, isEmbedded =
     const [searchTerm, setSearchTerm] = useState('');
     const [filteredPacientes, setFilteredPacientes] = useState<Paciente[]>([]);
     const [showPatientResults, setShowPatientResults] = useState(false);
+    const [isSearchingPatient, setIsSearchingPatient] = useState(false);
     const [patientHistory, setPatientHistory] = useState<Agenda[]>([]);
     const [showHistoryModal, setShowHistoryModal] = useState(false);
+    const [loadingPatientHistory, setLoadingPatientHistory] = useState(false);
     const [selectedPatientForHistory, setSelectedPatientForHistory] = useState<Paciente | null>(null);
     const [historyPage, setHistoryPage] = useState(1);
 
@@ -203,8 +205,9 @@ const AgendaView: React.FC<AgendaViewProps> = ({ defaultPacienteId, isEmbedded =
         }
 
         const searchPatients = async () => {
+            setIsSearchingPatient(true);
             try {
-                const response = await api.get(`/pacientes?search=${debouncedSearchTerm}&limit=100000`);
+                const response = await api.get(`/pacientes?search=${encodeURIComponent(debouncedSearchTerm)}&limit=100000`);
                 let results = response.data.data || [];
 
                 const searchTrimmed = debouncedSearchTerm.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -236,6 +239,8 @@ const AgendaView: React.FC<AgendaViewProps> = ({ defaultPacienteId, isEmbedded =
                 setShowPatientResults(true);
             } catch (error) {
                 console.error('Error searching patients:', error);
+            } finally {
+                setIsSearchingPatient(false);
             }
         };
 
@@ -247,14 +252,19 @@ const AgendaView: React.FC<AgendaViewProps> = ({ defaultPacienteId, isEmbedded =
         setShowPatientResults(false);
         setSelectedPatientForHistory(patient);
         setHistoryPage(1);
+        setPatientHistory([]);
+        setLoadingPatientHistory(true);
+        setShowHistoryModal(true);
 
         try {
             const response = await api.get(`/agenda/paciente/${patient.id}`);
-            setPatientHistory(response.data);
-            setShowHistoryModal(true);
+            setPatientHistory(Array.isArray(response.data) ? response.data : []);
         } catch (error) {
             console.error('Error fetching patient history:', error);
             Swal.fire('Error', 'No se pudo obtener el historial del paciente', 'error');
+            setPatientHistory([]);
+        } finally {
+            setLoadingPatientHistory(false);
         }
     };
 
@@ -1054,7 +1064,11 @@ const AgendaView: React.FC<AgendaViewProps> = ({ defaultPacienteId, isEmbedded =
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 className="w-full pl-9 pr-8 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-2 focus:outline-none focus:ring-blue-500"
                             />
-                            {searchTerm && (
+                            {isSearchingPatient ? (
+                                <div className="absolute inset-y-0 right-2.5 flex items-center pointer-events-none">
+                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
+                                </div>
+                            ) : searchTerm ? (
                                 <button
                                     type="button"
                                     onClick={() => setSearchTerm('')}
@@ -1064,19 +1078,25 @@ const AgendaView: React.FC<AgendaViewProps> = ({ defaultPacienteId, isEmbedded =
                                 >
                                     <CloseIcon size={16} />
                                 </button>
-                            )}
+                            ) : null}
                         </div>
-                        {showPatientResults && filteredPacientes.length > 0 && (
+                        {showPatientResults && (
                             <div className="absolute top-full left-0 right-0 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-b-lg shadow-lg z-[9999] max-h-[200px] overflow-y-auto">
-                                {filteredPacientes.map(p => (
-                                    <div
-                                        key={p.id}
-                                        onClick={() => handlePatientSelect(p)}
-                                        className="p-3 cursor-pointer border-b border-gray-100 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 text-sm text-gray-800 dark:text-gray-200"
-                                    >
-                                        <strong>{formatPaternoMaternoNombre(p)}</strong>
+                                {filteredPacientes.length > 0 ? (
+                                    filteredPacientes.map(p => (
+                                        <div
+                                            key={p.id}
+                                            onClick={() => handlePatientSelect(p)}
+                                            className="p-3 cursor-pointer border-b border-gray-100 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 text-sm text-gray-800 dark:text-gray-200"
+                                        >
+                                            <strong>{formatPaternoMaternoNombre(p)}</strong>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div className="p-3 text-xs text-gray-500 dark:text-gray-400 italic text-center">
+                                        No se encontraron pacientes.
                                     </div>
-                                ))}
+                                )}
                             </div>
                         )}
                     </div>
@@ -1379,16 +1399,45 @@ const AgendaView: React.FC<AgendaViewProps> = ({ defaultPacienteId, isEmbedded =
                                     <span>📅 Historial de Citas:</span>
                                     <span className="text-blue-600 dark:text-blue-400">{formatPaternoMaternoNombre(selectedPatientForHistory)}</span>
                                 </h2>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setShowHistoryModal(false);
+                                            navigate(`/pacientes/${selectedPatientForHistory.id}/citas`);
+                                        }}
+                                        className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold text-xs shadow transition-all flex items-center gap-1 cursor-pointer"
+                                        title="Ver perfil completo del paciente"
+                                    >
+                                        <span>Ver Perfil</span>
+                                        <ChevronRight size={14} />
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowHistoryModal(false)}
+                                        className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors p-1 rounded-lg cursor-pointer"
+                                        title="Cerrar"
+                                    >
+                                        <CloseIcon size={20} />
+                                    </button>
+                                </div>
                             </div>
 
                             {/* Info Records Count */}
-                            <div className="px-6 pt-4 pb-2 text-sm text-gray-600 dark:text-gray-400 font-medium">
-                                Mostrando {totalHistoryRecords === 0 ? 0 : (historyPage - 1) * historyLimit + 1} - {Math.min(historyPage * historyLimit, totalHistoryRecords)} de {totalHistoryRecords} registros
-                            </div>
+                            {!loadingPatientHistory && (
+                                <div className="px-6 pt-4 pb-2 text-sm text-gray-600 dark:text-gray-400 font-medium">
+                                    Mostrando {totalHistoryRecords === 0 ? 0 : (historyPage - 1) * historyLimit + 1} - {Math.min(historyPage * historyLimit, totalHistoryRecords)} de {totalHistoryRecords} registros
+                                </div>
+                            )}
 
                             {/* Table Content */}
                             <div className="p-6 overflow-y-auto flex-1 bg-white dark:bg-gray-800 space-y-4">
-                                {totalHistoryRecords === 0 ? (
+                                {loadingPatientHistory ? (
+                                    <div className="p-12 text-center text-gray-500 dark:text-gray-400">
+                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-3"></div>
+                                        Cargando Historial de Citas...
+                                    </div>
+                                ) : totalHistoryRecords === 0 ? (
                                     <p className="text-center text-gray-500 dark:text-gray-400 py-8 italic">No hay citas registradas para este paciente.</p>
                                 ) : (
                                     <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
