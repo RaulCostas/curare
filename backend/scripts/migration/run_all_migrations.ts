@@ -21,6 +21,7 @@ import { migrateMusicaTelevisionModule } from './modules/20_musica_television';
 import { migrateContactosModule } from './modules/21_contactos';
 import { reconcileDuplicateProformasModule } from './modules/22_reconcile_duplicate_proformas';
 import { syncPlanPagosDiscountsModule } from './modules/23_sync_plan_pagos_discounts';
+import { migratePropuestasModule } from './modules/24_propuestas';
 
 async function runAllMigrations() {
   console.log('\n======================================================');
@@ -93,8 +94,11 @@ async function runAllMigrations() {
     console.log('[22/23] Reconciliando y Limpiando Proformas Duplicadas...');
     await reconcileDuplicateProformasModule();
 
-    console.log('[23/23] Sincronizando Descuentos de Plan_Pagos a Proformas e Historia Clínica...');
+    console.log('[23/24] Sincronizando Descuentos de Plan_Pagos a Proformas e Historia Clínica...');
     await syncPlanPagosDiscountsModule();
+
+    console.log('[24/24] Migrando Propuestas y Propuesta Detalle...');
+    await migratePropuestasModule();
 
     const duration = ((Date.now() - startTime) / 1000).toFixed(2);
     console.log('\n======================================================');
