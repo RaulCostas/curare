@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import api from '../services/api';
 import Swal from 'sweetalert2';
@@ -7,7 +7,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { formatDateSpanish, numberToWords, formatCurrency, formatDateUTC } from '../utils/formatters';
 import ManualModal, { type ManualSection } from './ManualModal';
-import { ClipboardList, Plus } from 'lucide-react';
+import { ClipboardList, Plus, ArrowUp, ArrowDown } from 'lucide-react';
 import PropuestasForm from './PropuestasForm';
 import { printPdf } from '../utils/printUtils';
 
@@ -42,11 +42,22 @@ const PropuestasList: React.FC = () => {
         }
     ];
 
+    // Sorting State (# Prop.) - Por defecto orden ascendente (1, 2, 3...)
+    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+
     const filteredPropuestas = propuestas.filter(p =>
         p.numero.toString().includes(searchTerm) ||
         p.nota?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         p.fecha.includes(searchTerm)
     );
+
+    const sortedPropuestas = useMemo(() => {
+        return [...filteredPropuestas].sort((a, b) => {
+            const numA = Number(a.numero) || 0;
+            const numB = Number(b.numero) || 0;
+            return sortOrder === 'asc' ? numA - numB : numB - numA;
+        });
+    }, [filteredPropuestas, sortOrder]);
 
     useEffect(() => {
         if (id) {
@@ -534,11 +545,52 @@ const PropuestasList: React.FC = () => {
                 </div>
             </div>
 
+            {/* Record Count */}
+            {sortedPropuestas.length > 0 && (
+                <div className="mb-4 px-4 text-sm text-gray-600 dark:text-gray-400 flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                        Mostrando <strong>{sortedPropuestas.length}</strong> {sortedPropuestas.length === 1 ? 'propuesta' : 'propuestas'}
+                    </div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                        Orden: <strong>{sortOrder === 'desc' ? 'Descendente (# mayor a menor)' : 'Ascendente (# menor a mayor)'}</strong>
+                    </div>
+                </div>
+            )}
+
             <div className="overflow-x-auto rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
                 <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                     <thead className="bg-gray-50 dark:bg-gray-700">
                         <tr>
-                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider"># Prop.</th>
+                            <th
+                                className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider select-none cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                                onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
+                                title="Clic para alternar orden ASC / DESC"
+                            >
+                                <div className="flex items-center gap-2">
+                                    <span># Prop.</span>
+                                    <button
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+                                        }}
+                                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-300 border border-blue-200 dark:border-blue-700 hover:bg-blue-100 dark:hover:bg-blue-800 transition-colors"
+                                        title={`Orden: ${sortOrder === 'asc' ? 'Ascendente (1 → 9)' : 'Descendente (9 → 1)'}. Clic para cambiar.`}
+                                    >
+                                        {sortOrder === 'asc' ? (
+                                            <>
+                                                <ArrowUp size={12} strokeWidth={2.5} />
+                                                <span>ASC</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <ArrowDown size={12} strokeWidth={2.5} />
+                                                <span>DESC</span>
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                            </th>
                             <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Fecha</th>
                             <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Registrado Por</th>
                             {['A', 'B', 'C', 'D', 'E', 'F'].map(letra => (
@@ -548,7 +600,7 @@ const PropuestasList: React.FC = () => {
                         </tr>
                     </thead>
                     <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                        {filteredPropuestas.map((propuesta) => {
+                        {sortedPropuestas.map((propuesta) => {
                             const calculateTotalByLetra = (letra: string) => {
                                 return propuesta.detalles
                                     .filter(d => d.letra === letra)
@@ -557,7 +609,7 @@ const PropuestasList: React.FC = () => {
 
                             return (
                                 <tr key={propuesta.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                                    <td className="px-5 py-4 whitespace-nowrap text-sm font-medium">{propuesta.numero}</td>
+                                    <td className="px-5 py-4 whitespace-nowrap text-sm font-bold text-blue-600 dark:text-blue-400">{propuesta.numero}</td>
                                     <td className="px-5 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{formatDateUTC(propuesta.fecha)}</td>
                                     <td className="px-5 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{propuesta.usuario?.name || 'Sistema'}</td>
                                     {['A', 'B', 'C', 'D', 'E', 'F'].map(letra => {
@@ -651,7 +703,7 @@ const PropuestasList: React.FC = () => {
                                 </tr>
                             );
                         })}
-                        {filteredPropuestas.length === 0 && (
+                        {sortedPropuestas.length === 0 && (
                             <tr>
                                 <td colSpan={10} className="px-5 py-10 text-center text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800">
                                     <div className="flex flex-col items-center justify-center">
