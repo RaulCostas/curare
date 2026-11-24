@@ -42,6 +42,8 @@ interface SessionState {
     userSessions: Map<string, { type: string, timestamp: number, citaId?: number, attempts?: number }>;
     pollStore: Map<string, { message: any, citaId: number }>;
     processedMessageIds: Set<string>;
+    botSentMessageIds: Set<string>;
+    humanInteractionTimestamps: Map<string, number>;
 }
 
 @Injectable()
@@ -80,6 +82,8 @@ export class ChatbotService implements OnModuleInit, OnModuleDestroy {
                 userSessions: new Map(),
                 pollStore: new Map(),
                 processedMessageIds: new Set(),
+                botSentMessageIds: new Set(),
+                humanInteractionTimestamps: new Map(),
             });
         }
         return this.sessions.get(1)!;
@@ -255,15 +259,29 @@ export class ChatbotService implements OnModuleInit, OnModuleDestroy {
                         continue;
                     }
 
-                    // Si el mensaje fue enviado por el personal de la clínica desde WhatsApp Web / Móvil:
+                    // Mensajes salientes ('fromMe'):
                     if (msg.key.fromMe) {
+                        const msgId = msg.key?.id;
+                        if (msgId && session.botSentMessageIds.has(msgId)) {
+                            // Este mensaje fue enviado automáticamente por el propio bot (recordatorio, bienvenida, respuesta, etc.)
+                            session.botSentMessageIds.delete(msgId);
+                            continue;
+                        }
+
+                        // El mensaje fue enviado MANUALMENTE por el personal desde WhatsApp Web o el móvil:
                         const targetJid = msg.key?.remoteJid;
                         if (targetJid) {
-                            const existing = session.userSessions.get(targetJid);
-                            // No limpiar sesiones de recordatorio de cita en mensajes salientes
-                            if (!existing || existing.type !== 'waiting_agenda_response') {
-                                this.clearUserSession(session, targetJid);
-                            }
+                            console.log(`[Chatbot] [CURARE] Mensaje manual del operador detectado hacia ${targetJid}. Pausando chatbot.`);
+                            // Forzamos la limpieza de sesiones pendientes de espera
+                            this.clearUserSession(session, targetJid, true);
+
+                            // Registramos marca de tiempo de intervención humana para pausar respuestas automáticas
+                            const now = Date.now();
+                            session.humanInteractionTimestamps.set(targetJid, now);
+                            const clean = targetJid.split('@')[0].split(':')[0].replace(/\D/g, '');
+                            if (clean) session.humanInteractionTimestamps.set(clean, now);
+                            const last8 = clean.slice(-8);
+                            if (last8 && last8.length >= 7) session.humanInteractionTimestamps.set(last8, now);
                         }
                         continue;
                     }
@@ -428,6 +446,20 @@ export class ChatbotService implements OnModuleInit, OnModuleDestroy {
         const phone = phonePart.split(':')[0];
         const isGroup = remoteJid.endsWith('@g.us');
 
+        const cleanPhonePart = phone.replace(/\D/g, '');
+        const last8Digits = cleanPhonePart.slice(-8);
+
+        // ─── PRIORIDAD 0: Pausa por intervención humana reciente ────────────────
+        const lastHumanTime = 
+            session.humanInteractionTimestamps.get(remoteJid) ||
+            session.humanInteractionTimestamps.get(cleanPhonePart) ||
+            (last8Digits ? session.humanInteractionTimestamps.get(last8Digits) : undefined);
+
+        if (lastHumanTime && (Date.now() - lastHumanTime < 30 * 60 * 1000)) {
+            console.log(`[Chatbot] [CURARE] Intervención humana activa para ${remoteJid} (hace ${Math.round((Date.now() - lastHumanTime) / 1000)}s). El chatbot no responderá.`);
+            return;
+        }
+
         const text = 
             msg.message?.conversation || 
             msg.message?.extendedTextMessage?.text || 
@@ -451,47 +483,42 @@ export class ChatbotService implements OnModuleInit, OnModuleDestroy {
             cleanText === 'a.' ||
             cleanText === 'a)' ||
             cleanText === 'a-' ||
-            cleanText.startsWith('a ') ||
-            cleanText.startsWith('a,') ||
-            cleanText.startsWith('a-') ||
-            cleanText.startsWith('a -') ||
+            cleanText === 'a:' ||
+            cleanText === 'a;' ||
             cleanText === 'a✅' ||
-            cleanText.startsWith('a✅') ||
-            cleanText.startsWith('✅') ||
+            cleanText === '✅' ||
             cleanText === 'opcion a' ||
             cleanText === 'opción a' ||
+            cleanText === 'letra a' ||
             textWithoutEmojis === 'a' ||
-            textWithoutEmojis.startsWith('a ') ||
             textWithoutEmojis === 'opcion a' ||
             textWithoutEmojis === 'opción a' ||
-            textWithoutEmojis.startsWith('confirmar') ||
-            /^(si\b|sí\b|confirmo\b|confirmar\b|confirmado\b|confirmada\b|afirmativo\b|asistire\b|asistiré\b|de acuerdo\b|ok\b|okay\b|perfecto\b)/i.test(textWithoutEmojis || cleanText);
+            textWithoutEmojis === 'letra a' ||
+            /^a\s*[-:.)]?\s*(confirmar|confirmo|cita)?$/i.test(textWithoutEmojis) ||
+            /^(confirmar|confirmo|confirmado|confirmada)(\s+cita)?$/i.test(textWithoutEmojis) ||
+            /^(si|sí|afirmativo|asistire|asistiré|si confirmo|sí confirmo|si voy|sí voy)(\s+cita)?$/i.test(textWithoutEmojis);
 
         const isCancel = 
             cleanText === 'b' ||
             cleanText === 'b.' ||
             cleanText === 'b)' ||
             cleanText === 'b-' ||
-            cleanText.startsWith('b ') ||
-            cleanText.startsWith('b,') ||
-            cleanText.startsWith('b-') ||
-            cleanText.startsWith('b -') ||
+            cleanText === 'b:' ||
+            cleanText === 'b;' ||
             cleanText === 'b❌' ||
-            cleanText.startsWith('b❌') ||
-            cleanText.startsWith('❌') ||
+            cleanText === '❌' ||
             cleanText === 'opcion b' ||
             cleanText === 'opción b' ||
+            cleanText === 'letra b' ||
             textWithoutEmojis === 'b' ||
-            textWithoutEmojis.startsWith('b ') ||
             textWithoutEmojis === 'opcion b' ||
-            textWithoutEmojis.startsWith('opción b') ||
-            textWithoutEmojis.startsWith('cancelar') ||
-            /^(no\b|cancelar\b|cancelo\b|cancelado\b|cancelada\b|anular\b|no puedo\b|no podre\b|no podré\b)/i.test(textWithoutEmojis || cleanText);
+            textWithoutEmojis === 'opción b' ||
+            textWithoutEmojis === 'letra b' ||
+            /^b\s*[-:.)]?\s*(cancelar|cancelo|cita)?$/i.test(textWithoutEmojis) ||
+            /^(cancelar|cancelo|cancelado|cancelada|anular)(\s+cita)?$/i.test(textWithoutEmojis) ||
+            /^(no|no puedo|no podre|no podré|no podre asistir|no podré asistir|no voy a poder|no asistire|no asistiré)(\s+cita)?$/i.test(textWithoutEmojis);
 
         // ─── PRIORIDAD 1: Sesiones de espera activas ─────
-        const cleanPhonePart = phone.replace(/\D/g, '');
-        const last8Digits = cleanPhonePart.slice(-8);
-
         let currentSession: any = session.userSessions.get(remoteJid);
         if (!currentSession && msg.key?.remoteJid) {
             currentSession = session.userSessions.get(msg.key.remoteJid);
@@ -514,7 +541,7 @@ export class ChatbotService implements OnModuleInit, OnModuleDestroy {
         // ─── FALLBACK DE BASE DE DATOS PARA RECORDATORIOS DE AGENDA ───
         // Si no se encontró sesión en memoria pero el paciente respondió con confirmación (A) o cancelación (B):
         if (!currentSession && (isConfirm || isCancel)) {
-            console.log(`[Chatbot] [CURARE] Buscando cita pendiente en base de datos para remitente: ${senderJid}, teléfono: ${phone} (últimos 8: ${last8Digits})...`);
+            console.log(`[Chatbot] [CURARE] Buscando cita pendiente con recordatorio en BD para remitente: ${senderJid}, teléfono: ${phone}...`);
             try {
                 let paciente: any = null;
                 if (cleanPhonePart && cleanPhonePart.length >= 7) {
@@ -527,10 +554,10 @@ export class ChatbotService implements OnModuleInit, OnModuleDestroy {
                 if (paciente) {
                     const citaPendiente = await this.agendaService.findLatestPendingByPaciente(paciente.id);
                     if (citaPendiente) {
-                        console.log(`[Chatbot] [CURARE] Cita pendiente encontrada en BD (#${citaPendiente.id}) para paciente ${paciente.nombre} ${paciente.paterno || ''}`);
+                        console.log(`[Chatbot] [CURARE] Cita pendiente con recordatorio encontrada en BD (#${citaPendiente.id}) para paciente ${paciente.nombre} ${paciente.paterno || ''}`);
                         currentSession = {
                             type: 'waiting_agenda_response',
-                            timestamp: Date.now(),
+                            timestamp: citaPendiente.fechaRecordatorioEnviado ? new Date(citaPendiente.fechaRecordatorioEnviado).getTime() : Date.now(),
                             citaId: citaPendiente.id,
                         };
                     } else if (isConfirm) {
@@ -1006,11 +1033,24 @@ export class ChatbotService implements OnModuleInit, OnModuleDestroy {
             await new Promise(resolve => setTimeout(resolve, delayMs));
             await session.sock.sendPresenceUpdate('paused', jid);
 
+            let sentResult: any;
             if (typeof content === 'string') {
-                return await session.sock.sendMessage(jid, { text: content });
+                sentResult = await session.sock.sendMessage(jid, { text: content });
             } else {
-                return await session.sock.sendMessage(jid, content);
+                sentResult = await session.sock.sendMessage(jid, content);
             }
+
+            const sentMsgId = sentResult?.key?.id;
+            if (sentMsgId) {
+                session.botSentMessageIds.add(sentMsgId);
+                session.processedMessageIds.add(sentMsgId);
+                if (session.botSentMessageIds.size > 1000) {
+                    const firstItem = session.botSentMessageIds.values().next().value;
+                    if (firstItem) session.botSentMessageIds.delete(firstItem);
+                }
+            }
+
+            return sentResult;
         } catch (error) {
             console.error(`[Chatbot] [CURARE] Error sending message:`, error);
             throw error;
@@ -1119,7 +1159,12 @@ export class ChatbotService implements OnModuleInit, OnModuleDestroy {
                     selectableCount: 1
                 }
             });
-            session.pollStore.set(msg?.key?.id, { message: msg.message, citaId });
+            const pollMsgId = msg?.key?.id;
+            if (pollMsgId) {
+                session.botSentMessageIds.add(pollMsgId);
+                session.processedMessageIds.add(pollMsgId);
+                session.pollStore.set(pollMsgId, { message: msg.message, citaId });
+            }
             return msg;
         } catch (error) {
             console.error(`[Chatbot] [CURARE] Error sending poll:`, error);
@@ -1142,6 +1187,11 @@ export class ChatbotService implements OnModuleInit, OnModuleDestroy {
             timestamp: Date.now(),
             citaId,
         };
+
+        // Si había una pausa por intervención humana para este número, se remueve porque se envió explícitamente un recordatorio desde el sistema
+        session.humanInteractionTimestamps.delete(jid);
+        if (cleanDigits) session.humanInteractionTimestamps.delete(cleanDigits);
+        if (last8) session.humanInteractionTimestamps.delete(last8);
 
         session.userSessions.set(jid, sessionData);
         if (cleanDigits) {
