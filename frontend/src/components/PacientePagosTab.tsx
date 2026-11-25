@@ -380,29 +380,7 @@ const PacientePagosTab: React.FC<PacientePagosTabProps> = ({ pacienteId }) => {
 
             // Calculate Financial Summary values
             const totalPresupuesto = selectedProforma ? Number(selectedProforma.total || 0) : 0;
-            const executedByDetalle = new Map<number, number>();
-            let rawTotalEjecutado = 0;
-
-            filteredHistoria.forEach(curr => {
-                let itemPrice = Number(curr.precio || 0);
-                if (selectedProforma && selectedProforma.detalles) {
-                    const matchDetalle = findMatchingProformaDetalle(curr, selectedProforma.detalles);
-                    if (matchDetalle && Number(matchDetalle.total || 0) >= 0 && Number(matchDetalle.cantidad || 1) > 0) {
-                        const unitNetPrice = Number(matchDetalle.total) / Number(matchDetalle.cantidad || 1);
-                        itemPrice = unitNetPrice * Number(curr.cantidad || 1);
-
-                        const prev = executedByDetalle.get(matchDetalle.id) || 0;
-                        const maxForThisDetalle = Number(matchDetalle.total || 0);
-                        const allowed = Math.max(0, Math.min(itemPrice, maxForThisDetalle - prev));
-                        executedByDetalle.set(matchDetalle.id, prev + allowed);
-                        rawTotalEjecutado += allowed;
-                        return;
-                    }
-                }
-                rawTotalEjecutado += itemPrice;
-            });
-
-            const totalEjecutado = totalPresupuesto > 0 ? Math.min(rawTotalEjecutado, totalPresupuesto) : rawTotalEjecutado;
+            const totalEjecutado = rowsData.reduce((acc, r) => acc + r.itemPrice, 0);
 
             const totalPagado = filteredPagos.reduce((acc, curr) => {
                 const val = curr.moneda === 'Dólares'
@@ -522,29 +500,17 @@ const PacientePagosTab: React.FC<PacientePagosTabProps> = ({ pacienteId }) => {
             ? pagos.filter(p => p.proformaId === pago.proformaId)
             : pagos;
 
-        const executedByDetalle = new Map<number, number>();
-        let rawTotalEjecutado = 0;
-
-        relevantHistoria.forEach(curr => {
+        const totalEjecutado = relevantHistoria.reduce((acc, curr) => {
             let itemPrice = Number(curr.precio || 0);
             if (targetProforma && targetProforma.detalles) {
                 const matchDetalle = findMatchingProformaDetalle(curr, targetProforma.detalles);
                 if (matchDetalle && Number(matchDetalle.total || 0) >= 0 && Number(matchDetalle.cantidad || 1) > 0) {
                     const unitNetPrice = Number(matchDetalle.total) / Number(matchDetalle.cantidad || 1);
                     itemPrice = unitNetPrice * Number(curr.cantidad || 1);
-
-                    const prev = executedByDetalle.get(matchDetalle.id) || 0;
-                    const maxForThisDetalle = Number(matchDetalle.total || 0);
-                    const allowed = Math.max(0, Math.min(itemPrice, maxForThisDetalle - prev));
-                    executedByDetalle.set(matchDetalle.id, prev + allowed);
-                    rawTotalEjecutado += allowed;
-                    return;
                 }
             }
-            rawTotalEjecutado += itemPrice;
-        });
-
-        const totalEjecutado = totalPresupuesto > 0 ? Math.min(rawTotalEjecutado, totalPresupuesto) : rawTotalEjecutado;
+            return acc + itemPrice;
+        }, 0);
 
         const totalPagado = relevantPagos.reduce((acc, curr) => {
             const val = curr.moneda === 'Dólares'
@@ -1084,10 +1050,7 @@ const PacientePagosTab: React.FC<PacientePagosTabProps> = ({ pacienteId }) => {
                         const rawFilteredHistoria = historia.filter(h => h.proformaId === selectedProformaId && h.estadoTratamiento === 'terminado');
                         const filteredHistoria = deduplicateHistoria(rawFilteredHistoria);
 
-                        const executedByDetalle = new Map<number, number>();
-                        let rawTotalEjecutado = 0;
-
-                        filteredHistoria.forEach(curr => {
+                        const totalEjecutado = filteredHistoria.reduce((acc, curr) => {
                             let itemPrice = Number(curr.precio || 0);
 
                             if (selectedProforma && selectedProforma.detalles && selectedProforma.detalles.length > 0) {
@@ -1096,20 +1059,11 @@ const PacientePagosTab: React.FC<PacientePagosTabProps> = ({ pacienteId }) => {
                                 if (matchDetalle && Number(matchDetalle.total || 0) >= 0 && Number(matchDetalle.cantidad || 1) > 0) {
                                     const unitNetPrice = Number(matchDetalle.total) / Number(matchDetalle.cantidad || 1);
                                     itemPrice = unitNetPrice * Number(curr.cantidad || 1);
-
-                                    const prev = executedByDetalle.get(matchDetalle.id) || 0;
-                                    const maxForThisDetalle = Number(matchDetalle.total || 0);
-                                    const allowed = Math.max(0, Math.min(itemPrice, maxForThisDetalle - prev));
-                                    executedByDetalle.set(matchDetalle.id, prev + allowed);
-                                    rawTotalEjecutado += allowed;
-                                    return;
                                 }
                             }
 
-                            rawTotalEjecutado += itemPrice;
-                        });
-
-                        const totalEjecutado = totalPresupuesto > 0 ? Math.min(rawTotalEjecutado, totalPresupuesto) : rawTotalEjecutado;
+                            return acc + itemPrice;
+                        }, 0);
 
                         const totalPagado = proformaPagos.reduce((acc, curr) => {
                             const val = curr.moneda === 'Dólares'

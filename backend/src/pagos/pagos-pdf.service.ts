@@ -226,37 +226,7 @@ export class PagosPdfService {
 
         // Financial Summary values
         const totalPresupuesto = selectedProforma ? Number(selectedProforma.total || 0) : 0;
-        const executedByDetalle = new Map<number, number>();
-        let rawTotalEjecutado = 0;
-
-        sortedHistoria.forEach((curr: any) => {
-            let itemPrice = Number(curr.precio || 0);
-            let matchDetalle: any = null;
-            if (selectedProforma && selectedProforma.detalles) {
-                matchDetalle = this.findMatchingProformaDetalle(curr, selectedProforma.detalles);
-            } else if (curr.proformaId) {
-                const prof = proformas.find((p: any) => p.id === curr.proformaId);
-                if (prof && prof.detalles) {
-                    matchDetalle = this.findMatchingProformaDetalle(curr, prof.detalles);
-                }
-            }
-
-            if (matchDetalle && Number(matchDetalle.total || 0) >= 0 && Number(matchDetalle.cantidad || 1) > 0) {
-                const unitNetPrice = Number(matchDetalle.total) / Number(matchDetalle.cantidad || 1);
-                itemPrice = unitNetPrice * Number(curr.cantidad || 1);
-
-                const prev = executedByDetalle.get(matchDetalle.id) || 0;
-                const maxForThisDetalle = Number(matchDetalle.total || 0);
-                const allowed = Math.max(0, Math.min(itemPrice, maxForThisDetalle - prev));
-                executedByDetalle.set(matchDetalle.id, prev + allowed);
-                rawTotalEjecutado += allowed;
-                return;
-            }
-
-            rawTotalEjecutado += itemPrice;
-        });
-
-        const totalEjecutado = totalPresupuesto > 0 ? Math.min(rawTotalEjecutado, totalPresupuesto) : rawTotalEjecutado;
+        const totalEjecutado = rowsData.reduce((acc: number, r: any) => acc + r.itemPrice, 0);
 
         const totalPagado = sortedPagos.reduce((acc: number, curr: any) => {
             const val = curr.moneda === 'Dólares'
@@ -559,29 +529,17 @@ export class PagosPdfService {
             ? (allPacientePagos || []).filter((p: any) => p.proformaId === pago.proformaId || p.proforma?.id === pago.proformaId)
             : (allPacientePagos || []);
 
-        const executedByDetalle = new Map<number, number>();
-        let rawTotalEjecutado = 0;
-
-        relevantHistoria.forEach((curr: any) => {
+        const totalEjecutado = relevantHistoria.reduce((acc: number, curr: any) => {
             let itemPrice = Number(curr.precio || 0);
             if (targetProforma && targetProforma.detalles) {
                 const matchDetalle = this.findMatchingProformaDetalle(curr, targetProforma.detalles);
                 if (matchDetalle && Number(matchDetalle.total || 0) >= 0 && Number(matchDetalle.cantidad || 1) > 0) {
                     const unitNetPrice = Number(matchDetalle.total) / Number(matchDetalle.cantidad || 1);
                     itemPrice = unitNetPrice * Number(curr.cantidad || 1);
-
-                    const prev = executedByDetalle.get(matchDetalle.id) || 0;
-                    const maxForThisDetalle = Number(matchDetalle.total || 0);
-                    const allowed = Math.max(0, Math.min(itemPrice, maxForThisDetalle - prev));
-                    executedByDetalle.set(matchDetalle.id, prev + allowed);
-                    rawTotalEjecutado += allowed;
-                    return;
                 }
             }
-            rawTotalEjecutado += itemPrice;
-        });
-
-        const totalEjecutado = totalPresupuesto > 0 ? Math.min(rawTotalEjecutado, totalPresupuesto) : rawTotalEjecutado;
+            return acc + itemPrice;
+        }, 0);
 
         const totalPagado = relevantPagos.reduce((acc: number, curr: any) => {
             const val = curr.moneda === 'Dólares'
